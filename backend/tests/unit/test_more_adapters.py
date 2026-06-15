@@ -6,20 +6,10 @@ import io
 
 import pytest
 
-from docos.services.docengine.adapters.image import ImageAdapter
+from docos.services.docengine.adapters.image import ImageAdapter, ocr_available
 from docos.services.docengine.adapters.pptx import PptxAdapter
 from docos.services.docengine.adapters.rtf import RtfAdapter
 from docos.services.docengine.adapters.xlsx import XlsxAdapter
-
-
-def _tesseract_available() -> bool:
-    try:
-        import pytesseract
-
-        pytesseract.get_tesseract_version()
-        return True
-    except Exception:  # noqa: BLE001
-        return False
 
 
 def _runs(doc) -> list[str]:
@@ -59,7 +49,7 @@ def test_image_parses_into_image_node(sample_image_bytes):
     assert any(n.type == "page" for n in doc.nodes.values())
 
 
-@pytest.mark.skipif(not _tesseract_available(), reason="tesseract binary not installed")
+@pytest.mark.skipif(not ocr_available(), reason="no Tesseract engine with language data")
 def test_image_ocr_recovers_text():
     from PIL import Image, ImageDraw
 

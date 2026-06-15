@@ -1,8 +1,10 @@
 """Image adapter (Pillow + optional Tesseract OCR).
 
-Builds a single page holding the image, then — when a Tesseract binary is available —
-runs OCR to recover text into paragraphs/runs so a scan becomes searchable, editable,
-and exportable. OCR is best-effort: without Tesseract the image is still ingested,
+Builds a single page holding the image, then — when a Tesseract engine with language
+data is available — runs OCR to recover text into paragraphs/runs so a scan becomes
+searchable, editable, and exportable. OCR is best-effort and engine-agnostic: it tries
+``tesserocr`` (bundled libtesseract, no external binary) first, then the ``pytesseract``
+CLI wrapper. Without either — or without language data — the image is still ingested,
 just without recovered text.
 """
 
@@ -20,6 +22,42 @@ from docos.services.docengine.interface import FormatAdapter
 from docos.storage.blob import BlobStore
 
 _MIME_BY_FORMAT = {"PNG": "image/png", "JPEG": "image/jpeg", "TIFF": "image/tiff"}
+
+
+def ocr_available() -> bool:
+    """True if some Tesseract engine *with language data* can run."""
+    try:
+        import tesserocr
+
+        if tesserocr.get_languages()[1]:
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import pytesseract
+
+        pytesseract.get_tesseract_version()
+        return bool(pytesseract.get_languages())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _ocr_text(image: Image.Image) -> str | None:
+    """OCR via the bundled ``tesserocr`` first, then the ``pytesseract`` CLI wrapper."""
+    try:
+        import tesserocr
+
+        if tesserocr.get_languages()[1]:  # language data present
+            return tesserocr.image_to_text(image)
+    except Exception:  # noqa: BLE001 - fall through to the next engine
+        pass
+    try:
+        import pytesseract
+
+        pytesseract.get_tesseract_version()  # raises if the binary is missing
+        return pytesseract.image_to_string(image)
+    except Exception:  # noqa: BLE001 - OCR is best-effort, never fatal to ingest
+        return None
 
 
 class ImageAdapter(FormatAdapter):
@@ -71,12 +109,8 @@ class ImageAdapter(FormatAdapter):
 
     def _ocr_into(self, doc: CanonicalDocument, page: PageNode, image: Image.Image) -> None:
         """Recover text via Tesseract when available; a no-op otherwise."""
-        try:
-            import pytesseract
-
-            pytesseract.get_tesseract_version()  # raises if the binary is missing
-            text = pytesseract.image_to_string(image)
-        except Exception:  # noqa: BLE001 - OCR is best-effort, never fatal to ingest
+        text = _ocr_text(image)
+        if not text:
             return
 
         order = 1
