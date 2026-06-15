@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
+import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
@@ -34,19 +35,22 @@ export default function DocumentPage() {
             </span>
           )}
         </div>
-        <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
-          {panelOpen ? "Hide" : "Show"} health
-        </button>
+        <div className="flex items-center gap-4">
+          <DownloadMenu docId={docId} />
+          <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
+            {panelOpen ? "Hide" : "Show"} health
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1">
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 overflow-auto bg-slate-100 p-8">
           {model.isLoading && <p className="text-slate-500">Loading model…</p>}
           {model.isError && <p className="text-red-600">Failed to load: {String(model.error)}</p>}
-          {model.data && <DocumentCanvas doc={model.data.document} />}
+          {model.data && <DocumentCanvas doc={model.data.document} docId={docId} />}
         </main>
 
-        {panelOpen && health.data && <HealthPanel health={health.data.health} />}
+        {panelOpen && health.data && <HealthPanel health={health.data.health} docId={docId} />}
       </div>
     </div>
   );

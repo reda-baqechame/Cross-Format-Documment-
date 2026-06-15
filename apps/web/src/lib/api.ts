@@ -3,6 +3,8 @@
 import type {
   DocumentHealthResponse,
   DocumentModelResponse,
+  PatchRequest,
+  PatchResponse,
   UploadResponse,
 } from "@docos/shared-types";
 
@@ -28,4 +30,38 @@ export async function fetchModel(docId: string): Promise<DocumentModelResponse> 
 
 export async function fetchHealth(docId: string): Promise<DocumentHealthResponse> {
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
+}
+
+export async function submitPatch(docId: string, body: PatchRequest): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/patches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/** Convenience: rewrite a single run's text via an explicit set_text op. */
+export function setRunText(docId: string, nodeId: string, text: string): Promise<PatchResponse> {
+  return submitPatch(docId, { ops: [{ op: "set_text", target_id: nodeId, payload: { text } }] });
+}
+
+/** Convenience: redact a node (true removal applied on export). */
+export function redactNode(docId: string, nodeId: string): Promise<PatchResponse> {
+  return submitPatch(docId, { ops: [{ op: "redact", target_id: nodeId }] });
+}
+
+export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/sanitize-metadata`, { method: "POST" }),
+  );
+}
+
+export function exportUrl(docId: string, format: "docx" | "txt"): string {
+  return `${BASE}/documents/${docId}/export?format=${format}`;
+}
+
+export function previewUrl(docId: string, page: number): string {
+  return `${BASE}/documents/${docId}/preview?page=${page}`;
 }

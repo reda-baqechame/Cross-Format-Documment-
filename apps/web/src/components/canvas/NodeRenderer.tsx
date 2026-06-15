@@ -1,29 +1,83 @@
 "use client";
 
 import type { CanonicalDocument, DocNode } from "@docos/shared-types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
+import { previewUrl, setRunText } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 
+// Matches the backend PdfAdapter.render_preview_bytes default so overlay coordinates
+// (PDF points) line up with the rasterised page image.
+const PDF_SCALE = 1.5;
+
+function isRedacted(doc: CanonicalDocument, nodeId: string | null): boolean {
+  const ids = doc.redaction?.redacted_node_ids;
+  if (!ids || ids.length === 0) return false;
+  const seen = new Set<string>();
+  let current = nodeId;
+  while (current && !seen.has(current)) {
+    if (ids.includes(current)) return true;
+    seen.add(current);
+    current = doc.nodes[current]?.parent_id ?? null;
+  }
+  return false;
+}
+
+function collectRuns(doc: CanonicalDocument, nodeId: string): DocNode[] {
+  const out: DocNode[] = [];
+  const stack = [...(doc.nodes[nodeId]?.children ?? [])];
+  while (stack.length) {
+    const node = doc.nodes[stack.pop()!];
+    if (!node) continue;
+    if (node.type === "run") out.push(node);
+    else stack.push(...node.children);
+  }
+  return out;
+}
+
 /**
- * Renders a single node by walking its children in the canonical model. The model
- * — not the raw file — is the source of truth, which is the core architectural bet.
+ * Renders a node by walking its children in the canonical model. The model — not the
+ * raw file — is the source of truth, which is the core architectural bet.
  */
-export function NodeRenderer({ doc, nodeId }: { doc: CanonicalDocument; nodeId: string }) {
+export function NodeRenderer({
+  doc,
+  nodeId,
+  docId,
+}: {
+  doc: CanonicalDocument;
+  nodeId: string;
+  docId: string;
+}) {
   const node = doc.nodes[nodeId];
   if (!node) return null;
   const children = node.children.map((cid) => (
-    <NodeRenderer key={cid} doc={doc} nodeId={cid} />
+    <NodeRenderer key={cid} doc={doc} nodeId={cid} docId={docId} />
   ));
 
   switch (node.type) {
     case "root":
       return <div className="space-y-3">{children}</div>;
+    case "page":
+      return <PageView doc={doc} node={node} docId={docId}>{children}</PageView>;
     case "heading":
       return <Heading node={node}>{children}</Heading>;
     case "paragraph":
       return <p className="leading-relaxed">{children}</p>;
     case "run":
-      return <RunSpan node={node} />;
+      return <RunSpan doc={doc} node={node} docId={docId} />;
+    case "list":
+      return node.ordered ? (
+        <ol className="list-decimal space-y-1 pl-6">{children}</ol>
+      ) : (
+        <ul className="list-disc space-y-1 pl-6">{children}</ul>
+      );
+    case "list_item":
+      return <li className="leading-relaxed">{children}</li>;
+    case "image":
+      return <ImageNode node={node} />;
+    case "field":
+      return <FieldNode node={node} />;
     case "table":
       return <table className="w-full border-collapse text-sm">{children}</table>;
     case "table_row":
@@ -49,21 +103,177 @@ function Heading({ node, children }: { node: DocNode; children: React.ReactNode 
   return <Tag className={`font-semibold ${sizes[level]}`}>{children}</Tag>;
 }
 
-function RunSpan({ node }: { node: DocNode }) {
+/** Inline-editable, redaction-aware text run (used in normal document flow). */
+function RunSpan({
+  doc,
+  node,
+  docId,
+}: {
+  doc: CanonicalDocument;
+  node: DocNode;
+  docId: string;
+}) {
   const select = useWorkspace((s) => s.select);
   const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  const editingNodeId = useWorkspace((s) => s.editingNodeId);
+  const setEditing = useWorkspace((s) => s.setEditing);
+  const queryClient = useQueryClient();
+  const redacted = isRedacted(doc, node.id);
+  const canEdit = doc.permissions?.can_edit ?? true;
+  const editing = editingNodeId === node.id;
+
+  if (redacted) {
+    return (
+      <span
+        onClick={() => select(node.id)}
+        title="Redacted — removed from exports"
+        className="cursor-pointer rounded bg-slate-900 px-2 align-middle text-slate-900 select-none"
+      >
+        {"█".repeat(Math.max(node.text?.length ?? 3, 3))}
+      </span>
+    );
+  }
+
+  if (editing) {
+    return (
+      <InlineEditor
+        initial={node.text ?? ""}
+        onCommit={async (text) => {
+          setEditing(null);
+          if (text !== (node.text ?? "")) {
+            await setRunText(docId, node.id, text);
+            queryClient.invalidateQueries({ queryKey: ["model", docId] });
+            queryClient.invalidateQueries({ queryKey: ["health", docId] });
+          }
+        }}
+        onCancel={() => setEditing(null)}
+      />
+    );
+  }
+
   return (
     <span
       onClick={() => select(node.id)}
+      onDoubleClick={() => canEdit && setEditing(node.id)}
       className={[
         node.bold ? "font-bold" : "",
         node.italic ? "italic" : "",
         node.underline ? "underline" : "",
         selected ? "bg-yellow-100" : "",
-        "cursor-text",
+        canEdit ? "cursor-text" : "cursor-default",
       ].join(" ")}
+      title={canEdit ? "Double-click to edit" : undefined}
     >
       {node.text}
+    </span>
+  );
+}
+
+function InlineEditor({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <input
+      ref={ref}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => onCommit(value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onCommit(value);
+        if (e.key === "Escape") onCancel();
+      }}
+      className="rounded border border-blue-400 bg-blue-50 px-1 outline-none"
+      style={{ width: `${Math.max(value.length + 1, 4)}ch` }}
+    />
+  );
+}
+
+/** PDF page: faithful rasterised backdrop with a selectable/redactable text overlay. */
+function PageView({
+  doc,
+  node,
+  docId,
+  children,
+}: {
+  doc: CanonicalDocument;
+  node: DocNode;
+  docId: string;
+  children: React.ReactNode;
+}) {
+  const isPdf = doc.meta.source_format === "pdf";
+  if (!isPdf || !node.width || !node.height) {
+    return <div className="my-4 rounded bg-white p-8 shadow-sm">{children}</div>;
+  }
+  const w = node.width * PDF_SCALE;
+  const h = node.height * PDF_SCALE;
+  const runs = collectRuns(doc, node.id).filter((r) => r.bbox);
+  return (
+    <div className="relative mx-auto my-4 bg-white shadow" style={{ width: w, height: h }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={previewUrl(docId, (node.page_number ?? 1) - 1)}
+        alt={`Page ${node.page_number ?? 1}`}
+        width={w}
+        height={h}
+        className="block select-none"
+      />
+      {runs.map((r) => (
+        <RunOverlay key={r.id} doc={doc} node={r} />
+      ))}
+    </div>
+  );
+}
+
+function RunOverlay({ doc, node }: { doc: CanonicalDocument; node: DocNode }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  const redacted = isRedacted(doc, node.id);
+  const b = node.bbox!;
+  const style = {
+    left: b.x0 * PDF_SCALE,
+    top: b.y0 * PDF_SCALE,
+    width: (b.x1 - b.x0) * PDF_SCALE,
+    height: (b.y1 - b.y0) * PDF_SCALE,
+  } as const;
+  return (
+    <span
+      onClick={() => select(node.id)}
+      title={redacted ? "Redacted — removed from exports" : "Click to select"}
+      style={style}
+      className={[
+        "absolute cursor-pointer",
+        redacted ? "bg-slate-900" : selected ? "bg-yellow-300/40" : "hover:bg-blue-200/30",
+      ].join(" ")}
+    />
+  );
+}
+
+function ImageNode({ node }: { node: DocNode }) {
+  return (
+    <div className="my-2 flex items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+      <span aria-hidden>🖼️</span>
+      <span>{node.alt_text ?? "Image"}</span>
+      {!node.alt_text && (
+        <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">missing alt</span>
+      )}
+    </div>
+  );
+}
+
+function FieldNode({ node }: { node: DocNode }) {
+  return (
+    <span className="mx-0.5 inline-flex items-center gap-1 rounded border border-slate-300 bg-slate-50 px-2 py-0.5 text-sm">
+      <span className="text-xs uppercase text-slate-400">{node.field_name ?? "field"}</span>
+      <span>{node.value ?? "—"}</span>
     </span>
   );
 }
