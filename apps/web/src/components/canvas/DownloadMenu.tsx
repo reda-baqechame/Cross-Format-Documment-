@@ -34,7 +34,7 @@ export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFor
           <MenuItem label="Word (.docx)" onClick={() => download("docx")} />
           <MenuItem label="Plain text (.txt)" onClick={() => download("txt")} />
           {sourceFormat === "pdf" && (
-            <MenuItem label="PDF (redacted)" onClick={() => download("pdf")} />
+            <MenuItem label="PDF (with edits)" onClick={() => download("pdf")} />
           )}
         </div>
       )}

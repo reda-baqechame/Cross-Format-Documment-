@@ -2,10 +2,24 @@
 
 from __future__ import annotations
 
+import io
+
+import pytest
+
 from docos.services.docengine.adapters.image import ImageAdapter
 from docos.services.docengine.adapters.pptx import PptxAdapter
 from docos.services.docengine.adapters.rtf import RtfAdapter
 from docos.services.docengine.adapters.xlsx import XlsxAdapter
+
+
+def _tesseract_available() -> bool:
+    try:
+        import pytesseract
+
+        pytesseract.get_tesseract_version()
+        return True
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _runs(doc) -> list[str]:
@@ -43,3 +57,17 @@ def test_image_parses_into_image_node(sample_image_bytes):
     assert len(images) == 1
     assert images[0].attrs.get("width") == 120
     assert any(n.type == "page" for n in doc.nodes.values())
+
+
+@pytest.mark.skipif(not _tesseract_available(), reason="tesseract binary not installed")
+def test_image_ocr_recovers_text():
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (320, 90), color="white")
+    ImageDraw.Draw(img).text((10, 30), "Invoice 2026", fill="black")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+
+    doc = ImageAdapter().parse(buf.getvalue())
+    text = " ".join(n.text for n in doc.nodes.values() if n.type == "run")
+    assert "Invoice" in text

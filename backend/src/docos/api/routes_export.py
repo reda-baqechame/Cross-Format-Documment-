@@ -67,16 +67,16 @@ async def export_document(
 
 
 async def _export_pdf(doc_id: str, session: Session, blob_store: BlobStore) -> Response:
-    """PDF write-back: re-emit the original PDF with redactions truly burned in."""
+    """PDF write-back: re-emit the original PDF with edits applied and redactions burned in."""
     record, doc = _load_latest(session, doc_id)
     if record.source_format != "pdf":
         raise HTTPException(
             status_code=400, detail="PDF export is only available for PDF documents — use DOCX"
         )
-    from docos.services.docengine.writers.pdf_writer import apply_redactions_to_pdf
+    from docos.services.docengine.writers.pdf_writer import write_back_pdf
 
     original = await blob_store.get(record.blob_key)
-    data = apply_redactions_to_pdf(original, doc)
+    data = write_back_pdf(original, doc)
 
     get_provenance(session).record_event(
         doc_id, "document.exported", actor="api", detail={"format": "pdf"}
