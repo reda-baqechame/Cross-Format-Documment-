@@ -15,6 +15,7 @@ from docos.model.document import CanonicalDocument
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.provenance.health import RISKY_META_KEYS
+from docos.services.semantic import prompt
 from docos.services.semantic.interface import SemanticOrchestrator
 from docos.services.semantic.llm.base import LLMClient
 
@@ -48,15 +49,18 @@ class SemanticOrchestratorImpl(SemanticOrchestrator):
         self.llm = llm
 
     async def interpret(self, doc: CanonicalDocument, instruction: str) -> ReversiblePatch:
-        # The real implementation passes a structural summary + tool schema to the LLM
-        # and validates returned ops against the model. The noop client yields no ops.
-        await self.llm.complete(
-            system="You edit a document graph by emitting reversible patch ops.",
-            user=instruction,
+        # Hand the model a digest of the editable nodes plus the emit_patch tool, then
+        # validate the ops it returns against the live graph. The noop client returns no
+        # tool calls, so this yields an empty (no-op) patch offline — fully deterministic.
+        response = await self.llm.complete(
+            system=prompt.SYSTEM_PROMPT,
+            user=prompt.build_user_prompt(doc, instruction),
+            tools=[prompt.EDIT_TOOL],
         )
+        patches = prompt.ops_from_tool_calls(doc, response.tool_calls)
         return ReversiblePatch(
             id=new_patch_id(),
-            patches=[],
+            patches=patches,
             inverse=[],
             intent=instruction,
             created_at=datetime.now(timezone.utc),

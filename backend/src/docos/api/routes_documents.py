@@ -8,10 +8,17 @@ retrievable and the source of truth for the frontend canvas.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from docos.api.schemas import DocumentModelResponse, HistoryResponse, UploadResponse
-from docos.db.models import Document
+from docos.api.schemas import (
+    DocumentListResponse,
+    DocumentModelResponse,
+    DocumentSummary,
+    HistoryResponse,
+    UploadResponse,
+)
+from docos.db.models import Document, DocumentVersion
 from docos.deps import db_session, get_ingestion_gateway, get_provenance, get_registry
 from docos.model.document import CanonicalDocument
 from docos.model.serialize import from_dict
@@ -96,7 +103,62 @@ def get_model(doc_id: str, session: Session = Depends(db_session)) -> DocumentMo
     return DocumentModelResponse(document=doc, version_id=record.current_version_id)
 
 
+@router.get("", response_model=DocumentListResponse)
+def list_documents(session: Session = Depends(db_session)) -> DocumentListResponse:
+    records = session.scalars(select(Document).order_by(Document.created_at.desc())).all()
+    return DocumentListResponse(
+        documents=[
+            DocumentSummary(
+                doc_id=r.id,
+                title=r.title,
+                source_format=r.source_format,
+                current_version_id=r.current_version_id,
+                created_at=r.created_at,
+            )
+            for r in records
+        ]
+    )
+
+
 @router.get("/{doc_id}/history", response_model=HistoryResponse)
 def get_history(doc_id: str, session: Session = Depends(db_session)) -> HistoryResponse:
     provenance = get_provenance(session)
     return HistoryResponse(doc_id=doc_id, versions=provenance.history(doc_id))
+
+
+@router.post("/{doc_id}/undo", response_model=DocumentModelResponse)
+def undo(doc_id: str, session: Session = Depends(db_session)) -> DocumentModelResponse:
+    """Roll the document back to its parent version (version-DAG undo)."""
+    record = session.get(Document, doc_id)
+    if record is None or record.current_version_id is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    current = session.get(DocumentVersion, record.current_version_id)
+    if current is None or current.parent_id is None:
+        raise HTTPException(status_code=409, detail="nothing to undo")
+
+    record.current_version_id = current.parent_id
+    get_provenance(session).record_event(
+        doc_id, "version.reverted", actor="api", detail={"to": current.parent_id}
+    )
+    session.commit()
+    return DocumentModelResponse(
+        document=from_dict(session.get(DocumentVersion, current.parent_id).model),
+        version_id=current.parent_id,
+    )
+
+
+@router.delete("/{doc_id}", status_code=204)
+async def delete_document(doc_id: str, session: Session = Depends(db_session)) -> None:
+    record = session.get(Document, doc_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    blob_key = record.blob_key
+    session.delete(record)  # versions cascade-delete
+    get_provenance(session).record_event(doc_id, "document.deleted", actor="api", detail={})
+    session.commit()
+    try:
+        from docos.deps import get_blob_store
+
+        await get_blob_store().delete(blob_key)
+    except Exception:  # noqa: BLE001 - blob cleanup is best-effort
+        pass

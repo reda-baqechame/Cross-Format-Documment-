@@ -172,3 +172,15 @@ export interface PatchResponse {
   new_version_id: string | null;
   intent: string | null;
 }
+
+export interface DocumentSummary {
+  doc_id: string;
+  title: string | null;
+  source_format: string;
+  current_version_id: string | null;
+  created_at: string;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentSummary[];
+}

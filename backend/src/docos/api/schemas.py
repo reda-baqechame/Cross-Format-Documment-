@@ -7,6 +7,7 @@ shared with the frontend.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -43,6 +44,18 @@ class DocumentHealthResponse(BaseModel):
 class HistoryResponse(BaseModel):
     doc_id: str
     versions: list[VersionRef]
+
+
+class DocumentSummary(BaseModel):
+    doc_id: str
+    title: str | None
+    source_format: str
+    current_version_id: str | None
+    created_at: datetime
+
+
+class DocumentListResponse(BaseModel):
+    documents: list[DocumentSummary]
 
 
 class PatchOpDTO(BaseModel):

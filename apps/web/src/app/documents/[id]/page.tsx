@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
@@ -36,6 +37,7 @@ export default function DocumentPage() {
           )}
         </div>
         <div className="flex items-center gap-4">
+          <AiEditBar docId={docId} />
           <DownloadMenu docId={docId} />
           <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
             {panelOpen ? "Hide" : "Show"} health

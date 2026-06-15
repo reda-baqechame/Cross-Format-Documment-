@@ -2,6 +2,7 @@
 
 import type {
   DocumentHealthResponse,
+  DocumentListResponse,
   DocumentModelResponse,
   PatchRequest,
   PatchResponse,
@@ -64,4 +65,24 @@ export function exportUrl(docId: string, format: "docx" | "txt"): string {
 
 export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
+}
+
+/** Natural-language AI edit: routed through the LLM when a provider is configured. */
+export function instructEdit(docId: string, instruction: string): Promise<PatchResponse> {
+  return submitPatch(docId, { instruction });
+}
+
+export async function listDocuments(): Promise<DocumentListResponse> {
+  return json<DocumentListResponse>(await fetch(`${BASE}/documents`));
+}
+
+export async function undoDocument(docId: string): Promise<DocumentModelResponse> {
+  return json<DocumentModelResponse>(
+    await fetch(`${BASE}/documents/${docId}/undo`, { method: "POST" }),
+  );
+}
+
+export async function deleteDocument(docId: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 }
