@@ -7,9 +7,12 @@ shared with the frontend.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, Field, model_validator
 
 from docos.model.document import CanonicalDocument
+from docos.model.patch import PatchOp
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 
@@ -42,8 +45,25 @@ class HistoryResponse(BaseModel):
     versions: list[VersionRef]
 
 
+class PatchOpDTO(BaseModel):
+    """A single explicit, deterministic edit op submitted by the client."""
+
+    op: PatchOp
+    target_id: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class PatchRequest(BaseModel):
-    instruction: str
+    """Either a natural-language ``instruction`` (LLM path) or explicit ``ops``."""
+
+    instruction: str | None = None
+    ops: list[PatchOpDTO] | None = None
+
+    @model_validator(mode="after")
+    def _require_one(self) -> PatchRequest:
+        if not self.instruction and not self.ops:
+            raise ValueError("provide either 'instruction' or 'ops'")
+        return self
 
 
 class PatchResponse(BaseModel):

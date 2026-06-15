@@ -13,8 +13,6 @@ from docos.services.provenance import audit, labels, versions
 from docos.services.provenance.health import DocumentHealth, compute_health
 from docos.services.provenance.interface import ProvenancePolicyService, VersionRef
 
-_RISKY_META_KEYS = ("last_modified_by", "author", "comments", "revision")
-
 
 class ProvenancePolicyServiceImpl(ProvenancePolicyService):
     def __init__(self, session: Session) -> None:
@@ -47,18 +45,16 @@ class ProvenancePolicyServiceImpl(ProvenancePolicyService):
         labels.add_label(self.session, doc_id, label)
 
     def sanitize_metadata(self, doc: CanonicalDocument) -> ReversiblePatch:
-        """Reversible patch clearing risky embedded metadata keys."""
-        before = {k: doc.meta.custom.get(k) for k in _RISKY_META_KEYS if doc.meta.custom.get(k)}
-        forward = [
-            Patch(op="update_node", target_id=doc.root_id, payload={"_clear_meta": list(before)})
-        ]
-        inverse = [
-            Patch(op="update_node", target_id=doc.root_id, payload={"_restore_meta": before})
-        ]
+        """Reversible patch clearing risky embedded metadata keys.
+
+        The actual clearing is performed by the ``sanitize_metadata`` op in the
+        orchestrator (which also records the exact inverse), so this only declares
+        the intent — keeping a single source of truth for the mutation.
+        """
         return ReversiblePatch(
             id=new_patch_id(),
-            patches=forward,
-            inverse=inverse,
+            patches=[Patch(op="sanitize_metadata")],
+            inverse=[],
             intent="sanitize embedded metadata",
             created_at=datetime.now(timezone.utc),
         )

@@ -8,41 +8,6 @@ from __future__ import annotations
 
 import io
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from docos.db.base import Base
-from docos.deps import db_session
-from docos.main import create_app
-
-
-@pytest.fixture
-def client(tmp_path, monkeypatch):
-    # Route blob storage to a temp dir so tests leave no artifacts.
-    monkeypatch.setenv("LOCAL_BLOB_DIR", str(tmp_path / "blobs"))
-    monkeypatch.setenv(
-        "ALLOWED_MIME_TYPES",
-        "text/plain,application/pdf,"
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-
-    engine = create_engine(f"sqlite:///{tmp_path/'test.db'}", future=True)
-    Base.metadata.create_all(engine)
-    TestSession = sessionmaker(bind=engine, expire_on_commit=False)
-
-    def _session():
-        s = TestSession()
-        try:
-            yield s
-        finally:
-            s.close()
-
-    app = create_app()
-    app.dependency_overrides[db_session] = _session
-    return TestClient(app)
-
 
 def test_health_endpoint(client):
     resp = client.get("/health")

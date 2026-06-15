@@ -131,7 +131,11 @@ class DocxAdapter(FormatAdapter):
         raise NotImplementedError("DocxAdapter.render_preview — pending LibreOffice/render service")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("DocxAdapter.export — pending DOCX writer")
+        if target_mime != _DOCX_MIME:
+            raise NotImplementedError(f"DocxAdapter cannot export to {target_mime}")
+        from docos.services.docengine.writers.docx_writer import model_to_docx
+
+        return model_to_docx(doc)
 
 
 def _heading_level(style: str) -> int:

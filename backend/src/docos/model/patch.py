@@ -21,6 +21,9 @@ PatchOp = Literal[
     "set_text",
     "retag",
     "redact",
+    "unredact",
+    "sanitize_metadata",
+    "restore_metadata",
 ]
 
 
