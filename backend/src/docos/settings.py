@@ -43,7 +43,13 @@ class Settings(BaseSettings):
     allowed_mime_types: str = (
         "text/plain,"
         "application/pdf,"
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
+        "application/rtf,"
+        "image/png,"
+        "image/jpeg,"
+        "image/tiff"
     )
 
     @property

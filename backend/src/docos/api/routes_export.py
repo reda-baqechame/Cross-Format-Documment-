@@ -74,18 +74,23 @@ async def preview_page(
     record = session.get(Document, doc_id)
     if record is None:
         raise HTTPException(status_code=404, detail="document not found")
-    if record.source_format != "pdf":
-        raise HTTPException(status_code=400, detail="preview is only available for PDF documents")
+    if record.source_format not in ("pdf", "image"):
+        raise HTTPException(
+            status_code=400, detail="preview is only available for PDF and image documents"
+        )
 
     data = await blob_store.get(record.blob_key)
+    headers = {"Cache-Control": "private, max-age=300"}
+
+    # Image documents are their own preview — serve the original bytes.
+    if record.source_format == "image":
+        return Response(content=data, media_type=record.source_mime, headers=headers)
+
     adapter = registry.resolve_by_format("pdf")
     if not isinstance(adapter, PdfAdapter):  # pragma: no cover - registry wiring guard
         raise HTTPException(status_code=500, detail="pdf adapter unavailable")
-
     try:
         png = adapter.render_preview_bytes(data, page=page)
     except (IndexError, ValueError):
         raise HTTPException(status_code=404, detail="page out of range")
-
-    headers = {"Cache-Control": "private, max-age=300"}
     return Response(content=png, media_type="image/png", headers=headers)

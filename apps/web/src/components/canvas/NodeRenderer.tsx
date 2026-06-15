@@ -75,7 +75,7 @@ export function NodeRenderer({
     case "list_item":
       return <li className="leading-relaxed">{children}</li>;
     case "image":
-      return <ImageNode node={node} />;
+      return <ImageNode doc={doc} node={node} docId={docId} />;
     case "field":
       return <FieldNode node={node} />;
     case "table":
@@ -257,7 +257,26 @@ function RunOverlay({ doc, node }: { doc: CanonicalDocument; node: DocNode }) {
   );
 }
 
-function ImageNode({ node }: { node: DocNode }) {
+function ImageNode({
+  doc,
+  node,
+  docId,
+}: {
+  doc: CanonicalDocument;
+  node: DocNode;
+  docId: string;
+}) {
+  // For image-origin documents the uploaded bytes are the image — show them.
+  if (doc.meta.source_format === "image" && node.blob_ref === "original") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={previewUrl(docId, 0)}
+        alt={node.alt_text ?? "Uploaded image"}
+        className="mx-auto my-2 max-w-full rounded border border-slate-200"
+      />
+    );
+  }
   return (
     <div className="my-2 flex items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
       <span aria-hidden>🖼️</span>
