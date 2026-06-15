@@ -1,0 +1,16 @@
+{
+  "name": "cross-format-document-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-Format Document Operating System — open, edit, convert and run trust operations on any document.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @docos/web dev",
+    "build:web": "pnpm --filter @docos/web build",
+    "codegen": "openapi-typescript http://localhost:8000/openapi.json -o packages/shared-types/src/generated.ts",
+    "lint:web": "pnpm --filter @docos/web lint"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.0"
+  }
+}

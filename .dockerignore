@@ -1,0 +1,14 @@
+**/__pycache__/
+**/.venv/
+**/node_modules/
+**/.next/
+**/dist/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+.git/
+data/
+minio-data/
+*.sqlite3
+.env
+.env.local
