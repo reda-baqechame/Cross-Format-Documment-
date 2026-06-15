@@ -15,11 +15,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
-from docos.api.schemas import PatchRequest, PatchResponse
+from docos.api.schemas import (
+    PatchRequest,
+    PatchResponse,
+    SignatureResponse,
+    SignRequest,
+)
 from docos.db.models import Document
-from docos.deps import db_session, get_orchestrator, get_provenance
+from docos.deps import db_session, get_orchestrator, get_provenance, get_settings
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
+from docos.services.provenance import signing
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
 
@@ -110,4 +116,46 @@ async def sanitize_metadata(
         applied=True,
         new_version_id=new_version_id,
         intent=patch.intent,
+    )
+
+
+@router.post("/{doc_id}/sign", response_model=SignatureResponse)
+def sign_document(
+    doc_id: str, body: SignRequest, session: Session = Depends(db_session)
+) -> SignatureResponse:
+    """Apply a tamper-evident e-signature, committed as a new version."""
+    record, doc = _load_latest(session, doc_id)
+    secret = get_settings().signing_secret
+    signed = signing.sign(doc, signer=body.signer, secret=secret)
+
+    provenance = get_provenance(session)
+    new_version_id = provenance.commit_version(signed)
+    record = session.get(Document, doc_id)
+    if record is not None:
+        record.current_version_id = new_version_id
+    provenance.record_event(doc_id, "document.signed", actor="api", detail={"signer": body.signer})
+    session.commit()
+
+    return SignatureResponse(
+        doc_id=doc_id,
+        signed=True,
+        valid=True,
+        signer=signed.signature.signer,
+        signed_at=signed.signature.signed_at,
+    )
+
+
+@router.get("/{doc_id}/signature", response_model=SignatureResponse)
+def signature_status(
+    doc_id: str, session: Session = Depends(db_session)
+) -> SignatureResponse:
+    """Report signature status, re-verifying the digest against current content."""
+    _record, doc = _load_latest(session, doc_id)
+    valid = signing.verify(doc, secret=get_settings().signing_secret)
+    return SignatureResponse(
+        doc_id=doc_id,
+        signed=doc.signature.signed,
+        valid=valid,
+        signer=doc.signature.signer,
+        signed_at=doc.signature.signed_at,
     )

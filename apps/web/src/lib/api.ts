@@ -6,6 +6,7 @@ import type {
   DocumentModelResponse,
   PatchRequest,
   PatchResponse,
+  SignatureResponse,
   UploadResponse,
 } from "@docos/shared-types";
 
@@ -59,7 +60,7 @@ export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
   );
 }
 
-export function exportUrl(docId: string, format: "docx" | "txt"): string {
+export function exportUrl(docId: string, format: "docx" | "txt" | "pdf"): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;
 }
 
@@ -85,4 +86,18 @@ export async function undoDocument(docId: string): Promise<DocumentModelResponse
 export async function deleteDocument(docId: string): Promise<void> {
   const res = await fetch(`${BASE}/documents/${docId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function signDocument(docId: string, signer: string): Promise<SignatureResponse> {
+  return json<SignatureResponse>(
+    await fetch(`${BASE}/documents/${docId}/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signer }),
+    }),
+  );
+}
+
+export async function fetchSignature(docId: string): Promise<SignatureResponse> {
+  return json<SignatureResponse>(await fetch(`${BASE}/documents/${docId}/signature`));
 }

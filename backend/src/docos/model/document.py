@@ -45,6 +45,9 @@ class SignatureState(BaseModel):
     signed: bool = False
     signature_valid: bool | None = None
     ready_for_signing: bool = False
+    signer: str | None = None
+    signed_at: datetime | None = None
+    digest: str | None = None  # HMAC over the canonical content at signing time
 
 
 class DocumentMeta(BaseModel):

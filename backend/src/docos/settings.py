@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
+    # e-signature (HMAC key; override in production via SIGNING_SECRET)
+    signing_secret: str = "docos-dev-signing-secret"
+
     # ingestion limits
     max_upload_mb: int = 50
     allowed_mime_types: str = (

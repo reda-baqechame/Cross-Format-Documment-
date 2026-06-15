@@ -38,7 +38,7 @@ export default function DocumentPage() {
         </div>
         <div className="flex items-center gap-4">
           <AiEditBar docId={docId} />
-          <DownloadMenu docId={docId} />
+          <DownloadMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
           <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
             {panelOpen ? "Hide" : "Show"} health
           </button>

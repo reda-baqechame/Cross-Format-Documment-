@@ -99,6 +99,14 @@ export interface Permissions {
   password_protected: boolean;
 }
 
+export interface SignatureState {
+  signed: boolean;
+  signature_valid: boolean | null;
+  ready_for_signing: boolean;
+  signer?: string | null;
+  signed_at?: string | null;
+}
+
 export interface CanonicalDocument {
   schema_version: string;
   doc_id: string;
@@ -108,6 +116,7 @@ export interface CanonicalDocument {
   permissions?: Permissions;
   redaction?: RedactionState;
   accessibility: AccessibilityState;
+  signature?: SignatureState;
   content_hash: string | null;
 }
 
@@ -183,4 +192,12 @@ export interface DocumentSummary {
 
 export interface DocumentListResponse {
   documents: DocumentSummary[];
+}
+
+export interface SignatureResponse {
+  doc_id: string;
+  signed: boolean;
+  valid: boolean;
+  signer: string | null;
+  signed_at: string | null;
 }

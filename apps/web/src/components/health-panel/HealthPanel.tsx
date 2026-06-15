@@ -4,7 +4,7 @@ import type { DocumentHealth } from "@docos/shared-types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { HealthBadge } from "@/components/health-panel/HealthBadge";
-import { redactNode, sanitizeMetadata } from "@/lib/api";
+import { redactNode, sanitizeMetadata, signDocument } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 
 /**
@@ -25,6 +25,10 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
   const sanitize = useMutation({ mutationFn: () => sanitizeMetadata(docId), onSuccess: refresh });
   const redact = useMutation({
     mutationFn: () => redactNode(docId, selectedNodeId as string),
+    onSuccess: refresh,
+  });
+  const sign = useMutation({
+    mutationFn: (signer: string) => signDocument(docId, signer),
     onSuccess: refresh,
   });
 
@@ -63,6 +67,17 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
           className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
         >
           {redact.isPending ? "Redacting…" : "Redact selection"}
+        </button>
+        <button
+          onClick={() => {
+            const signer = window.prompt("Sign as (your name):")?.trim();
+            if (signer) sign.mutate(signer);
+          }}
+          disabled={sign.isPending || health.signed}
+          title={health.signed ? "Already signed" : "Apply a tamper-evident signature"}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
+        >
+          {health.signed ? "Signed ✓" : sign.isPending ? "Signing…" : "Sign document"}
         </button>
       </div>
 

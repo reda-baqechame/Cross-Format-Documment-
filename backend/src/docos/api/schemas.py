@@ -46,6 +46,18 @@ class HistoryResponse(BaseModel):
     versions: list[VersionRef]
 
 
+class SignRequest(BaseModel):
+    signer: str = Field(min_length=1, max_length=200)
+
+
+class SignatureResponse(BaseModel):
+    doc_id: str
+    signed: bool
+    valid: bool
+    signer: str | None
+    signed_at: datetime | None
+
+
 class DocumentSummary(BaseModel):
     doc_id: str
     title: str | None
