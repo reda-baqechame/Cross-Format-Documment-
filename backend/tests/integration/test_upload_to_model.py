@@ -24,7 +24,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCAL_BLOB_DIR", str(tmp_path / "blobs"))
     monkeypatch.setenv(
         "ALLOWED_MIME_TYPES",
-        "text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain,application/pdf,"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
     engine = create_engine(f"sqlite:///{tmp_path/'test.db'}", future=True)
@@ -81,6 +82,18 @@ def test_upload_docx(client, sample_docx_bytes):
     doc_id = up.json()["doc_id"]
     model = client.get(f"/documents/{doc_id}/model").json()["document"]
     assert any(n["type"] == "heading" for n in model["nodes"].values())
+
+
+def test_upload_pdf(client, sample_pdf_bytes):
+    files = {"file": ("doc.pdf", io.BytesIO(sample_pdf_bytes), "application/pdf")}
+    up = client.post("/documents", files=files)
+    assert up.status_code == 200, up.text
+    doc_id = up.json()["doc_id"]
+    model = client.get(f"/documents/{doc_id}/model").json()["document"]
+    assert model["meta"]["source_format"] == "pdf"
+    assert any(n["type"] == "page" for n in model["nodes"].values())
+    runs = [n for n in model["nodes"].values() if n["type"] == "run"]
+    assert any("Hello PDF world" in n["text"] for n in runs)
 
 
 def test_patch_endpoint_noop(client):

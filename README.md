@@ -7,7 +7,7 @@ file into storage or signature systems — without breaking fidelity.
 
 This repository is a **project scaffold**. It establishes the full architecture described in the
 opportunity report and ships a thin, runnable vertical slice (upload → canonical model →
-model-driven UI + document-health panel) for TXT and DOCX. Every other format and service is a
+model-driven UI + document-health panel) for TXT, DOCX and PDF. Every other format and service is a
 clearly marked, pluggable extension point.
 
 ## Why this exists
@@ -72,12 +72,14 @@ canvas, and scored in the document-health panel.
 
 ## What works vs. what's stubbed
 
-**Functional day one:** `/health`, upload + ingestion validation, TXT & DOCX parsing into the
-canonical model, version + audit persistence, document-health computation, model-driven canvas + panel.
+**Functional day one:** `/health`, upload + ingestion validation, TXT, DOCX & PDF parsing into the
+canonical model (PDF: pages, text runs with bbox/formatting, image placeholders, metadata,
+encryption flags, page raster previews), version + audit persistence, document-health computation,
+model-driven canvas + panel.
 
-**Stubbed extension points** (importable, raise `NotImplementedError`): PDF/XLSX/PPTX/RTF/image
-adapters, real OCR, real LLM semantic editing, S3 blob store, ClamAV scanner, production sandbox,
-native e-signature/QES. See [`docs/services/`](docs/services).
+**Stubbed extension points** (importable, raise `NotImplementedError`): XLSX/PPTX/RTF/image
+adapters, format write-back/export, real OCR, real LLM semantic editing, S3 blob store, ClamAV
+scanner, production sandbox, native e-signature/QES. See [`docs/services/`](docs/services).
 
 ## Layout
 

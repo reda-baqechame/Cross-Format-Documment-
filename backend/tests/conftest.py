@@ -13,6 +13,20 @@ def sample_txt_bytes() -> bytes:
 
 
 @pytest.fixture
+def sample_pdf_bytes() -> bytes:
+    import fitz
+
+    pdf = fitz.open()
+    pdf.set_metadata({"title": "PDF Test", "author": "Tester"})
+    page = pdf.new_page(width=595, height=842)  # A4
+    page.insert_text((72, 72), "Hello PDF world", fontsize=14)
+    page.insert_text((72, 120), "Second line of text", fontsize=11)
+    data = pdf.tobytes()
+    pdf.close()
+    return data
+
+
+@pytest.fixture
 def sample_docx_bytes() -> bytes:
     from docx import Document
 

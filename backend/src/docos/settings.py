@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     max_upload_mb: int = 50
     allowed_mime_types: str = (
         "text/plain,"
+        "application/pdf,"
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 

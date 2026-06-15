@@ -33,7 +33,7 @@ class AdapterRegistry:
 
 
 def default_registry() -> AdapterRegistry:
-    """All adapters registered. TXT & DOCX are functional; the rest are stubs."""
+    """All adapters registered. TXT, DOCX & PDF are functional; the rest are stubs."""
     return AdapterRegistry(
         [
             TxtAdapter(),
