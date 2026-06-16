@@ -62,7 +62,9 @@ export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
   );
 }
 
-export function exportUrl(docId: string, format: "docx" | "txt" | "pdf"): string {
+export type ExportFormat = "docx" | "txt" | "pdf" | "md" | "html" | "csv";
+
+export function exportUrl(docId: string, format: ExportFormat): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;
 }
 

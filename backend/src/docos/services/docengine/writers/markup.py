@@ -1,0 +1,195 @@
+"""Canonical-model → Markdown / HTML / CSV writers.
+
+These give the product the "convert anything to anything" breadth competitors charge
+for: any opened format (PDF, DOCX, XLSX, scan…) downloads as clean Markdown, HTML, or
+CSV because every format already lives in one node graph. Redaction is honored through
+``run_text`` exactly like the DOCX/PDF writers — redacted content never reaches output.
+"""
+
+from __future__ import annotations
+
+import csv
+import html
+import io
+
+from docos.model.document import CanonicalDocument
+from docos.model.nodes import AnyNode
+from docos.services.docengine.writers.redaction import run_text
+
+
+def _runs(doc: CanonicalDocument, block: AnyNode) -> list[AnyNode]:
+    return [c for c in doc.children_of(block.id) if c.type == "run"]
+
+
+def _plain(doc: CanonicalDocument, block: AnyNode) -> str:
+    return "".join(run_text(doc, r) for r in _runs(doc, block)).strip()
+
+
+# ── Markdown ──────────────────────────────────────────────────────────────────
+def model_to_markdown(doc: CanonicalDocument) -> bytes:
+    lines: list[str] = []
+    for node in doc.children_of(doc.root_id):
+        _md_block(lines, doc, node)
+    text = "\n".join(lines).strip() + "\n"
+    return text.encode("utf-8")
+
+
+def _md_runs(doc: CanonicalDocument, block: AnyNode) -> str:
+    parts: list[str] = []
+    for r in _runs(doc, block):
+        text = run_text(doc, r)
+        if not text:
+            continue
+        if getattr(r, "bold", False) and getattr(r, "italic", False):
+            text = f"***{text}***"
+        elif getattr(r, "bold", False):
+            text = f"**{text}**"
+        elif getattr(r, "italic", False):
+            text = f"*{text}*"
+        href = getattr(r, "link_href", None)
+        if href:
+            text = f"[{text}]({href})"
+        parts.append(text)
+    return "".join(parts).strip()
+
+
+def _md_block(lines: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
+    kind = node.type
+    if kind in ("root", "page"):
+        for child in doc.children_of(node.id):
+            _md_block(lines, doc, child)
+    elif kind == "heading":
+        level = min(max(int(getattr(node, "level", 1) or 1), 1), 6)
+        lines.append(f"{'#' * level} {_md_runs(doc, node)}")
+        lines.append("")
+    elif kind == "paragraph":
+        text = _md_runs(doc, node)
+        if text:
+            lines.append(text)
+            lines.append("")
+    elif kind == "list":
+        ordered = bool(getattr(node, "ordered", False))
+        for i, item in enumerate(c for c in doc.children_of(node.id) if c.type == "list_item"):
+            marker = f"{i + 1}." if ordered else "-"
+            lines.append(f"{marker} {_md_runs(doc, item)}")
+        lines.append("")
+    elif kind == "table":
+        _md_table(lines, doc, node)
+    elif kind == "image":
+        lines.append(f"![{getattr(node, 'alt_text', None) or 'image'}]()")
+        lines.append("")
+    elif kind == "field":
+        lines.append(
+            f"**{getattr(node, 'field_name', 'field')}:** {getattr(node, 'value', '') or ''}"
+        )
+        lines.append("")
+
+
+def _table_rows(doc: CanonicalDocument, tnode: AnyNode) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for row in (n for n in doc.children_of(tnode.id) if n.type == "table_row"):
+        cells = [c for c in doc.children_of(row.id) if c.type == "table_cell"]
+        rows.append([_plain(doc, cell) for cell in cells])
+    return rows
+
+
+def _md_table(lines: list[str], doc: CanonicalDocument, tnode: AnyNode) -> None:
+    rows = _table_rows(doc, tnode)
+    if not rows:
+        return
+    ncols = max(len(r) for r in rows)
+    rows = [r + [""] * (ncols - len(r)) for r in rows]
+    header, *body = rows
+    lines.append("| " + " | ".join(c.replace("|", "\\|") for c in header) + " |")
+    lines.append("| " + " | ".join(["---"] * ncols) + " |")
+    for r in body:
+        lines.append("| " + " | ".join(c.replace("|", "\\|") for c in r) + " |")
+    lines.append("")
+
+
+# ── HTML ──────────────────────────────────────────────────────────────────────
+def model_to_html(doc: CanonicalDocument) -> bytes:
+    body: list[str] = []
+    for node in doc.children_of(doc.root_id):
+        _html_block(body, doc, node)
+    title = html.escape(doc.meta.title or "Document")
+    page = (
+        '<!doctype html>\n<html>\n<head>\n<meta charset="utf-8">\n'
+        f"<title>{title}</title>\n</head>\n<body>\n" + "\n".join(body) + "\n</body>\n</html>\n"
+    )
+    return page.encode("utf-8")
+
+
+def _html_runs(doc: CanonicalDocument, block: AnyNode) -> str:
+    parts: list[str] = []
+    for r in _runs(doc, block):
+        text = run_text(doc, r)
+        if not text:
+            continue
+        text = html.escape(text)
+        if getattr(r, "bold", False):
+            text = f"<strong>{text}</strong>"
+        if getattr(r, "italic", False):
+            text = f"<em>{text}</em>"
+        if getattr(r, "underline", False):
+            text = f"<u>{text}</u>"
+        href = getattr(r, "link_href", None)
+        if href:
+            text = f'<a href="{html.escape(href, quote=True)}">{text}</a>'
+        parts.append(text)
+    return "".join(parts)
+
+
+def _html_block(body: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
+    kind = node.type
+    if kind in ("root", "page"):
+        for child in doc.children_of(node.id):
+            _html_block(body, doc, child)
+    elif kind == "heading":
+        level = min(max(int(getattr(node, "level", 1) or 1), 1), 6)
+        body.append(f"<h{level}>{_html_runs(doc, node)}</h{level}>")
+    elif kind == "paragraph":
+        inner = _html_runs(doc, node)
+        if inner:
+            body.append(f"<p>{inner}</p>")
+    elif kind == "list":
+        tag = "ol" if getattr(node, "ordered", False) else "ul"
+        items = [
+            f"<li>{_html_runs(doc, item)}</li>"
+            for item in doc.children_of(node.id)
+            if item.type == "list_item"
+        ]
+        body.append(f"<{tag}>\n" + "\n".join(items) + f"\n</{tag}>")
+    elif kind == "table":
+        rows = _table_rows(doc, node)
+        if rows:
+            trs = [
+                "<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in r) + "</tr>" for r in rows
+            ]
+            body.append("<table>\n" + "\n".join(trs) + "\n</table>")
+    elif kind == "image":
+        body.append(f"<p>[image: {html.escape(getattr(node, 'alt_text', None) or 'image')}]</p>")
+    elif kind == "field":
+        name = html.escape(getattr(node, "field_name", "field"))
+        value = html.escape(getattr(node, "value", "") or "")
+        body.append(f"<p><strong>{name}:</strong> {value}</p>")
+
+
+# ── CSV ─────────────────────────────────────────────────────────────────────────
+def model_to_csv(doc: CanonicalDocument) -> bytes:
+    """Tables become CSV rows; if the document has no tables, each paragraph is a row."""
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    wrote = False
+    for tnode in doc.walk():
+        if tnode.type == "table":
+            for row in _table_rows(doc, tnode):
+                writer.writerow(row)
+            wrote = True
+    if not wrote:
+        for node in doc.walk():
+            if node.type in ("paragraph", "heading"):
+                text = _plain(doc, node)
+                if text:
+                    writer.writerow([text])
+    return buf.getvalue().encode("utf-8")
