@@ -146,6 +146,19 @@ async def merge_documents(
     return _pdf_response(out, f"{_safe(record.title, doc_id)}_merged")
 
 
+@router.post("/{doc_id}/compress")
+async def compress(
+    doc_id: str,
+    session: Session = Depends(db_session),
+    blob_store: BlobStore = Depends(blob_store_dep),
+) -> Response:
+    record, doc = _load_latest(session, doc_id)
+    pdf = await _current_pdf(record, doc, blob_store)
+    out = pageops.compress_pdf(pdf)
+    _audit(session, doc_id, "compressed", {"bytes_in": len(pdf), "bytes_out": len(out)})
+    return _pdf_response(out, f"{_safe(record.title, doc_id)}_compressed")
+
+
 @router.post("/{doc_id}/protect")
 async def protect(
     doc_id: str,

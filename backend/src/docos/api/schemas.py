@@ -187,3 +187,20 @@ class SearchHit(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     hits: list[SearchHit]
+
+
+class FieldInfo(BaseModel):
+    node_id: str
+    field_name: str
+    field_kind: str
+    value: str | None
+
+
+class FieldsResponse(BaseModel):
+    doc_id: str
+    fields: list[FieldInfo]
+
+
+class FillFieldRequest(BaseModel):
+    node_id: str
+    value: str = Field(max_length=5000)

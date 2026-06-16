@@ -109,6 +109,15 @@ def encrypt_pdf(
         doc.close()
 
 
+def compress_pdf(pdf: bytes) -> bytes:
+    """Shrink a PDF: garbage-collect unused objects, deflate streams, clean content."""
+    doc = fitz.open(stream=pdf, filetype="pdf")
+    try:
+        return doc.tobytes(garbage=4, deflate=True, clean=True)
+    finally:
+        doc.close()
+
+
 def watermark_pdf(pdf: bytes, text: str) -> bytes:
     """Stamp light-grey watermark text across the middle of every page."""
     if not text.strip():

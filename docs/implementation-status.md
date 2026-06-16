@@ -31,10 +31,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ DOCX / TXT / PDF (write-back) export
 - ✅ Markdown / HTML / CSV export — `writers/markup.py`
 - ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
-- ⬜ XLSX / PPTX export · ⬜ image export · ⬜ compress
+- ✅ Compress (PDF) — `pageops.compress_pdf` · ⬜ XLSX/PPTX export · ⬜ image export
 
 ## E. Sign & agree
-- ✅ Tamper-evident e-signature (HMAC) · 🟡 fillable form fields (model + fill API)
+- ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
   payments — needs a certificate authority / regulated signing & KYC provider
 - ⬜ Multi-party signing order / bulk send · ⬜ Approval workflows / CLM
