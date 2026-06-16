@@ -73,8 +73,8 @@ canvas, editable, and scored in the document-health panel.
 ## Production deployment
 
 ```bash
-cp .env.example .env          # set APP_ENV=production, SIGNING_SECRET, CORS_ORIGINS,
-                              # POSTGRES_PASSWORD, S3 creds, NEXT_PUBLIC_API_URL
+cp .env.example .env          # set APP_ENV=production, SIGNING_SECRET, POSTGRES_PASSWORD,
+                              # S3 creds, and API_PROXY_TARGET (the web→backend URL)
 make prod-up                  # builds prod images; the API runs `alembic upgrade head` on start
 make prod-down
 ```
@@ -82,7 +82,12 @@ make prod-down
 `docker-compose.prod.yml` builds the hardened backend image (non-root, Tesseract, uvicorn workers,
 migrate-on-start) and the Next.js **standalone** web image, backed by Postgres, Redis and MinIO.
 The API **refuses to start** in `staging`/`production` if `SIGNING_SECRET` is left at its dev
-default. CI (`.github/workflows/ci.yml`) runs ruff + pytest, verifies migrations apply with no
+default.
+
+**Topology:** the browser only talks to the web app, which proxies `/api/*` to the backend
+server-side (`app/api/[...path]/route.ts`). So the backend can stay private (no public URL, no
+CORS), and the only web→backend wiring is the `API_PROXY_TARGET` env var on the web service —
+e.g. on Railway, `http://<backend-service>.railway.internal:8000`. CI (`.github/workflows/ci.yml`) runs ruff + pytest, verifies migrations apply with no
 drift, and typechecks/builds the web app on every push.
 
 ## Capabilities
