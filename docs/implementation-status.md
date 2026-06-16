@@ -42,10 +42,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
-- 🔜 Password / encrypt / permissions on PDF export
+- ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - 🟡 Accessibility auto-remediation (auto-tag headings, reading order, alt-text placeholders)
 - 🔒 Malware scan — needs ClamAV daemon (NoopScanner seam ready)
-- ⬜ Watermark / DRM
+- ✅ Watermark (text stamp) — `pageops.watermark_pdf` · ⬜ DRM
 
 ## G. Compare, review & collaborate
 - ✅ Version DAG + audit log

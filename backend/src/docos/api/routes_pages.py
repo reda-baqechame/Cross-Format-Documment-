@@ -14,7 +14,14 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
-from docos.api.schemas import MergeRequest, PagesRequest, ReorderRequest, RotateRequest
+from docos.api.schemas import (
+    MergeRequest,
+    PagesRequest,
+    ProtectRequest,
+    ReorderRequest,
+    RotateRequest,
+    WatermarkRequest,
+)
 from docos.db.models import Document
 from docos.deps import blob_store_dep, db_session, get_provenance
 from docos.services.docengine import pageops
@@ -137,3 +144,39 @@ async def merge_documents(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     _audit(session, doc_id, "merged", {"with": body.doc_ids})
     return _pdf_response(out, f"{_safe(record.title, doc_id)}_merged")
+
+
+@router.post("/{doc_id}/protect")
+async def protect(
+    doc_id: str,
+    body: ProtectRequest,
+    session: Session = Depends(db_session),
+    blob_store: BlobStore = Depends(blob_store_dep),
+) -> Response:
+    record, doc = _load_latest(session, doc_id)
+    pdf = await _current_pdf(record, doc, blob_store)
+    try:
+        out = pageops.encrypt_pdf(
+            pdf, body.password, body.owner_password, allow_print=body.allow_print
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _audit(session, doc_id, "protected", {"allow_print": body.allow_print})
+    return _pdf_response(out, f"{_safe(record.title, doc_id)}_protected")
+
+
+@router.post("/{doc_id}/watermark")
+async def watermark(
+    doc_id: str,
+    body: WatermarkRequest,
+    session: Session = Depends(db_session),
+    blob_store: BlobStore = Depends(blob_store_dep),
+) -> Response:
+    record, doc = _load_latest(session, doc_id)
+    pdf = await _current_pdf(record, doc, blob_store)
+    try:
+        out = pageops.watermark_pdf(pdf, body.text)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _audit(session, doc_id, "watermarked", {"text": body.text})
+    return _pdf_response(out, f"{_safe(record.title, doc_id)}_watermarked")

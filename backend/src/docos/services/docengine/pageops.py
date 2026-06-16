@@ -86,3 +86,41 @@ def merge(pdfs: list[bytes]) -> bytes:
         return out.tobytes()
     finally:
         out.close()
+
+
+def encrypt_pdf(
+    pdf: bytes, user_password: str, owner_password: str | None = None, *, allow_print: bool = True
+) -> bytes:
+    """Password-protect a PDF with AES-256. Accessibility + (optional) printing are allowed."""
+    if not user_password:
+        raise ValueError("a password is required")
+    doc = fitz.open(stream=pdf, filetype="pdf")
+    try:
+        perm = int(fitz.PDF_PERM_ACCESSIBILITY)
+        if allow_print:
+            perm |= int(fitz.PDF_PERM_PRINT)
+        return doc.tobytes(
+            encryption=fitz.PDF_ENCRYPT_AES_256,
+            owner_pw=owner_password or user_password,
+            user_pw=user_password,
+            permissions=perm,
+        )
+    finally:
+        doc.close()
+
+
+def watermark_pdf(pdf: bytes, text: str) -> bytes:
+    """Stamp light-grey watermark text across the middle of every page."""
+    if not text.strip():
+        raise ValueError("watermark text is required")
+    doc = fitz.open(stream=pdf, filetype="pdf")
+    try:
+        for page in doc:
+            r = page.rect
+            box = fitz.Rect(0, r.height / 2 - 40, r.width, r.height / 2 + 40)
+            page.insert_textbox(
+                box, text, fontsize=36, color=(0.7, 0.7, 0.7), align=1, overlay=True
+            )
+        return doc.tobytes()
+    finally:
+        doc.close()

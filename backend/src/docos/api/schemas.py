@@ -147,6 +147,16 @@ class MergeRequest(BaseModel):
     doc_ids: list[str] = Field(min_length=1)  # appended after this document, in order
 
 
+class ProtectRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+    owner_password: str | None = Field(default=None, max_length=200)
+    allow_print: bool = True
+
+
+class WatermarkRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=200)
+
+
 class DiffResponse(BaseModel):
     doc_id: str
     against: str
