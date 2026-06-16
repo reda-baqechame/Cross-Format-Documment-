@@ -92,7 +92,9 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL}
+      # The browser talks only to the web app; it proxies /api/* to the backend
+      # server-side (no CORS, no API URL baked into the client bundle).
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8000}
     ports:
       - "3000:3000"
     depends_on:

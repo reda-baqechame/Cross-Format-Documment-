@@ -10,7 +10,9 @@ import type {
   UploadResponse,
 } from "@docos/shared-types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// All calls go through the same-origin proxy at /api/* (see app/api/[...path]/route.ts),
+// so there's no API URL baked into the client bundle and no CORS to configure.
+const BASE = "/api";
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
