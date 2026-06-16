@@ -49,7 +49,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## G. Compare, review & collaborate
 - ✅ Version DAG + audit log
-- 🔜 Document compare / diff (two versions or two documents) — `services/provenance/diff.py`
+- ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - 🔒 Real-time presence / shareable links with live perms — collaboration infra
 - ⬜ Comment threads · ⬜ Approvals
 

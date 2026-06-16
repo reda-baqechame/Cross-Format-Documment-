@@ -170,3 +170,29 @@ export async function askDocument(docId: string, question: string): Promise<AskR
 export async function fetchSummary(docId: string): Promise<SummaryResponse> {
   return json<SummaryResponse>(await fetch(`${BASE}/documents/${docId}/summary`));
 }
+
+// Cross-document compare (redline).
+export interface DiffSegment {
+  op: "equal" | "insert" | "delete" | "replace";
+  a_text: string | null;
+  b_text: string | null;
+}
+
+export interface DiffResponse {
+  doc_id: string;
+  against: string;
+  result: {
+    segments: DiffSegment[];
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+  };
+}
+
+/** Block-level redline between this document and another (cross-format). */
+export async function diffDocuments(docId: string, against: string): Promise<DiffResponse> {
+  return json<DiffResponse>(
+    await fetch(`${BASE}/documents/${docId}/diff?against=${encodeURIComponent(against)}`),
+  );
+}

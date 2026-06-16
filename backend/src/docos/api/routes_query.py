@@ -8,12 +8,13 @@ used only to phrase the same cited excerpts more fluently.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
-from docos.api.schemas import AskRequest, AskResponse, SummaryResponse
+from docos.api.schemas import AskRequest, AskResponse, DiffResponse, SummaryResponse
 from docos.deps import db_session, get_llm_client, get_settings
+from docos.services.provenance import diff
 from docos.services.semantic import reader
 
 router = APIRouter(prefix="/documents", tags=["query"])
@@ -49,3 +50,15 @@ async def summarize_document(
         citations=result.citations,
         used_llm=result.used_llm,
     )
+
+
+@router.get("/{doc_id}/diff", response_model=DiffResponse)
+def diff_documents(
+    doc_id: str,
+    against: str = Query(..., description="the other document id to compare against"),
+    session: Session = Depends(db_session),
+) -> DiffResponse:
+    """Block-level redline between this document and another (cross-format)."""
+    _record, base = _load_latest(session, doc_id)
+    _other_record, other = _load_latest(session, against)
+    return DiffResponse(doc_id=doc_id, against=against, result=diff.diff_documents(base, other))

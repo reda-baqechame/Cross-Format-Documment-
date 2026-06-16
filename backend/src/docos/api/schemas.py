@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
+from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
@@ -143,3 +144,9 @@ class ReorderRequest(BaseModel):
 
 class MergeRequest(BaseModel):
     doc_ids: list[str] = Field(min_length=1)  # appended after this document, in order
+
+
+class DiffResponse(BaseModel):
+    doc_id: str
+    against: str
+    result: DiffResult
