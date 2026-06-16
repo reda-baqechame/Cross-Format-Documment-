@@ -52,7 +52,7 @@ async def export_document(
     try:
         data = registry.resolve_by_format(format_id).export(doc, target_mime=mime)
     except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc))
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
 
     provenance = get_provenance(session)
     provenance.record_event(doc_id, "document.exported", actor="api", detail={"format": format})
@@ -118,6 +118,6 @@ async def preview_page(
         raise HTTPException(status_code=500, detail="pdf adapter unavailable")
     try:
         png = adapter.render_preview_bytes(data, page=page)
-    except (IndexError, ValueError):
-        raise HTTPException(status_code=404, detail="page out of range")
+    except (IndexError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="page out of range") from exc
     return Response(content=png, media_type="image/png", headers=headers)

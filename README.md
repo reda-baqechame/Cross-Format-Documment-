@@ -67,19 +67,37 @@ make codegen       # regenerate packages/shared-types from the live OpenAPI sche
 make test          # backend tests
 ```
 
-Drag a `.txt` or `.docx` into the web app: it is parsed into the canonical model, rendered on the
-canvas, and scored in the document-health panel.
+Drag any supported file into the web app: it is parsed into the canonical model, rendered on the
+canvas, editable, and scored in the document-health panel.
 
-## What works vs. what's stubbed
+## Production deployment
 
-**Functional day one:** `/health`, upload + ingestion validation, TXT, DOCX & PDF parsing into the
-canonical model (PDF: pages, text runs with bbox/formatting, image placeholders, metadata,
-encryption flags, page raster previews), version + audit persistence, document-health computation,
-model-driven canvas + panel.
+```bash
+cp .env.example .env          # set APP_ENV=production, SIGNING_SECRET, CORS_ORIGINS,
+                              # POSTGRES_PASSWORD, S3 creds, NEXT_PUBLIC_API_URL
+make prod-up                  # builds prod images; the API runs `alembic upgrade head` on start
+make prod-down
+```
 
-**Stubbed extension points** (importable, raise `NotImplementedError`): XLSX/PPTX/RTF/image
-adapters, format write-back/export, real OCR, real LLM semantic editing, S3 blob store, ClamAV
-scanner, production sandbox, native e-signature/QES. See [`docs/services/`](docs/services).
+`docker-compose.prod.yml` builds the hardened backend image (non-root, Tesseract, uvicorn workers,
+migrate-on-start) and the Next.js **standalone** web image, backed by Postgres, Redis and MinIO.
+The API **refuses to start** in `staging`/`production` if `SIGNING_SECRET` is left at its dev
+default. CI (`.github/workflows/ci.yml`) runs ruff + pytest, verifies migrations apply with no
+drift, and typechecks/builds the web app on every push.
+
+## Capabilities
+
+**Open** TXT, DOCX, PDF, XLSX, PPTX, RTF, and images (best-effort OCR when Tesseract has language
+data) into one canonical model. **Edit** inline, via explicit deterministic ops, or with AI
+natural-language instructions (LLM tool-use → validated patch ops; deterministic no-op offline).
+**Save** every change as a versioned, audited, reversible patch — with one-click undo. **Download**
+as TXT or DOCX from any source format, or as a **PDF with edits and redactions burned in**.
+**Trust**: metadata sanitization, true redaction on export, tamper-evident e-signature, and the
+document-health panel. **Infra**: local or S3 blob storage, document CRUD, Alembic migrations.
+
+Remaining extension points: faithful PDF text reflow/font-matching (edits are written back in
+place today), and the ClamAV scanner / production microVM sandbox seams. See
+[`docs/services/`](docs/services).
 
 ## Layout
 

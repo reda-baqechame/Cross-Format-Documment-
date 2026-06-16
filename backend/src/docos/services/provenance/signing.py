@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docos.model.document import CanonicalDocument, SignatureState
 from docos.model.serialize import canonical_hash
@@ -35,7 +35,7 @@ def sign(doc: CanonicalDocument, *, signer: str, secret: str) -> CanonicalDocume
         signature_valid=True,
         ready_for_signing=False,
         signer=signer,
-        signed_at=datetime.now(timezone.utc),
+        signed_at=datetime.now(UTC),
         digest=digest,
     )
     return signed

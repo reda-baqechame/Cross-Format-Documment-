@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -56,5 +56,5 @@ class ProvenancePolicyServiceImpl(ProvenancePolicyService):
             patches=[Patch(op="sanitize_metadata")],
             inverse=[],
             intent="sanitize embedded metadata",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )

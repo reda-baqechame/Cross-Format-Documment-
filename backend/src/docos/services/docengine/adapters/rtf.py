@@ -7,7 +7,7 @@ recovered, but the content flows through the canonical model and exports cleanly
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from striprtf.striprtf import rtf_to_text
 
@@ -24,7 +24,7 @@ class RtfAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         text = rtf_to_text(data.decode("utf-8", errors="replace"))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
         doc = CanonicalDocument(
             doc_id=new_doc_id(),

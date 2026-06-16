@@ -9,7 +9,7 @@ deck is editable and exportable to DOCX/TXT.
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pptx import Presentation
 from pptx.util import Emu
@@ -29,7 +29,7 @@ class PptxAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         prs = Presentation(io.BytesIO(data))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
         core = prs.core_properties
         meta = DocumentMeta(

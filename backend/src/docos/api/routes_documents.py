@@ -52,13 +52,17 @@ async def upload_document(
 
     result = await gateway.validate(file.filename or "upload", data)
     if not result.ok:
-        provenance.record_event(None, "upload.rejected", actor="api", detail={"reason": result.reason})
+        provenance.record_event(
+            None, "upload.rejected", actor="api", detail={"reason": result.reason}
+        )
         session.commit()
         raise HTTPException(status_code=415, detail=result.reason)
 
     scan = await gateway.scan(data)
     if not scan.clean:
-        provenance.record_event(None, "upload.infected", actor="api", detail={"sig": scan.signature})
+        provenance.record_event(
+            None, "upload.infected", actor="api", detail={"sig": scan.signature}
+        )
         session.commit()
         raise HTTPException(status_code=422, detail="file failed malware scan")
 
@@ -67,13 +71,13 @@ async def upload_document(
     try:
         adapter = registry.resolve(result.mime)
         doc = adapter.parse(data)
-    except LookupError:
-        raise HTTPException(status_code=415, detail=f"no adapter for {result.mime}")
-    except NotImplementedError:
+    except LookupError as exc:
+        raise HTTPException(status_code=415, detail=f"no adapter for {result.mime}") from exc
+    except NotImplementedError as exc:
         raise HTTPException(
             status_code=501,
             detail=f"format '{result.detected_format}' not yet supported (stubbed adapter)",
-        )
+        ) from exc
 
     record = Document(
         id=doc.doc_id,

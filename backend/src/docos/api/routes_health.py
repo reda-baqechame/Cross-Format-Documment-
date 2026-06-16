@@ -14,7 +14,9 @@ router = APIRouter(tags=["system"])
 
 
 @router.get("/health", response_model=HealthCheck)
-def health(session: Session = Depends(db_session), settings: Settings = Depends(settings_dep)) -> HealthCheck:
+def health(
+    session: Session = Depends(db_session), settings: Settings = Depends(settings_dep)
+) -> HealthCheck:
     try:
         session.execute(text("SELECT 1"))
         db_status = "ok"

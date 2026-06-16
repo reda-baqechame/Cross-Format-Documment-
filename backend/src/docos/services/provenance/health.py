@@ -52,7 +52,9 @@ def compute_health(doc: CanonicalDocument) -> DocumentHealth:
     doc.accessibility.score = round(score, 2)
 
     if not doc.accessibility.has_doc_title:
-        findings.append(HealthFinding(level="warn", code="a11y.no_title", message="Document has no title."))
+        findings.append(
+            HealthFinding(level="warn", code="a11y.no_title", message="Document has no title.")
+        )
     if missing_alt:
         findings.append(
             HealthFinding(

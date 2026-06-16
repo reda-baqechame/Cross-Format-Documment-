@@ -9,7 +9,7 @@ undoable.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -52,7 +52,7 @@ async def create_patch(
             patches=[Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops],
             inverse=[],
             intent=body.instruction,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
     else:
         patch = await orchestrator.interpret(doc, body.instruction or "")

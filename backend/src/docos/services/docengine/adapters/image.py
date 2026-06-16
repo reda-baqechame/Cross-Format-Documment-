@@ -11,7 +11,7 @@ just without recovered text.
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from PIL import Image
 
@@ -68,7 +68,7 @@ class ImageAdapter(FormatAdapter):
         image = Image.open(io.BytesIO(data))
         width, height = image.size
         mime = _MIME_BY_FORMAT.get(image.format or "", "image/png")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
         doc = CanonicalDocument(
             doc_id=new_doc_id(),

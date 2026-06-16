@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     privacy_mode: PrivacyMode = "offline"
+    app_env: Literal["dev", "staging", "production"] = "dev"
+
+    # CORS allow-list for the browser app (comma-separated origins).
+    cors_origins: str = "http://localhost:3000"
 
     # storage
     blob_backend: BlobBackend = "local"
@@ -58,6 +62,14 @@ class Settings(BaseSettings):
     @property
     def allowed_mimes(self) -> set[str]:
         return {m.strip() for m in self.allowed_mime_types.split(",") if m.strip()}
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env in ("staging", "production")
 
     @property
     def max_upload_bytes(self) -> int:

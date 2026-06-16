@@ -8,7 +8,7 @@ provenance layer can flag and sanitize it.
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docx import Document as DocxDocument
 
@@ -35,7 +35,7 @@ class DocxAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         src = DocxDocument(io.BytesIO(data))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
 
         core = src.core_properties

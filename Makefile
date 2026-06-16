@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
-.PHONY: help up down dev migrate revision codegen test lint fmt seed backend-install web-install
+.PHONY: help up down dev migrate revision codegen test lint fmt seed backend-install web-install prod-up prod-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -44,3 +44,9 @@ fmt: ## Format backend
 
 seed: ## Load sample documents for local development
 	cd backend && python -m docos.scripts.seed
+
+prod-up: ## Build & start the production stack (migrations run on API start)
+	$(COMPOSE) -f docker-compose.prod.yml up --build -d
+
+prod-down: ## Stop the production stack
+	$(COMPOSE) -f docker-compose.prod.yml down

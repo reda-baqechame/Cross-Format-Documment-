@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
@@ -27,7 +27,7 @@ def test_set_text_apply_then_revert_restores_original():
     patch = ReversiblePatch(
         id=new_patch_id(),
         patches=[Patch(op="set_text", target_id=run.id, payload={"text": "new text"})],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
     assert applied.nodes[run.id].text == "new text"
@@ -53,7 +53,7 @@ def test_update_node_apply_then_revert_restores_fields():
         patches=[
             Patch(op="update_node", target_id=run.id, payload={"bold": True, "italic": True})
         ],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
     assert applied.nodes[run.id].bold is True and applied.nodes[run.id].italic is True
@@ -71,7 +71,7 @@ def test_update_node_ignores_unknown_payload_keys():
         patches=[
             Patch(op="update_node", target_id=run.id, payload={"type": "heading", "bold": True})
         ],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
     # 'type' is not an updatable field, so it must be left untouched.
@@ -86,7 +86,7 @@ def test_redact_apply_adds_id_and_revert_removes_it():
     patch = ReversiblePatch(
         id=new_patch_id(),
         patches=[Patch(op="redact", target_id=run.id)],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
     assert run.id in applied.redaction.redacted_node_ids
@@ -102,7 +102,7 @@ def test_sanitize_metadata_op_clears_keys_and_revert_restores():
     patch = ReversiblePatch(
         id=new_patch_id(),
         patches=[Patch(op="sanitize_metadata")],
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
     assert "author" not in applied.meta.custom

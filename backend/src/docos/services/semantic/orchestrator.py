@@ -9,7 +9,7 @@ patch (a no-op), which still exercises the whole apply/preview/revert path.
 from __future__ import annotations
 
 import copy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docos.model.document import CanonicalDocument
 from docos.model.ids import new_patch_id
@@ -63,7 +63,7 @@ class SemanticOrchestratorImpl(SemanticOrchestrator):
             patches=patches,
             inverse=[],
             intent=instruction,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     def apply(self, doc: CanonicalDocument, patch: ReversiblePatch) -> CanonicalDocument:

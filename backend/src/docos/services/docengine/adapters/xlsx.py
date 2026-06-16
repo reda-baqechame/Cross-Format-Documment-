@@ -9,7 +9,7 @@ the canonical model, a spreadsheet exports to DOCX/TXT like any other document.
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openpyxl import load_workbook
 
@@ -38,7 +38,7 @@ class XlsxAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         wb = load_workbook(io.BytesIO(data), data_only=True, read_only=True)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
         props = wb.properties
         meta = DocumentMeta(

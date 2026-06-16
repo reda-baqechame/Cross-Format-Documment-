@@ -54,6 +54,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI's `Depends()`/`Query()` in argument defaults is the framework idiom,
+# not a mutable-default-argument bug — the whole API layer relies on it.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"
