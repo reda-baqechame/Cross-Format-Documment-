@@ -68,6 +68,7 @@ class DocumentSummary(BaseModel):
     source_format: str
     current_version_id: str | None
     created_at: datetime
+    tags: list[str] = Field(default_factory=list)
 
 
 class DocumentListResponse(BaseModel):
@@ -166,3 +167,23 @@ class DiffResponse(BaseModel):
 class ExtractResponse(BaseModel):
     doc_id: str
     extraction: Extraction
+
+
+class TagRequest(BaseModel):
+    tag: str = Field(min_length=1, max_length=60)
+
+
+class TagsResponse(BaseModel):
+    doc_id: str
+    tags: list[str]
+
+
+class SearchHit(BaseModel):
+    doc_id: str
+    title: str | None
+    snippet: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    hits: list[SearchHit]

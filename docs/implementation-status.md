@@ -61,7 +61,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## I. Store, find & manage
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
-- 🔜 Folders / tags + full-text search across all docs — `services/library`
+- ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
 - 🔒 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth + creds
 - 🔒 Mobile apps — native clients
 - ⬜ Semantic search across the corpus

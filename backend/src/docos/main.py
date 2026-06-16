@@ -18,6 +18,7 @@ from docos.api import (
     routes_export,
     routes_health,
     routes_health_panel,
+    routes_library,
     routes_pages,
     routes_patches,
     routes_query,
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_patches.router)
     app.include_router(routes_query.router)
     app.include_router(routes_pages.router)
+    app.include_router(routes_library.router)
     app.include_router(routes_export.router)
 
     logger.info(

@@ -196,3 +196,39 @@ export async function diffDocuments(docId: string, against: string): Promise<Dif
     await fetch(`${BASE}/documents/${docId}/diff?against=${encodeURIComponent(against)}`),
   );
 }
+
+// Library: tags + cross-corpus search.
+export interface TagsResponse {
+  doc_id: string;
+  tags: string[];
+}
+
+export interface SearchResponse {
+  query: string;
+  hits: { doc_id: string; title: string | null; snippet: string }[];
+}
+
+export async function listTags(docId: string): Promise<TagsResponse> {
+  return json<TagsResponse>(await fetch(`${BASE}/documents/${docId}/tags`));
+}
+
+export async function addTag(docId: string, tag: string): Promise<TagsResponse> {
+  return json<TagsResponse>(
+    await fetch(`${BASE}/documents/${docId}/tags`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    }),
+  );
+}
+
+export async function removeTag(docId: string, tag: string): Promise<TagsResponse> {
+  return json<TagsResponse>(
+    await fetch(`${BASE}/documents/${docId}/tags/${encodeURIComponent(tag)}`, { method: "DELETE" }),
+  );
+}
+
+/** Full-text search across every document (redaction-aware). */
+export async function searchDocuments(query: string): Promise<SearchResponse> {
+  return json<SearchResponse>(await fetch(`${BASE}/search?q=${encodeURIComponent(query)}`));
+}
