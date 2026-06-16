@@ -132,6 +132,21 @@ async def answer(
     return AnswerResult(answer=_extractive_answer(hits), citations=citations, used_llm=False)
 
 
+TRANSLATE_SYSTEM = (
+    "You are a translator. Translate the document text into the requested target language, "
+    "preserving meaning and structure. Output only the translation."
+)
+
+
+async def translate(doc: CanonicalDocument, target_language: str, llm: LLMClient) -> str:
+    """Translate the document text into ``target_language`` (requires an LLM provider)."""
+    body = "\n".join(text for _, text in _text_nodes(doc))
+    resp = await llm.complete(
+        system=TRANSLATE_SYSTEM, user=f"Target language: {target_language}\n\nText:\n{body}"
+    )
+    return resp.text.strip()
+
+
 async def summarize(doc: CanonicalDocument, llm: LLMClient, *, use_llm: bool) -> SummaryResult:
     """Summarize the document, citing the nodes the summary draws from."""
     extractive, lead = _extractive_summary(doc)

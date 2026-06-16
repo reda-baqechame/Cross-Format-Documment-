@@ -17,7 +17,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Parse to structured model (nodes, reading order, tables)
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
-- ⬜ Document classification · ⬜ Searchable-PDF generation
+- ✅ Document classification — `services/semantic/classify.py` · ⬜ Searchable-PDF generation
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
 ## C. Edit & author
@@ -56,7 +56,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
 - ✅ Extract structured data on request — `services/semantic/extract.py`
-- 🟡 Translate (LLM-only when a provider is set) · ⬜ Multi-document "notebook"
+- ✅ Translate (LLM-backed) · ⬜ Multi-document "notebook"
 - 🔒 Doc → audio/podcast — needs a TTS service
 
 ## I. Store, find & manage

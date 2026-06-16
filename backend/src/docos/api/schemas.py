@@ -18,6 +18,7 @@ from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
+from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.reader import Citation
 
@@ -167,6 +168,21 @@ class DiffResponse(BaseModel):
 class ExtractResponse(BaseModel):
     doc_id: str
     extraction: Extraction
+
+
+class ClassifyResponse(BaseModel):
+    doc_id: str
+    classification: Classification
+
+
+class TranslateRequest(BaseModel):
+    target_language: str = Field(min_length=2, max_length=40)
+
+
+class TranslateResponse(BaseModel):
+    doc_id: str
+    target_language: str
+    translated_text: str
 
 
 class TagRequest(BaseModel):

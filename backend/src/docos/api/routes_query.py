@@ -8,19 +8,23 @@ used only to phrase the same cited excerpts more fluently.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     AskRequest,
     AskResponse,
+    ClassifyResponse,
     DiffResponse,
     ExtractResponse,
     SummaryResponse,
+    TranslateRequest,
+    TranslateResponse,
 )
 from docos.deps import db_session, get_llm_client, get_settings
 from docos.services.provenance import diff
+from docos.services.semantic import classify as classify_service
 from docos.services.semantic import extract as extract_service
 from docos.services.semantic import reader
 
@@ -76,3 +80,26 @@ def extract_document(doc_id: str, session: Session = Depends(db_session)) -> Ext
     """Pull entities (dates/money/emails/…) and Label:value fields, with provenance."""
     _record, doc = _load_latest(session, doc_id)
     return ExtractResponse(doc_id=doc_id, extraction=extract_service.extract(doc))
+
+
+@router.get("/{doc_id}/classify", response_model=ClassifyResponse)
+def classify_document(doc_id: str, session: Session = Depends(db_session)) -> ClassifyResponse:
+    """Detect the document type (invoice/contract/resume/…) with explainable signals."""
+    _record, doc = _load_latest(session, doc_id)
+    return ClassifyResponse(doc_id=doc_id, classification=classify_service.classify(doc))
+
+
+@router.post("/{doc_id}/translate", response_model=TranslateResponse)
+async def translate_document(
+    doc_id: str, body: TranslateRequest, session: Session = Depends(db_session)
+) -> TranslateResponse:
+    """Translate the document text. Requires a configured LLM provider."""
+    if get_settings().llm_provider == "noop":
+        raise HTTPException(
+            status_code=501, detail="translation requires LLM_PROVIDER=openai or anthropic"
+        )
+    _record, doc = _load_latest(session, doc_id)
+    text = await reader.translate(doc, body.target_language, get_llm_client())
+    return TranslateResponse(
+        doc_id=doc_id, target_language=body.target_language, translated_text=text
+    )
