@@ -35,7 +35,7 @@ export function UploadDropzone() {
     >
       <p className="text-lg font-medium">Drop a document to open it</p>
       <p className="text-sm text-slate-500">
-        TXT and DOCX are parsed into the canonical model today. Other formats are stubbed.
+        TXT, DOCX, PDF, XLSX, PPTX, RTF, and images are parsed into the canonical model.
       </p>
       <label className="mt-2 cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-medium text-white">
         {busy ? "Uploading…" : "Choose file"}
