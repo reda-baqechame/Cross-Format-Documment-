@@ -7,6 +7,7 @@ import { HealthBadge } from "@/components/health-panel/HealthBadge";
 import {
   redactNode,
   redactSensitive,
+  remediateAccessibility,
   sanitizeMetadata,
   scanSensitive,
   signDocument,
@@ -37,6 +38,11 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
 
   const cleanSensitive = useMutation({
     mutationFn: () => redactSensitive(docId),
+    onSuccess: refresh,
+  });
+
+  const fixA11y = useMutation({
+    mutationFn: () => remediateAccessibility(docId),
     onSuccess: refresh,
   });
 
@@ -88,6 +94,14 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
           className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
         >
           {sanitize.isPending ? "Sanitizing…" : "Sanitize metadata"}
+        </button>
+        <button
+          onClick={() => fixA11y.mutate()}
+          disabled={fixA11y.isPending || pct >= 100}
+          title="Auto-tag headings, set reading order, and add image alt text"
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
+        >
+          {fixA11y.isPending ? "Fixing…" : pct >= 100 ? "Accessibility ✓" : "Fix accessibility"}
         </button>
         <button
           onClick={() => redact.mutate()}

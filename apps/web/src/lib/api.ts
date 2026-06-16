@@ -232,3 +232,51 @@ export async function removeTag(docId: string, tag: string): Promise<TagsRespons
 export async function searchDocuments(query: string): Promise<SearchResponse> {
   return json<SearchResponse>(await fetch(`${BASE}/search?q=${encodeURIComponent(query)}`));
 }
+
+/** Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch. */
+export async function remediateAccessibility(docId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/remediate-accessibility`, { method: "POST" }),
+  );
+}
+
+export interface Classification {
+  label: string;
+  confidence: number;
+  signals: string[];
+}
+
+/** Detect the document type (invoice/contract/resume/…). */
+export async function classifyDocument(docId: string): Promise<Classification> {
+  const res = await json<{ classification: Classification }>(
+    await fetch(`${BASE}/documents/${docId}/classify`),
+  );
+  return res.classification;
+}
+
+// PDF tools that POST and stream a resulting PDF back for download.
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function pdfTool(docId: string, path: string, body?: unknown): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}/${path}`, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  triggerDownload(await res.blob(), `${docId}.pdf`);
+}
+
+export const compressPdf = (docId: string) => pdfTool(docId, "compress");
+export const protectPdf = (docId: string, password: string) =>
+  pdfTool(docId, "protect", { password });
+export const watermarkPdf = (docId: string, text: string) => pdfTool(docId, "watermark", { text });

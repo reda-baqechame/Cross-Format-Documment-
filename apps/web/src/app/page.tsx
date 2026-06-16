@@ -1,4 +1,5 @@
 import { DocumentList } from "@/components/documents/DocumentList";
+import { SearchBar } from "@/components/documents/SearchBar";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 
 export default function HomePage() {
@@ -12,6 +13,7 @@ export default function HomePage() {
         </p>
       </header>
       <UploadDropzone />
+      <SearchBar />
       <DocumentList />
     </main>
   );
