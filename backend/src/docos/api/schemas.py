@@ -18,6 +18,7 @@ from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
+from docos.services.semantic.extract import Extraction
 from docos.services.semantic.reader import Citation
 
 
@@ -150,3 +151,8 @@ class DiffResponse(BaseModel):
     doc_id: str
     against: str
     result: DiffResult
+
+
+class ExtractResponse(BaseModel):
+    doc_id: str
+    extraction: Extraction

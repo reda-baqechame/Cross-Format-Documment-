@@ -12,9 +12,16 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
-from docos.api.schemas import AskRequest, AskResponse, DiffResponse, SummaryResponse
+from docos.api.schemas import (
+    AskRequest,
+    AskResponse,
+    DiffResponse,
+    ExtractResponse,
+    SummaryResponse,
+)
 from docos.deps import db_session, get_llm_client, get_settings
 from docos.services.provenance import diff
+from docos.services.semantic import extract as extract_service
 from docos.services.semantic import reader
 
 router = APIRouter(prefix="/documents", tags=["query"])
@@ -62,3 +69,10 @@ def diff_documents(
     _record, base = _load_latest(session, doc_id)
     _other_record, other = _load_latest(session, against)
     return DiffResponse(doc_id=doc_id, against=against, result=diff.diff_documents(base, other))
+
+
+@router.get("/{doc_id}/extract", response_model=ExtractResponse)
+def extract_document(doc_id: str, session: Session = Depends(db_session)) -> ExtractResponse:
+    """Pull entities (dates/money/emails/…) and Label:value fields, with provenance."""
+    _record, doc = _load_latest(session, doc_id)
+    return ExtractResponse(doc_id=doc_id, extraction=extract_service.extract(doc))

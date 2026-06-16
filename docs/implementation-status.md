@@ -16,13 +16,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## B. Understand it (OCR, IDP, structure)
 - ✅ Parse to structured model (nodes, reading order, tables)
 - 🟡 Table extraction
-- 🔜 Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
+- ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ⬜ Document classification · ⬜ Searchable-PDF generation
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
-- ✅ Reversible patch history + undo · 🔜 add_node / move_node / rotate ops
+- ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
 - 🟡 Rich formatting (bold/italic/size/color)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
 - ⬜ Comments/track-changes UI · ⬜ Templates & styles library · ⬜ Slide/spreadsheet editing UX
@@ -55,7 +55,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
-- 🔜 Extract structured data on request — `services/semantic/extract.py`
+- ✅ Extract structured data on request — `services/semantic/extract.py`
 - 🟡 Translate (LLM-only when a provider is set) · ⬜ Multi-document "notebook"
 - 🔒 Doc → audio/podcast — needs a TTS service
 

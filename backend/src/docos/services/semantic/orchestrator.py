@@ -11,8 +11,11 @@ from __future__ import annotations
 import copy
 from datetime import UTC, datetime
 
+from pydantic import TypeAdapter
+
 from docos.model.document import CanonicalDocument
 from docos.model.ids import new_patch_id
+from docos.model.nodes import AnyNode
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.provenance.health import RISKY_META_KEYS
 from docos.services.semantic import prompt
@@ -137,12 +140,56 @@ class SemanticOrchestratorImpl(SemanticOrchestrator):
             )
 
         if op.op == "remove_node":
-            node = copy.deepcopy(doc.nodes[op.target_id])  # type: ignore[index]
-            doc.nodes.pop(op.target_id, None)  # type: ignore[arg-type]
-            if node.parent_id and node.parent_id in doc.nodes:
-                parent = doc.nodes[node.parent_id]
-                if op.target_id in parent.children:
-                    parent.children.remove(op.target_id)  # type: ignore[arg-type]
-            return Patch(op="add_node", target_id=op.target_id, payload={"node": node.model_dump()})
+            nid = op.target_id
+            node = copy.deepcopy(doc.nodes[nid])  # type: ignore[index]
+            parent_id = node.parent_id
+            index: int | None = None
+            if parent_id and parent_id in doc.nodes:
+                parent = doc.nodes[parent_id]
+                if nid in parent.children:
+                    index = parent.children.index(nid)  # type: ignore[arg-type]
+                    parent.children.remove(nid)  # type: ignore[arg-type]
+            doc.nodes.pop(nid, None)  # type: ignore[arg-type]
+            return Patch(
+                op="add_node",
+                target_id=nid,
+                payload={"node": node.model_dump(), "parent_id": parent_id, "index": index},
+            )
+
+        if op.op == "add_node":
+            node = TypeAdapter(AnyNode).validate_python(op.payload["node"])
+            doc.nodes[node.id] = node
+            parent_id = op.payload.get("parent_id", node.parent_id)
+            if parent_id and parent_id in doc.nodes:
+                children = doc.nodes[parent_id].children
+                if node.id not in children:
+                    index = op.payload.get("index")
+                    if index is None or index > len(children):
+                        index = len(children)
+                    children.insert(index, node.id)
+                node.parent_id = parent_id
+            return Patch(op="remove_node", target_id=node.id)
+
+        if op.op == "move_node":
+            nid = op.target_id  # type: ignore[assignment]
+            node = doc.nodes[nid]  # type: ignore[index]
+            old_parent = node.parent_id
+            old_index: int | None = None
+            if old_parent and old_parent in doc.nodes:
+                siblings = doc.nodes[old_parent].children
+                if nid in siblings:
+                    old_index = siblings.index(nid)  # type: ignore[arg-type]
+                    siblings.remove(nid)  # type: ignore[arg-type]
+            new_parent = op.payload.get("parent_id") or old_parent
+            if new_parent and new_parent in doc.nodes:
+                children = doc.nodes[new_parent].children
+                index = op.payload.get("index")
+                if index is None or index > len(children):
+                    index = len(children)
+                children.insert(index, nid)
+                node.parent_id = new_parent
+            return Patch(
+                op="move_node", target_id=nid, payload={"parent_id": old_parent, "index": old_index}
+            )
 
         raise NotImplementedError(f"patch op not yet supported: {op.op}")
