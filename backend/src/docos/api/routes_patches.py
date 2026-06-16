@@ -26,7 +26,7 @@ from docos.db.models import Document
 from docos.deps import db_session, get_orchestrator, get_provenance, get_settings
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
-from docos.services.provenance import sensitive, signing
+from docos.services.provenance import accessibility, sensitive, signing
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
 
@@ -91,9 +91,7 @@ async def create_patch(
 
 
 @router.post("/{doc_id}/sanitize-metadata", response_model=PatchResponse)
-async def sanitize_metadata(
-    doc_id: str, session: Session = Depends(db_session)
-) -> PatchResponse:
+async def sanitize_metadata(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
     """Strip risky embedded metadata as a reversible, audited edit."""
     record, doc = _load_latest(session, doc_id)
     orchestrator = get_orchestrator()
@@ -121,9 +119,7 @@ async def sanitize_metadata(
 
 
 @router.get("/{doc_id}/sensitive", response_model=SensitiveScanResponse)
-def scan_sensitive(
-    doc_id: str, session: Session = Depends(db_session)
-) -> SensitiveScanResponse:
+def scan_sensitive(doc_id: str, session: Session = Depends(db_session)) -> SensitiveScanResponse:
     """Detect PII/secrets in the document without changing it (preview for redaction)."""
     _record, doc = _load_latest(session, doc_id)
     findings = sensitive.scan_document(doc)
@@ -136,9 +132,7 @@ def scan_sensitive(
 
 
 @router.post("/{doc_id}/redact-sensitive", response_model=PatchResponse)
-def redact_sensitive(
-    doc_id: str, session: Session = Depends(db_session)
-) -> PatchResponse:
+def redact_sensitive(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
     """One-click "clean before export": redact every detected PII/secret node.
 
     Builds a single reversible redaction patch over the detected nodes and runs it
@@ -190,6 +184,48 @@ def redact_sensitive(
     )
 
 
+@router.post("/{doc_id}/remediate-accessibility", response_model=PatchResponse)
+def remediate_accessibility(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
+    """Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch."""
+    record, doc = _load_latest(session, doc_id)
+    orchestrator = get_orchestrator()
+    provenance = get_provenance(session)
+
+    ops = accessibility.remediation_ops(doc)
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=ops,
+        inverse=[],
+        intent=f"accessibility remediation ({len(ops)} fix(es))",
+        created_at=datetime.now(UTC),
+    )
+
+    applied = bool(patch.patches)
+    new_version_id: str | None = None
+    if applied:
+        updated = orchestrator.apply(doc, patch)
+        new_version_id = provenance.commit_version(updated, patch=patch)
+        record = session.get(Document, doc_id)
+        if record is not None:
+            record.current_version_id = new_version_id
+
+    provenance.record_event(
+        doc_id,
+        "accessibility.remediated",
+        actor="api",
+        detail={"patch_id": patch.id, "ops": len(ops)},
+    )
+    session.commit()
+
+    return PatchResponse(
+        doc_id=doc_id,
+        patch_id=patch.id,
+        applied=applied,
+        new_version_id=new_version_id,
+        intent=patch.intent,
+    )
+
+
 @router.post("/{doc_id}/sign", response_model=SignatureResponse)
 def sign_document(
     doc_id: str, body: SignRequest, session: Session = Depends(db_session)
@@ -217,9 +253,7 @@ def sign_document(
 
 
 @router.get("/{doc_id}/signature", response_model=SignatureResponse)
-def signature_status(
-    doc_id: str, session: Session = Depends(db_session)
-) -> SignatureResponse:
+def signature_status(doc_id: str, session: Session = Depends(db_session)) -> SignatureResponse:
     """Report signature status, re-verifying the digest against current content."""
     _record, doc = _load_latest(session, doc_id)
     valid = signing.verify(doc, secret=get_settings().signing_secret)

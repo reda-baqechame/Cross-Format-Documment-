@@ -43,6 +43,7 @@ _UPDATABLE_NODE_FIELDS = frozenset(
         "header",
         "note",
         "resolved",
+        "reading_order",
     }
 )
 
