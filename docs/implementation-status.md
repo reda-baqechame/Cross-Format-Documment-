@@ -30,7 +30,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
 - ✅ Markdown / HTML / CSV export — `writers/markup.py`
-- 🔜 Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
+- ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
 - ⬜ XLSX / PPTX export · ⬜ image export · ⬜ compress
 
 ## E. Sign & agree

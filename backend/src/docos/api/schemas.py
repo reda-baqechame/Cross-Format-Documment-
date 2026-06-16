@@ -126,3 +126,20 @@ class SummaryResponse(BaseModel):
     summary: str
     citations: list[Citation]
     used_llm: bool
+
+
+class PagesRequest(BaseModel):
+    pages: list[int] = Field(min_length=1)
+
+
+class RotateRequest(BaseModel):
+    pages: list[int] = Field(min_length=1)
+    degrees: int = 90
+
+
+class ReorderRequest(BaseModel):
+    order: list[int] = Field(min_length=1)
+
+
+class MergeRequest(BaseModel):
+    doc_ids: list[str] = Field(min_length=1)  # appended after this document, in order
