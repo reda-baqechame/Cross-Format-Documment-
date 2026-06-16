@@ -62,7 +62,9 @@ export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
   );
 }
 
-export function exportUrl(docId: string, format: "docx" | "txt" | "pdf"): string {
+export type ExportFormat = "docx" | "txt" | "pdf" | "md" | "html" | "csv";
+
+export function exportUrl(docId: string, format: ExportFormat): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;
 }
 
@@ -103,3 +105,178 @@ export async function signDocument(docId: string, signer: string): Promise<Signa
 export async function fetchSignature(docId: string): Promise<SignatureResponse> {
   return json<SignatureResponse>(await fetch(`${BASE}/documents/${docId}/signature`));
 }
+
+// Sensitive-data detection. Types mirror the backend SensitiveScanResponse; `make codegen`
+// will fold these into @docos/shared-types once the backend is running.
+export interface SensitiveFinding {
+  node_id: string;
+  category: string;
+  label: string;
+  excerpt: string; // masked — never the raw value
+}
+
+export interface SensitiveScanResponse {
+  doc_id: string;
+  findings: SensitiveFinding[];
+  summary: Record<string, number>;
+  node_count: number;
+}
+
+/** Detect PII/secrets without changing the document (preview for redaction). */
+export async function scanSensitive(docId: string): Promise<SensitiveScanResponse> {
+  return json<SensitiveScanResponse>(await fetch(`${BASE}/documents/${docId}/sensitive`));
+}
+
+/** One-click "clean before export": redact every detected PII/secret as a reversible patch. */
+export async function redactSensitive(docId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/redact-sensitive`, { method: "POST" }),
+  );
+}
+
+// Document Q&A / summary. Answers cite the canonical-model nodes they draw from and run
+// fully offline (used_llm=false) unless an LLM provider is configured.
+export interface Citation {
+  node_id: string;
+  excerpt: string;
+}
+
+export interface AskResponse {
+  doc_id: string;
+  answer: string;
+  citations: Citation[];
+  used_llm: boolean;
+}
+
+export interface SummaryResponse {
+  doc_id: string;
+  summary: string;
+  citations: Citation[];
+  used_llm: boolean;
+}
+
+/** Ask a question answered from the document's own text, with citations. */
+export async function askDocument(docId: string, question: string): Promise<AskResponse> {
+  return json<AskResponse>(
+    await fetch(`${BASE}/documents/${docId}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }),
+  );
+}
+
+/** Summarize the document, with citations. */
+export async function fetchSummary(docId: string): Promise<SummaryResponse> {
+  return json<SummaryResponse>(await fetch(`${BASE}/documents/${docId}/summary`));
+}
+
+// Cross-document compare (redline).
+export interface DiffSegment {
+  op: "equal" | "insert" | "delete" | "replace";
+  a_text: string | null;
+  b_text: string | null;
+}
+
+export interface DiffResponse {
+  doc_id: string;
+  against: string;
+  result: {
+    segments: DiffSegment[];
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+  };
+}
+
+/** Block-level redline between this document and another (cross-format). */
+export async function diffDocuments(docId: string, against: string): Promise<DiffResponse> {
+  return json<DiffResponse>(
+    await fetch(`${BASE}/documents/${docId}/diff?against=${encodeURIComponent(against)}`),
+  );
+}
+
+// Library: tags + cross-corpus search.
+export interface TagsResponse {
+  doc_id: string;
+  tags: string[];
+}
+
+export interface SearchResponse {
+  query: string;
+  hits: { doc_id: string; title: string | null; snippet: string }[];
+}
+
+export async function listTags(docId: string): Promise<TagsResponse> {
+  return json<TagsResponse>(await fetch(`${BASE}/documents/${docId}/tags`));
+}
+
+export async function addTag(docId: string, tag: string): Promise<TagsResponse> {
+  return json<TagsResponse>(
+    await fetch(`${BASE}/documents/${docId}/tags`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    }),
+  );
+}
+
+export async function removeTag(docId: string, tag: string): Promise<TagsResponse> {
+  return json<TagsResponse>(
+    await fetch(`${BASE}/documents/${docId}/tags/${encodeURIComponent(tag)}`, { method: "DELETE" }),
+  );
+}
+
+/** Full-text search across every document (redaction-aware). */
+export async function searchDocuments(query: string): Promise<SearchResponse> {
+  return json<SearchResponse>(await fetch(`${BASE}/search?q=${encodeURIComponent(query)}`));
+}
+
+/** Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch. */
+export async function remediateAccessibility(docId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/remediate-accessibility`, { method: "POST" }),
+  );
+}
+
+export interface Classification {
+  label: string;
+  confidence: number;
+  signals: string[];
+}
+
+/** Detect the document type (invoice/contract/resume/…). */
+export async function classifyDocument(docId: string): Promise<Classification> {
+  const res = await json<{ classification: Classification }>(
+    await fetch(`${BASE}/documents/${docId}/classify`),
+  );
+  return res.classification;
+}
+
+// PDF tools that POST and stream a resulting PDF back for download.
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function pdfTool(docId: string, path: string, body?: unknown): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}/${path}`, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  triggerDownload(await res.blob(), `${docId}.pdf`);
+}
+
+export const compressPdf = (docId: string) => pdfTool(docId, "compress");
+export const protectPdf = (docId: string, password: string) =>
+  pdfTool(docId, "protect", { password });
+export const watermarkPdf = (docId: string, text: string) => pdfTool(docId, "watermark", { text });

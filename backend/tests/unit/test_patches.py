@@ -95,6 +95,46 @@ def test_redact_apply_adds_id_and_revert_removes_it():
     assert run.id not in reverted.redaction.redacted_node_ids
 
 
+def test_remove_node_then_revert_restores_node_and_position():
+    doc = TxtAdapter().parse(b"first\n\nsecond\n\nthird")
+    runs = [n for n in doc.walk() if n.type == "run"]
+    middle_para = doc.nodes[runs[1].parent_id]
+    root_children_before = list(doc.children_of(doc.root_id))
+    orch = _orchestrator()
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[Patch(op="remove_node", target_id=middle_para.id)],
+        created_at=datetime.now(UTC),
+    )
+    applied = orch.apply(doc, patch)
+    assert middle_para.id not in applied.nodes
+    assert middle_para.id not in applied.nodes[doc.root_id].children
+
+    reverted = orch.revert(applied, patch)
+    assert middle_para.id in reverted.nodes
+    # restored to its original index among the root's children
+    assert [n.id for n in reverted.children_of(doc.root_id)] == [
+        n.id for n in root_children_before
+    ]
+
+
+def test_move_node_reorders_and_revert_restores():
+    doc = TxtAdapter().parse(b"a\n\nb\n\nc")
+    paras = [n for n in doc.children_of(doc.root_id)]
+    orch = _orchestrator()
+    # move the last paragraph to the front
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[Patch(op="move_node", target_id=paras[2].id, payload={"index": 0})],
+        created_at=datetime.now(UTC),
+    )
+    applied = orch.apply(doc, patch)
+    assert [n.id for n in applied.children_of(doc.root_id)][0] == paras[2].id
+
+    reverted = orch.revert(applied, patch)
+    assert [n.id for n in reverted.children_of(doc.root_id)] == [p.id for p in paras]
+
+
 def test_sanitize_metadata_op_clears_keys_and_revert_restores():
     doc = TxtAdapter().parse(b"body")
     doc.meta.custom = {"author": "Alice", "revision": "3", "keywords": "safe"}

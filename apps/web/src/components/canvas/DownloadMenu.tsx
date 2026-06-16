@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 
-import { exportUrl } from "@/lib/api";
+import { exportUrl, type ExportFormat } from "@/lib/api";
 
-/** Download the current document — rebuilt from the canonical model — as DOCX or TXT. */
+/** Download the current document — rebuilt from the canonical model — in any format. */
 export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFormat?: string }) {
   const [open, setOpen] = useState(false);
 
-  const download = (format: "docx" | "txt" | "pdf") => {
+  const download = (format: ExportFormat) => {
     setOpen(false);
     const a = document.createElement("a");
     a.href = exportUrl(docId, format);
@@ -33,6 +33,9 @@ export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFor
         >
           <MenuItem label="Word (.docx)" onClick={() => download("docx")} />
           <MenuItem label="Plain text (.txt)" onClick={() => download("txt")} />
+          <MenuItem label="Markdown (.md)" onClick={() => download("md")} />
+          <MenuItem label="HTML (.html)" onClick={() => download("html")} />
+          <MenuItem label="CSV (.csv)" onClick={() => download("csv")} />
           {sourceFormat === "pdf" && (
             <MenuItem label="PDF (with edits)" onClick={() => download("pdf")} />
           )}

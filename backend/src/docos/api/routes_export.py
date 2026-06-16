@@ -18,6 +18,11 @@ from docos.db.models import Document
 from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.registry import AdapterRegistry
+from docos.services.docengine.writers.markup import (
+    model_to_csv,
+    model_to_html,
+    model_to_markdown,
+)
 from docos.storage.blob import BlobStore
 
 router = APIRouter(prefix="/documents", tags=["export"])
@@ -26,6 +31,12 @@ _DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 _FORMATS = {
     "txt": ("txt", "text/plain", "txt"),
     "docx": ("docx", _DOCX_MIME, "docx"),
+}
+# Function-based writers that serialise the canonical model directly (no adapter needed).
+_DIRECT_WRITERS = {
+    "md": (model_to_markdown, "text/markdown", "md"),
+    "html": (model_to_html, "text/html", "html"),
+    "csv": (model_to_csv, "text/csv", "csv"),
 }
 
 
@@ -44,15 +55,20 @@ async def export_document(
 ) -> Response:
     if format == "pdf":
         return await _export_pdf(doc_id, session, blob_store)
-    if format not in _FORMATS:
-        raise HTTPException(status_code=400, detail=f"unsupported export format: {format}")
-    record, doc = _load_latest(session, doc_id)
-    format_id, mime, ext = _FORMATS[format]
 
-    try:
-        data = registry.resolve_by_format(format_id).export(doc, target_mime=mime)
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    if format in _DIRECT_WRITERS:
+        record, doc = _load_latest(session, doc_id)
+        writer, mime, ext = _DIRECT_WRITERS[format]
+        data = writer(doc)
+    elif format in _FORMATS:
+        record, doc = _load_latest(session, doc_id)
+        format_id, mime, ext = _FORMATS[format]
+        try:
+            data = registry.resolve_by_format(format_id).export(doc, target_mime=mime)
+        except NotImplementedError as exc:
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
+    else:
+        raise HTTPException(status_code=400, detail=f"unsupported export format: {format}")
 
     provenance = get_provenance(session)
     provenance.record_event(doc_id, "document.exported", actor="api", detail={"format": format})

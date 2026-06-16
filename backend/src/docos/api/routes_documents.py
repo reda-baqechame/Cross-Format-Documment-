@@ -18,7 +18,7 @@ from docos.api.schemas import (
     HistoryResponse,
     UploadResponse,
 )
-from docos.db.models import Document, DocumentVersion
+from docos.db.models import Document, DocumentVersion, Label
 from docos.deps import db_session, get_ingestion_gateway, get_provenance, get_registry
 from docos.model.document import CanonicalDocument
 from docos.model.serialize import from_dict
@@ -108,20 +108,28 @@ def get_model(doc_id: str, session: Session = Depends(db_session)) -> DocumentMo
 
 
 @router.get("", response_model=DocumentListResponse)
-def list_documents(session: Session = Depends(db_session)) -> DocumentListResponse:
+def list_documents(
+    session: Session = Depends(db_session), tag: str | None = None
+) -> DocumentListResponse:
     records = session.scalars(select(Document).order_by(Document.created_at.desc())).all()
-    return DocumentListResponse(
-        documents=[
-            DocumentSummary(
-                doc_id=r.id,
-                title=r.title,
-                source_format=r.source_format,
-                current_version_id=r.current_version_id,
-                created_at=r.created_at,
-            )
-            for r in records
-        ]
-    )
+    tags_by_doc: dict[str, list[str]] = {}
+    for label in session.scalars(select(Label)).all():
+        tags_by_doc.setdefault(label.document_id, []).append(label.label)
+
+    summaries = [
+        DocumentSummary(
+            doc_id=r.id,
+            title=r.title,
+            source_format=r.source_format,
+            current_version_id=r.current_version_id,
+            created_at=r.created_at,
+            tags=sorted(tags_by_doc.get(r.id, [])),
+        )
+        for r in records
+    ]
+    if tag:
+        summaries = [s for s in summaries if tag in s.tags]
+    return DocumentListResponse(documents=summaries)
 
 
 @router.get("/{doc_id}/history", response_model=HistoryResponse)
