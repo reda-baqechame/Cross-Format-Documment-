@@ -17,6 +17,7 @@ from docos.model.patch import PatchOp
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
+from docos.services.semantic.reader import Citation
 
 
 class HealthCheck(BaseModel):
@@ -107,3 +108,21 @@ class SensitiveScanResponse(BaseModel):
     findings: list[SensitiveFinding]
     summary: dict[str, int]  # count per category
     node_count: int  # distinct nodes that would be redacted
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+
+
+class AskResponse(BaseModel):
+    doc_id: str
+    answer: str
+    citations: list[Citation]
+    used_llm: bool  # False = deterministic offline answer
+
+
+class SummaryResponse(BaseModel):
+    doc_id: str
+    summary: str
+    citations: list[Citation]
+    used_llm: bool

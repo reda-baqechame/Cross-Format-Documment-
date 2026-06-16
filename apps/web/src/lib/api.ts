@@ -131,3 +131,40 @@ export async function redactSensitive(docId: string): Promise<PatchResponse> {
     await fetch(`${BASE}/documents/${docId}/redact-sensitive`, { method: "POST" }),
   );
 }
+
+// Document Q&A / summary. Answers cite the canonical-model nodes they draw from and run
+// fully offline (used_llm=false) unless an LLM provider is configured.
+export interface Citation {
+  node_id: string;
+  excerpt: string;
+}
+
+export interface AskResponse {
+  doc_id: string;
+  answer: string;
+  citations: Citation[];
+  used_llm: boolean;
+}
+
+export interface SummaryResponse {
+  doc_id: string;
+  summary: string;
+  citations: Citation[];
+  used_llm: boolean;
+}
+
+/** Ask a question answered from the document's own text, with citations. */
+export async function askDocument(docId: string, question: string): Promise<AskResponse> {
+  return json<AskResponse>(
+    await fetch(`${BASE}/documents/${docId}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }),
+  );
+}
+
+/** Summarize the document, with citations. */
+export async function fetchSummary(docId: string): Promise<SummaryResponse> {
+  return json<SummaryResponse>(await fetch(`${BASE}/documents/${docId}/summary`));
+}

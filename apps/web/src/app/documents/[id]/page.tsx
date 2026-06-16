@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { AiEditBar } from "@/components/canvas/AiEditBar";
+import { AskPanel } from "@/components/canvas/AskPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
@@ -49,7 +50,12 @@ export default function DocumentPage() {
         <main className="flex-1 overflow-auto bg-slate-100 p-8">
           {model.isLoading && <p className="text-slate-500">Loading model…</p>}
           {model.isError && <p className="text-red-600">Failed to load: {String(model.error)}</p>}
-          {model.data && <DocumentCanvas doc={model.data.document} docId={docId} />}
+          {model.data && (
+            <>
+              <AskPanel docId={docId} />
+              <DocumentCanvas doc={model.data.document} docId={docId} />
+            </>
+          )}
         </main>
 
         {panelOpen && health.data && <HealthPanel health={health.data.health} docId={docId} />}
