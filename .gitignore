@@ -37,3 +37,6 @@ minio-data/
 .DS_Store
 .idea/
 .vscode/
+
+# Local blob storage (runtime artifacts)
+backend/data/

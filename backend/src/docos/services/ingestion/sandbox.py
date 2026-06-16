@@ -13,7 +13,9 @@ from typing import Any
 
 class Sandbox(ABC):
     @abstractmethod
-    async def run(self, fn: Callable[..., Any], *args: Any, timeout_s: int = 30, mem_mb: int = 512) -> Any:
+    async def run(
+        self, fn: Callable[..., Any], *args: Any, timeout_s: int = 30, mem_mb: int = 512
+    ) -> Any:
         ...
 
 
@@ -24,6 +26,8 @@ class SubprocessSandbox(Sandbox):
     parsing as if it were sandboxed.
     """
 
-    async def run(self, fn: Callable[..., Any], *args: Any, timeout_s: int = 30, mem_mb: int = 512) -> Any:
+    async def run(
+        self, fn: Callable[..., Any], *args: Any, timeout_s: int = 30, mem_mb: int = 512
+    ) -> Any:
         # Extension point: spawn an isolated subprocess/microVM with rlimits.
         return fn(*args)

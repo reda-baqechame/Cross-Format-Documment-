@@ -12,7 +12,7 @@ is never silently dropped on round-trip — fidelity is a core product promise.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -156,22 +156,20 @@ class MetadataBlockNode(BaseNode):
 
 # Discriminated union used everywhere a node value is (de)serialized.
 AnyNode = Annotated[
-    Union[
-        RootNode,
-        PageNode,
-        ParagraphNode,
-        HeadingNode,
-        RunNode,
-        ListNode,
-        ListItemNode,
-        TableNode,
-        TableRowNode,
-        TableCellNode,
-        ImageNode,
-        FieldNode,
-        CommentNode,
-        AnnotationNode,
-        MetadataBlockNode,
-    ],
+    RootNode
+    | PageNode
+    | ParagraphNode
+    | HeadingNode
+    | RunNode
+    | ListNode
+    | ListItemNode
+    | TableNode
+    | TableRowNode
+    | TableCellNode
+    | ImageNode
+    | FieldNode
+    | CommentNode
+    | AnnotationNode
+    | MetadataBlockNode,
     Field(discriminator="type"),
 ]

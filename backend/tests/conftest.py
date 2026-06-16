@@ -1,10 +1,46 @@
-"""Shared fixtures: a sample DOCX built on the fly so tests need no binary blobs."""
+"""Shared fixtures: sample documents built on the fly + a TestClient over SQLite."""
 
 from __future__ import annotations
 
 import io
 
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from docos.db.base import Base
+from docos.deps import db_session
+from docos.main import create_app
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    """TestClient backed by an in-process SQLite db (no Postgres needed)."""
+    monkeypatch.setenv("LOCAL_BLOB_DIR", str(tmp_path / "blobs"))
+    monkeypatch.setenv(
+        "ALLOWED_MIME_TYPES",
+        "text/plain,application/pdf,"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
+        "application/rtf,image/png,image/jpeg,image/tiff",
+    )
+
+    engine = create_engine(f"sqlite:///{tmp_path/'test.db'}", future=True)
+    Base.metadata.create_all(engine)
+    TestSession = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def _session():
+        s = TestSession()
+        try:
+            yield s
+        finally:
+            s.close()
+
+    app = create_app()
+    app.dependency_overrides[db_session] = _session
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -40,4 +76,46 @@ def sample_docx_bytes() -> bytes:
     table.cell(1, 1).text = "r1c1"
     buf = io.BytesIO()
     doc.save(buf)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def sample_xlsx_bytes() -> bytes:
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sales"
+    ws.append(["Region", "Total"])
+    ws.append(["North", 1200])
+    ws.append(["South", 950])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def sample_pptx_bytes() -> bytes:
+    from pptx import Presentation
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "Slide Title"
+    slide.placeholders[1].text = "A bullet of slide content"
+    buf = io.BytesIO()
+    prs.save(buf)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def sample_rtf_bytes() -> bytes:
+    return rb"{\rtf1\ansi First RTF line\par Second RTF line\par}"
+
+
+@pytest.fixture
+def sample_image_bytes() -> bytes:
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (120, 60), color=(240, 240, 240)).save(buf, format="PNG")
     return buf.getvalue()

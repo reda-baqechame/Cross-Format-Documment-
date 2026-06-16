@@ -44,14 +44,28 @@ export interface DocNode {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  font?: string | null;
+  size?: number | null;
+  color?: string | null;
+  link_href?: string | null;
   // heading
   level?: number;
+  // list
+  ordered?: boolean;
+  // page
+  page_number?: number;
+  width?: number;
+  height?: number;
   // table
   rows?: number;
   cols?: number;
   // image
   alt_text?: string | null;
   blob_ref?: string;
+  mime?: string;
+  // field
+  field_name?: string;
+  value?: string | null;
 }
 
 export interface DocumentMeta {
@@ -71,13 +85,38 @@ export interface AccessibilityState {
   score: number;
 }
 
+export interface RedactionState {
+  redacted_node_ids: string[];
+  metadata_sanitized: boolean;
+  pending: string[];
+}
+
+export interface Permissions {
+  can_edit: boolean;
+  can_export: boolean;
+  can_copy: boolean;
+  encrypted: boolean;
+  password_protected: boolean;
+}
+
+export interface SignatureState {
+  signed: boolean;
+  signature_valid: boolean | null;
+  ready_for_signing: boolean;
+  signer?: string | null;
+  signed_at?: string | null;
+}
+
 export interface CanonicalDocument {
   schema_version: string;
   doc_id: string;
   root_id: string;
   nodes: Record<string, DocNode>;
   meta: DocumentMeta;
+  permissions?: Permissions;
+  redaction?: RedactionState;
   accessibility: AccessibilityState;
+  signature?: SignatureState;
   content_hash: string | null;
 }
 
@@ -110,4 +149,55 @@ export interface DocumentModelResponse {
 export interface DocumentHealthResponse {
   doc_id: string;
   health: DocumentHealth;
+}
+
+export type PatchOpName =
+  | "add_node"
+  | "remove_node"
+  | "update_node"
+  | "move_node"
+  | "set_text"
+  | "retag"
+  | "redact"
+  | "unredact"
+  | "sanitize_metadata"
+  | "restore_metadata";
+
+export interface PatchOpDTO {
+  op: PatchOpName;
+  target_id?: string | null;
+  payload?: Record<string, unknown>;
+}
+
+export interface PatchRequest {
+  instruction?: string;
+  ops?: PatchOpDTO[];
+}
+
+export interface PatchResponse {
+  doc_id: string;
+  patch_id: string;
+  applied: boolean;
+  new_version_id: string | null;
+  intent: string | null;
+}
+
+export interface DocumentSummary {
+  doc_id: string;
+  title: string | null;
+  source_format: string;
+  current_version_id: string | null;
+  created_at: string;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentSummary[];
+}
+
+export interface SignatureResponse {
+  doc_id: string;
+  signed: boolean;
+  valid: boolean;
+  signer: string | null;
+  signed_at: string | null;
 }

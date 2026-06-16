@@ -1,10 +1,14 @@
 """S3 / MinIO blob store — used in enterprise and cloud privacy modes.
 
-STUB: wiring is sketched against boto3 but methods raise ``NotImplementedError``
-until the cloud deployment path is built out. ``LocalBlobStore`` is the default.
+Wraps a boto3 S3 client. boto3 is synchronous, so each call is dispatched to a
+worker thread to honour the async ``BlobStore`` contract. The client is built lazily
+(and can be injected for tests), so importing this module never requires AWS config.
 """
 
 from __future__ import annotations
+
+import asyncio
+from typing import Any
 
 from docos.storage.blob import BlobStore
 
@@ -17,21 +21,43 @@ class S3BlobStore(BlobStore):
         endpoint_url: str | None = None,
         access_key: str | None = None,
         secret_key: str | None = None,
+        client: Any | None = None,
     ) -> None:
         self.bucket = bucket
         self.endpoint_url = endpoint_url
         self.access_key = access_key
         self.secret_key = secret_key
-        # Extension point: lazily build a boto3 client here.
+        self._client = client
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            import boto3
+
+            self._client = boto3.client(
+                "s3",
+                endpoint_url=self.endpoint_url,
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+            )
+        return self._client
 
     async def put(self, key: str, data: bytes) -> str:
-        raise NotImplementedError("S3BlobStore.put — implement for cloud/enterprise mode")
+        await asyncio.to_thread(
+            self._get_client().put_object, Bucket=self.bucket, Key=key, Body=data
+        )
+        return key
 
     async def get(self, key: str) -> bytes:
-        raise NotImplementedError("S3BlobStore.get — implement for cloud/enterprise mode")
+        obj = await asyncio.to_thread(self._get_client().get_object, Bucket=self.bucket, Key=key)
+        return obj["Body"].read()
 
     async def url(self, key: str) -> str:
-        raise NotImplementedError("S3BlobStore.url — return a presigned URL")
+        return await asyncio.to_thread(
+            self._get_client().generate_presigned_url,
+            "get_object",
+            Params={"Bucket": self.bucket, "Key": key},
+            ExpiresIn=3600,
+        )
 
     async def delete(self, key: str) -> None:
-        raise NotImplementedError("S3BlobStore.delete — implement for cloud/enterprise mode")
+        await asyncio.to_thread(self._get_client().delete_object, Bucket=self.bucket, Key=key)

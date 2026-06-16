@@ -1,0 +1,103 @@
+# Production stack. Self-contained (not a dev override): build prod images, run
+# migrations on API start, serve the standalone web build, no source bind-mounts.
+#   docker compose -f docker-compose.prod.yml up --build -d
+# Required env (see .env.example): POSTGRES_PASSWORD, SIGNING_SECRET, CORS_ORIGINS,
+# NEXT_PUBLIC_API_URL, and S3/MinIO credentials.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-docos}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docos}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    # Entrypoint runs `alembic upgrade head` before launching uvicorn workers.
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-docos}
+      REDIS_URL: redis://redis:6379/0
+      BLOB_BACKEND: ${BLOB_BACKEND:-s3}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-docos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      LLM_PROVIDER: ${LLM_PROVIDER:-noop}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    entrypoint: []  # no migrations from the worker; the API owns schema
+    command: celery -A docos.queue.celery_app worker --loglevel=info
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-docos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-docos}
+      REDIS_URL: redis://redis:6379/0
+      BLOB_BACKEND: ${BLOB_BACKEND:-s3}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-docos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SIGNING_SECRET: ${SIGNING_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  minio-data:

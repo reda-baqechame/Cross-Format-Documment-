@@ -8,7 +8,7 @@ provenance layer can flag and sanitize it.
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docx import Document as DocxDocument
 
@@ -35,7 +35,7 @@ class DocxAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         src = DocxDocument(io.BytesIO(data))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         root = RootNode(id=new_node_id("root"))
 
         core = src.core_properties
@@ -131,7 +131,11 @@ class DocxAdapter(FormatAdapter):
         raise NotImplementedError("DocxAdapter.render_preview — pending LibreOffice/render service")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("DocxAdapter.export — pending DOCX writer")
+        if target_mime != _DOCX_MIME:
+            raise NotImplementedError(f"DocxAdapter cannot export to {target_mime}")
+        from docos.services.docengine.writers.docx_writer import model_to_docx
+
+        return model_to_docx(doc)
 
 
 def _heading_level(style: str) -> int:

@@ -38,6 +38,11 @@ def get_blob_store() -> BlobStore:
     return LocalBlobStore(s.local_blob_dir)
 
 
+def blob_store_dep() -> BlobStore:
+    """FastAPI provider wrapping :func:`get_blob_store` (overridable in tests)."""
+    return get_blob_store()
+
+
 @lru_cache
 def get_registry() -> AdapterRegistry:
     return default_registry()

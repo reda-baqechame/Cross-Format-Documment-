@@ -11,7 +11,7 @@ extension point because faithful PDF mutation is a large effort of its own.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import fitz  # PyMuPDF
 
@@ -34,7 +34,7 @@ class PdfAdapter(FormatAdapter):
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         pdf = fitz.open(stream=data, filetype="pdf")
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             root = RootNode(id=new_node_id("root"))
 
             raw_meta = dict(pdf.metadata or {})

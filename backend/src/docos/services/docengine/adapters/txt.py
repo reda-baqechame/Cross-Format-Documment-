@@ -7,7 +7,7 @@ every richer format.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from docos.model.document import CanonicalDocument, DocumentMeta
 from docos.model.ids import new_doc_id, new_node_id
@@ -22,7 +22,7 @@ class TxtAdapter(FormatAdapter):
 
     def parse(self, data: bytes, *, blob: BlobStore | None = None) -> CanonicalDocument:
         text = data.decode("utf-8", errors="replace")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         doc_id = new_doc_id()
         root = RootNode(id=new_node_id("root"))
 
@@ -58,8 +58,10 @@ class TxtAdapter(FormatAdapter):
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
         if target_mime != "text/plain":
             raise NotImplementedError(f"TxtAdapter cannot export to {target_mime}")
+        from docos.services.docengine.writers.redaction import run_text
+
         parts: list[str] = []
         for node in doc.walk():
             if node.type == "run":
-                parts.append(getattr(node, "text", ""))
+                parts.append(run_text(doc, node))
         return "\n\n".join(parts).encode("utf-8")

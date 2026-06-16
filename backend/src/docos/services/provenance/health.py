@@ -28,7 +28,7 @@ class DocumentHealth(BaseModel):
 
 
 # Embedded-metadata keys that commonly leak sensitive info if not sanitized.
-_RISKY_META_KEYS = ("last_modified_by", "author", "comments", "revision")
+RISKY_META_KEYS = ("last_modified_by", "author", "comments", "revision")
 
 
 def compute_health(doc: CanonicalDocument) -> DocumentHealth:
@@ -52,7 +52,9 @@ def compute_health(doc: CanonicalDocument) -> DocumentHealth:
     doc.accessibility.score = round(score, 2)
 
     if not doc.accessibility.has_doc_title:
-        findings.append(HealthFinding(level="warn", code="a11y.no_title", message="Document has no title."))
+        findings.append(
+            HealthFinding(level="warn", code="a11y.no_title", message="Document has no title.")
+        )
     if missing_alt:
         findings.append(
             HealthFinding(
@@ -64,7 +66,7 @@ def compute_health(doc: CanonicalDocument) -> DocumentHealth:
 
     # ── metadata risk ─────────────────────────────────────────────────────────
     metadata_risk = (not doc.redaction.metadata_sanitized) and any(
-        doc.meta.custom.get(k) for k in _RISKY_META_KEYS
+        doc.meta.custom.get(k) for k in RISKY_META_KEYS
     )
     if metadata_risk:
         findings.append(
