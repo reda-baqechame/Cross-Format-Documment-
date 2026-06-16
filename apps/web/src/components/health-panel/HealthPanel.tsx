@@ -1,10 +1,16 @@
 "use client";
 
 import type { DocumentHealth } from "@docos/shared-types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { HealthBadge } from "@/components/health-panel/HealthBadge";
-import { redactNode, sanitizeMetadata, signDocument } from "@/lib/api";
+import {
+  redactNode,
+  redactSensitive,
+  sanitizeMetadata,
+  scanSensitive,
+  signDocument,
+} from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 
 /**
@@ -20,7 +26,19 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["model", docId] });
     queryClient.invalidateQueries({ queryKey: ["health", docId] });
+    queryClient.invalidateQueries({ queryKey: ["sensitive", docId] });
   };
+
+  const sensitive = useQuery({
+    queryKey: ["sensitive", docId],
+    queryFn: () => scanSensitive(docId),
+  });
+  const sensitiveCount = sensitive.data?.node_count ?? 0;
+
+  const cleanSensitive = useMutation({
+    mutationFn: () => redactSensitive(docId),
+    onSuccess: refresh,
+  });
 
   const sanitize = useMutation({ mutationFn: () => sanitizeMetadata(docId), onSuccess: refresh });
   const redact = useMutation({
@@ -46,6 +64,17 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
         ok={!health.has_pending_redactions}
       />
       <Stat
+        label="Sensitive data"
+        value={
+          sensitive.isLoading
+            ? "Scanning…"
+            : sensitiveCount > 0
+              ? `${sensitiveCount} to redact`
+              : "Clean"
+        }
+        ok={!sensitive.isLoading && sensitiveCount === 0}
+      />
+      <Stat
         label="Signature"
         value={health.signed ? "Signed" : health.ready_for_signing ? "Ready" : "Not ready"}
         ok={health.signed || health.ready_for_signing}
@@ -67,6 +96,22 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
           className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
         >
           {redact.isPending ? "Redacting…" : "Redact selection"}
+        </button>
+        <button
+          onClick={() => cleanSensitive.mutate()}
+          disabled={cleanSensitive.isPending || sensitiveCount === 0}
+          title={
+            sensitiveCount > 0
+              ? "Detect and redact PII/secrets before export"
+              : "No sensitive data detected"
+          }
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
+        >
+          {cleanSensitive.isPending
+            ? "Cleaning…"
+            : sensitiveCount > 0
+              ? `Clean sensitive data (${sensitiveCount})`
+              : "No sensitive data"}
         </button>
         <button
           onClick={() => {

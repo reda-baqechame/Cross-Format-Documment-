@@ -101,3 +101,31 @@ export async function signDocument(docId: string, signer: string): Promise<Signa
 export async function fetchSignature(docId: string): Promise<SignatureResponse> {
   return json<SignatureResponse>(await fetch(`${BASE}/documents/${docId}/signature`));
 }
+
+// Sensitive-data detection. Types mirror the backend SensitiveScanResponse; `make codegen`
+// will fold these into @docos/shared-types once the backend is running.
+export interface SensitiveFinding {
+  node_id: string;
+  category: string;
+  label: string;
+  excerpt: string; // masked — never the raw value
+}
+
+export interface SensitiveScanResponse {
+  doc_id: string;
+  findings: SensitiveFinding[];
+  summary: Record<string, number>;
+  node_count: number;
+}
+
+/** Detect PII/secrets without changing the document (preview for redaction). */
+export async function scanSensitive(docId: string): Promise<SensitiveScanResponse> {
+  return json<SensitiveScanResponse>(await fetch(`${BASE}/documents/${docId}/sensitive`));
+}
+
+/** One-click "clean before export": redact every detected PII/secret as a reversible patch. */
+export async function redactSensitive(docId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/redact-sensitive`, { method: "POST" }),
+  );
+}

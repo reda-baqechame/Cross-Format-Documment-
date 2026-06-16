@@ -18,6 +18,7 @@ from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     PatchRequest,
     PatchResponse,
+    SensitiveScanResponse,
     SignatureResponse,
     SignRequest,
 )
@@ -25,7 +26,7 @@ from docos.db.models import Document
 from docos.deps import db_session, get_orchestrator, get_provenance, get_settings
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
-from docos.services.provenance import signing
+from docos.services.provenance import sensitive, signing
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
 
@@ -114,6 +115,76 @@ async def sanitize_metadata(
         doc_id=doc_id,
         patch_id=patch.id,
         applied=True,
+        new_version_id=new_version_id,
+        intent=patch.intent,
+    )
+
+
+@router.get("/{doc_id}/sensitive", response_model=SensitiveScanResponse)
+def scan_sensitive(
+    doc_id: str, session: Session = Depends(db_session)
+) -> SensitiveScanResponse:
+    """Detect PII/secrets in the document without changing it (preview for redaction)."""
+    _record, doc = _load_latest(session, doc_id)
+    findings = sensitive.scan_document(doc)
+    return SensitiveScanResponse(
+        doc_id=doc_id,
+        findings=findings,
+        summary=sensitive.summarize(findings),
+        node_count=len(sensitive.redaction_node_ids(findings)),
+    )
+
+
+@router.post("/{doc_id}/redact-sensitive", response_model=PatchResponse)
+def redact_sensitive(
+    doc_id: str, session: Session = Depends(db_session)
+) -> PatchResponse:
+    """One-click "clean before export": redact every detected PII/secret node.
+
+    Builds a single reversible redaction patch over the detected nodes and runs it
+    through the same apply → commit_version → audit path as any other edit, so it is
+    versioned and undoable. Redaction is true removal on export (see writers/redaction).
+    """
+    record, doc = _load_latest(session, doc_id)
+    orchestrator = get_orchestrator()
+    provenance = get_provenance(session)
+
+    findings = sensitive.scan_document(doc)
+    node_ids = sensitive.redaction_node_ids(findings)
+
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[Patch(op="redact", target_id=nid) for nid in node_ids],
+        inverse=[],
+        intent=f"redact {len(node_ids)} sensitive item(s) before export",
+        created_at=datetime.now(UTC),
+    )
+
+    applied = bool(patch.patches)
+    new_version_id: str | None = None
+    if applied:
+        updated = orchestrator.apply(doc, patch)
+        new_version_id = provenance.commit_version(updated, patch=patch)
+        record = session.get(Document, doc_id)
+        if record is not None:
+            record.current_version_id = new_version_id
+
+    provenance.record_event(
+        doc_id,
+        "sensitive.redacted",
+        actor="api",
+        detail={
+            "patch_id": patch.id,
+            "node_count": len(node_ids),
+            "categories": sensitive.summarize(findings),
+        },
+    )
+    session.commit()
+
+    return PatchResponse(
+        doc_id=doc_id,
+        patch_id=patch.id,
+        applied=applied,
         new_version_id=new_version_id,
         intent=patch.intent,
     )

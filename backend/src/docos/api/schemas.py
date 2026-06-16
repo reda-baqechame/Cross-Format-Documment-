@@ -16,6 +16,7 @@ from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
+from docos.services.provenance.sensitive import SensitiveFinding
 
 
 class HealthCheck(BaseModel):
@@ -97,3 +98,12 @@ class PatchResponse(BaseModel):
     applied: bool
     new_version_id: str | None
     intent: str | None
+
+
+class SensitiveScanResponse(BaseModel):
+    """Detected PII/secrets and how many distinct nodes a redaction would touch."""
+
+    doc_id: str
+    findings: list[SensitiveFinding]
+    summary: dict[str, int]  # count per category
+    node_count: int  # distinct nodes that would be redacted
