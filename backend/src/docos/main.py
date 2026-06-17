@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from docos.api import (
+    routes_approvals,
     routes_comments,
     routes_documents,
     routes_export,
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)
     app.include_router(routes_notebook.router)
+    app.include_router(routes_approvals.router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",

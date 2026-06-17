@@ -369,6 +369,56 @@ export async function deleteComment(docId: string, commentId: string): Promise<C
   return res.threads;
 }
 
+// ── Approval / multi-party signing workflow ──────────────────────────────────
+export interface ApprovalStepView {
+  approver: string;
+  order_index: number;
+  status: "pending" | "approved" | "rejected";
+  note: string | null;
+}
+
+export interface WorkflowStatus {
+  doc_id: string;
+  workflow_id: string | null;
+  state: "none" | "in_progress" | "approved" | "rejected";
+  ordered: boolean;
+  steps: ApprovalStepView[];
+  current_approvers: string[];
+}
+
+export async function getApprovals(docId: string): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(await fetch(`${BASE}/documents/${docId}/approvals`));
+}
+
+export async function startApprovals(
+  docId: string,
+  approvers: string[],
+  ordered: boolean,
+): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(
+    await fetch(`${BASE}/documents/${docId}/approvals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvers, ordered }),
+    }),
+  );
+}
+
+export async function decideApproval(
+  docId: string,
+  approver: string,
+  decision: "approve" | "reject",
+  note?: string,
+): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(
+    await fetch(`${BASE}/documents/${docId}/approvals/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approver, decision, note: note ?? null }),
+    }),
+  );
+}
+
 /** Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch. */
 export async function remediateAccessibility(docId: string): Promise<PatchResponse> {
   return json<PatchResponse>(

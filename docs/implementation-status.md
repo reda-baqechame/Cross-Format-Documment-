@@ -39,9 +39,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## E. Sign & agree
 - ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`
+- ✅ Approval / multi-party sign-off workflow (ordered or parallel, audited) — `routes_approvals.py`, `services/collab/approvals.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
   payments — needs a certificate authority / regulated signing & KYC provider
-- ⬜ Multi-party signing order / bulk send · ⬜ Approval workflows / CLM
+- ⬜ Bulk send (one packet to many recipients) · ⬜ Full CLM (clause library, renewals)
 
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
@@ -55,8 +56,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Version DAG + audit log
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
+- ✅ Approval workflows (ordered / parallel sign-off, audited) — `routes_approvals.py`
 - 🔒 Real-time presence / shareable links with live perms — collaboration infra
-- ⬜ Approval workflows
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`

@@ -13,7 +13,9 @@ def test_semantic_search_ranks_relevant_doc_first(client):
     invoice = _upload(
         client, "invoice.txt", "Invoice total amount due is 1200 dollars payable on receipt."
     )
-    recipe = _upload(client, "recipe.txt", "Mix flour sugar butter and bake the cake for forty minutes.")
+    recipe = _upload(
+        client, "recipe.txt", "Mix flour sugar butter and bake the cake for forty minutes."
+    )
 
     hits = client.get("/search/semantic", params={"q": "amount due payable invoice"}).json()
     assert hits, "expected at least one ranked hit"

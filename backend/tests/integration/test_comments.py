@@ -94,4 +94,5 @@ def test_errors(client):
         ).status_code
         == 422
     )
-    assert client.post(f"/documents/{doc_id}/comments/nope/replies", json={"text": "x"}).status_code == 404
+    missing = client.post(f"/documents/{doc_id}/comments/nope/replies", json={"text": "x"})
+    assert missing.status_code == 404

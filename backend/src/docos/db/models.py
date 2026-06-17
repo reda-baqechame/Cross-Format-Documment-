@@ -67,6 +67,28 @@ class Label(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class ApprovalStep(Base):
+    """One approver's step in a document's approval / multi-party signing workflow.
+
+    A workflow is the set of steps sharing a ``workflow_id``. ``order_index`` defines the
+    signing order; ``status`` is pending | approved | rejected. State lives in rows (not the
+    versioned model) because it is workflow metadata about the document, not its content.
+    """
+
+    __tablename__ = "approval_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    workflow_id: Mapped[str] = mapped_column(String)
+    order_index: Mapped[int] = mapped_column(Integer)
+    approver: Mapped[str] = mapped_column(String)
+    ordered: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending|approved|rejected
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class JobRecord(Base):
     __tablename__ = "jobs"
 
