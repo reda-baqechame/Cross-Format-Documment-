@@ -23,6 +23,7 @@ from docos.services.docengine.writers.markup import (
     model_to_html,
     model_to_markdown,
 )
+from docos.services.docengine.writers.office import model_to_pptx, model_to_xlsx
 from docos.storage.blob import BlobStore
 
 router = APIRouter(prefix="/documents", tags=["export"])
@@ -33,10 +34,14 @@ _FORMATS = {
     "docx": ("docx", _DOCX_MIME, "docx"),
 }
 # Function-based writers that serialise the canonical model directly (no adapter needed).
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 _DIRECT_WRITERS = {
     "md": (model_to_markdown, "text/markdown", "md"),
     "html": (model_to_html, "text/html", "html"),
     "csv": (model_to_csv, "text/csv", "csv"),
+    "xlsx": (model_to_xlsx, _XLSX_MIME, "xlsx"),
+    "pptx": (model_to_pptx, _PPTX_MIME, "pptx"),
 }
 
 

@@ -32,6 +32,8 @@ export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFor
           onMouseLeave={() => setOpen(false)}
         >
           <MenuItem label="Word (.docx)" onClick={() => download("docx")} />
+          <MenuItem label="Excel (.xlsx)" onClick={() => download("xlsx")} />
+          <MenuItem label="PowerPoint (.pptx)" onClick={() => download("pptx")} />
           <MenuItem label="Plain text (.txt)" onClick={() => download("txt")} />
           <MenuItem label="Markdown (.md)" onClick={() => download("md")} />
           <MenuItem label="HTML (.html)" onClick={() => download("html")} />

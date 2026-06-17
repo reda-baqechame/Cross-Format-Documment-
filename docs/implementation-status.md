@@ -31,7 +31,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ DOCX / TXT / PDF (write-back) export
 - ✅ Markdown / HTML / CSV export — `writers/markup.py`
 - ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
-- ✅ Compress (PDF) — `pageops.compress_pdf` · ⬜ XLSX/PPTX export · ⬜ image export
+- ✅ Compress (PDF) — `pageops.compress_pdf`
+- ✅ XLSX / PPTX export — `writers/office.py` (every format → spreadsheet or deck) · ⬜ image export
 
 ## E. Sign & agree
 - ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`
