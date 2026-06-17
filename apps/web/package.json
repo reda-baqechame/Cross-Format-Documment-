@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3100",
-    "build": "next build",
-    "start": "next start -p 3100",
+    "build": "next build && node ./scripts/assemble-standalone.mjs",
+    "start": "node .next/standalone/apps/web/server.js",
     "lint": "next lint"
   },
   "dependencies": {
