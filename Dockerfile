@@ -59,7 +59,10 @@ RUN chmod +x /app/railway-single-service-start.sh \
     && useradd --create-home --uid 10001 app \
     && chown -R app:app /app
 
-USER app
+# Run as root so a Railway volume mounted at /app/data (which mounts root-owned) is
+# writable; the entrypoint fixes ownership of the data dir on boot. Running as root is
+# standard for Railway single-service containers and avoids the volume-permission crash
+# that kills SQLite/local-blob startup under a non-root user.
 
 EXPOSE 3000
 
