@@ -1,4 +1,27 @@
-# Railway deployment (two services: API + Web)
+# Railway deployment
+
+There are two supported topologies. **Most deployments should use single-service** (below); the two-service split further down is optional.
+
+## Single-service deploy (recommended, fully automatic)
+
+Deploy **one service** from the repo root. The root [`Dockerfile`](../Dockerfile) bundles the API and the web server into one image; [`scripts/railway-single-service-start.sh`](../scripts/railway-single-service-start.sh) runs DB migrations, starts the API on `127.0.0.1:8000`, and starts the web server on `$PORT`. The web app proxies `/api/*` to the in-container API, so `API_PROXY_TARGET=http://127.0.0.1:8000` is correct — there is no separate API service to point at.
+
+[`railway.json`](../railway.json) at the repo root pins all of this as **config-as-code**, which **always overrides the dashboard**. Every GitHub push redeploys correctly with no manual dashboard changes:
+
+```json
+{
+  "build":  { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "deploy": { "startCommand": "/app/railway-single-service-start.sh", "healthcheckPath": "/api/health" }
+}
+```
+
+> ⚠️ **Do NOT set a Custom Start Command in the Railway dashboard.** A leftover `pnpm --filter @docos/web start` overrides the Dockerfile and crashes the container with `The executable 'pnpm' could not be found` (the runtime image has no pnpm). `railway.json` now forces the correct start command, so leave the dashboard field empty. If one was set previously, clear it once: **Settings → Deploy → Custom Start Command → Remove**.
+
+Only variable worth setting for real use: an LLM key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`). For data that survives redeploys, mount a Railway **volume** at `/app/data` (SQLite DB + local blobs live there).
+
+---
+
+## Two services: API + Web (optional)
 
 Deploy **two Railway services** from this repo. The browser only talks to **Web**; Web proxies `/api/*` to **API** over Railway private networking.
 
