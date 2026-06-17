@@ -99,8 +99,12 @@ natural-language instructions (LLM tool-use → validated patch ops; determinist
 rich-formatting toolbar (bold/italic/underline) that rides the same patch pipeline. **Download**
 from any source format as DOCX, XLSX, PPTX, PNG, Markdown, HTML, CSV or TXT — or as a **PDF with
 edits and redactions burned in**.
-**Trust**: metadata sanitization, true redaction on export, tamper-evident e-signature, and the
-document-health panel. **Infra**: local or S3 blob storage, document CRUD, Alembic migrations.
+**Review** with comment threads anchored to any node (reply / resolve, versioned like every edit).
+**Ask** a single question across your whole library — the multi-document notebook answers with
+citations that link back to the source document — and **find** documents by relevance with semantic
+(TF-IDF) search, all offline. **Trust**: metadata sanitization, true redaction on export,
+tamper-evident e-signature, and the document-health panel. **Infra**: local or S3 blob storage,
+document CRUD, Alembic migrations.
 
 Remaining extension points: faithful PDF text reflow/font-matching (edits are written back in
 place today), and the ClamAV scanner / production microVM sandbox seams. See

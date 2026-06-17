@@ -26,8 +26,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
 - ✅ Rich formatting (bold/italic/underline) — toolbar over `update_node` — `components/canvas/FormatToolbar`
    · 🟡 size/color (model + writers support them; no UI control yet)
+- ✅ Comment threads UI (anchored to nodes, reply/resolve, versioned) — `services/collab/comments.py`, `components/canvas/CommentsPanel`
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- ⬜ Comments/track-changes UI · ⬜ Templates & styles library · ⬜ Slide/spreadsheet editing UX
+- ⬜ Track-changes (suggest mode) · ⬜ Templates & styles library · ⬜ Slide/spreadsheet editing UX
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
@@ -53,21 +54,23 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## G. Compare, review & collaborate
 - ✅ Version DAG + audit log
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
+- ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
 - 🔒 Real-time presence / shareable links with live perms — collaboration infra
-- ⬜ Comment threads · ⬜ Approvals
+- ⬜ Approval workflows
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
 - ✅ Extract structured data on request — `services/semantic/extract.py`
-- ✅ Translate (LLM-backed) · ⬜ Multi-document "notebook"
+- ✅ Translate (LLM-backed)
+- ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`
 - 🔒 Doc → audio/podcast — needs a TTS service
 
 ## I. Store, find & manage
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
 - ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
+- ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`
 - 🔒 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth + creds
 - 🔒 Mobile apps — native clients
-- ⬜ Semantic search across the corpus
 
 ---
 

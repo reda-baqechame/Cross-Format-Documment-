@@ -1,4 +1,5 @@
 import { DocumentList } from "@/components/documents/DocumentList";
+import { NotebookPanel } from "@/components/documents/NotebookPanel";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 
@@ -61,6 +62,8 @@ export default function HomePage() {
             </div>
           ))}
         </section>
+
+        <NotebookPanel />
 
         <section className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">

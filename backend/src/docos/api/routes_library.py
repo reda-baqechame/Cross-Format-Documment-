@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docos.api._corpus import load_corpus
 from docos.api.schemas import (
     SearchHit,
     SearchResponse,
@@ -21,6 +22,7 @@ from docos.db.models import Document, DocumentVersion, Label
 from docos.deps import db_session
 from docos.model.serialize import from_dict
 from docos.services.docengine.writers.redaction import is_redacted
+from docos.services.semantic import corpus as corpus_service
 
 router = APIRouter(tags=["library"])
 
@@ -90,3 +92,17 @@ def search(
         if len(hits) >= limit:
             break
     return SearchResponse(query=q, hits=hits)
+
+
+@router.get("/search/semantic", response_model=list[corpus_service.SemanticHit])
+def semantic_search(
+    q: str = Query(..., min_length=1),
+    session: Session = Depends(db_session),
+    limit: int = Query(20, ge=1, le=100),
+) -> list[corpus_service.SemanticHit]:
+    """Relevance-ranked search across the corpus (TF-IDF cosine; offline, deterministic).
+
+    Unlike substring ``/search``, this ranks whole documents by semantic relevance, so a
+    query matches documents that discuss the topic even without the exact word.
+    """
+    return corpus_service.semantic_search(load_corpus(session), q, limit=limit)
