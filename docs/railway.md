@@ -63,6 +63,12 @@ Migrations run automatically on container start (`docker-entrypoint.sh`).
 
 Replace `api` with your **API service name** in Railway.
 
+> ⚠️ **Do not accept Railway's "Suggested Variables" default of `API_PROXY_TARGET=http://localhost:8000`.**
+> Inside the Web container `localhost` is the Web service itself, not the API — the site
+> will load but every `/api/*` call fails ("Backend not connected"). Always set it to the
+> API's private host as shown above. (In production the Web server logs a warning if this
+> is left pointing at localhost.)
+
 **Alternative** (if you prefer split vars):
 
 | Variable | Value |
