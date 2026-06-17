@@ -10,6 +10,12 @@ opportunity report and ships a thin, runnable vertical slice (upload → canonic
 model-driven UI + document-health panel) for TXT, DOCX and PDF. Every other format and service is a
 clearly marked, pluggable extension point.
 
+> **Contributing or picking this up (human or AI agent)?** Start with
+> [`CLAUDE.md`](CLAUDE.md) — the handoff guide (verified dev/test commands, core invariants, and
+> the recipe for adding a capability) — then
+> [`docs/implementation-status.md`](docs/implementation-status.md) for where we left off and
+> what's next.
+
 ## Why this exists
 
 The document market is fragmented by file type and by trust requirement: native suites own
