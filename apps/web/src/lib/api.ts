@@ -253,6 +253,172 @@ export async function searchDocuments(query: string): Promise<SearchResponse> {
   return json<SearchResponse>(await fetch(`${BASE}/search?q=${encodeURIComponent(query)}`));
 }
 
+export interface SemanticHit {
+  doc_id: string;
+  title: string | null;
+  score: number;
+  snippet: string;
+}
+
+/** Relevance-ranked semantic search across the corpus (TF-IDF cosine). */
+export async function semanticSearch(query: string): Promise<SemanticHit[]> {
+  return json<SemanticHit[]>(await fetch(`${BASE}/search/semantic?q=${encodeURIComponent(query)}`));
+}
+
+export interface NotebookCitation {
+  doc_id: string;
+  title: string | null;
+  node_id: string;
+  excerpt: string;
+}
+
+export interface NotebookResponse {
+  question: string;
+  answer: string;
+  citations: NotebookCitation[];
+  used_llm: boolean;
+  document_count: number;
+}
+
+/** Ask one question across every document (or a chosen subset), with cited sources. */
+export async function notebookAsk(
+  question: string,
+  docIds?: string[],
+): Promise<NotebookResponse> {
+  return json<NotebookResponse>(
+    await fetch(`${BASE}/notebook/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, doc_ids: docIds ?? null }),
+    }),
+  );
+}
+
+// ── Comment threads ──────────────────────────────────────────────────────────
+export interface CommentThread {
+  id: string;
+  target_id: string | null;
+  author: string | null;
+  text: string;
+  resolved: boolean;
+  created_at: string | null;
+  replies: CommentThread[];
+}
+
+interface CommentsPayload {
+  doc_id: string;
+  threads: CommentThread[];
+}
+
+export async function listComments(docId: string): Promise<CommentThread[]> {
+  const res = await json<CommentsPayload>(await fetch(`${BASE}/documents/${docId}/comments`));
+  return res.threads;
+}
+
+export async function addComment(
+  docId: string,
+  text: string,
+  targetId?: string | null,
+  author?: string,
+): Promise<CommentThread[]> {
+  const res = await json<CommentsPayload>(
+    await fetch(`${BASE}/documents/${docId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, target_id: targetId ?? null, author: author ?? null }),
+    }),
+  );
+  return res.threads;
+}
+
+export async function replyToComment(
+  docId: string,
+  commentId: string,
+  text: string,
+  author?: string,
+): Promise<CommentThread[]> {
+  const res = await json<CommentsPayload>(
+    await fetch(`${BASE}/documents/${docId}/comments/${commentId}/replies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, author: author ?? null }),
+    }),
+  );
+  return res.threads;
+}
+
+export async function resolveComment(
+  docId: string,
+  commentId: string,
+  resolved: boolean,
+): Promise<CommentThread[]> {
+  const res = await json<CommentsPayload>(
+    await fetch(`${BASE}/documents/${docId}/comments/${commentId}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolved }),
+    }),
+  );
+  return res.threads;
+}
+
+export async function deleteComment(docId: string, commentId: string): Promise<CommentThread[]> {
+  const res = await json<CommentsPayload>(
+    await fetch(`${BASE}/documents/${docId}/comments/${commentId}`, { method: "DELETE" }),
+  );
+  return res.threads;
+}
+
+// ── Approval / multi-party signing workflow ──────────────────────────────────
+export interface ApprovalStepView {
+  approver: string;
+  order_index: number;
+  status: "pending" | "approved" | "rejected";
+  note: string | null;
+}
+
+export interface WorkflowStatus {
+  doc_id: string;
+  workflow_id: string | null;
+  state: "none" | "in_progress" | "approved" | "rejected";
+  ordered: boolean;
+  steps: ApprovalStepView[];
+  current_approvers: string[];
+}
+
+export async function getApprovals(docId: string): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(await fetch(`${BASE}/documents/${docId}/approvals`));
+}
+
+export async function startApprovals(
+  docId: string,
+  approvers: string[],
+  ordered: boolean,
+): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(
+    await fetch(`${BASE}/documents/${docId}/approvals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvers, ordered }),
+    }),
+  );
+}
+
+export async function decideApproval(
+  docId: string,
+  approver: string,
+  decision: "approve" | "reject",
+  note?: string,
+): Promise<WorkflowStatus> {
+  return json<WorkflowStatus>(
+    await fetch(`${BASE}/documents/${docId}/approvals/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approver, decision, note: note ?? null }),
+    }),
+  );
+}
+
 /** Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch. */
 export async function remediateAccessibility(docId: string): Promise<PatchResponse> {
   return json<PatchResponse>(

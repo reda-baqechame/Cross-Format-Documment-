@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { AiEditBar } from "@/components/canvas/AiEditBar";
+import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { AskPanel } from "@/components/canvas/AskPanel";
+import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { FormatToolbar } from "@/components/canvas/FormatToolbar";
@@ -19,6 +21,10 @@ export default function DocumentPage() {
   const docId = params.id;
   const panelOpen = useWorkspace((s) => s.panelOpen);
   const togglePanel = useWorkspace((s) => s.togglePanel);
+  const commentsOpen = useWorkspace((s) => s.commentsOpen);
+  const toggleComments = useWorkspace((s) => s.toggleComments);
+  const approvalsOpen = useWorkspace((s) => s.approvalsOpen);
+  const toggleApprovals = useWorkspace((s) => s.toggleApprovals);
 
   const model = useQuery({ queryKey: ["model", docId], queryFn: () => fetchModel(docId) });
   const health = useQuery({ queryKey: ["health", docId], queryFn: () => fetchHealth(docId) });
@@ -44,6 +50,12 @@ export default function DocumentPage() {
           <AiEditBar docId={docId} />
           <ToolsMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
           <DownloadMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
+          <button onClick={toggleComments} className="text-sm text-slate-500 hover:underline">
+            {commentsOpen ? "Hide" : "Show"} comments
+          </button>
+          <button onClick={toggleApprovals} className="text-sm text-slate-500 hover:underline">
+            {approvalsOpen ? "Hide" : "Show"} approvals
+          </button>
           <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
             {panelOpen ? "Hide" : "Show"} health
           </button>
@@ -67,6 +79,8 @@ export default function DocumentPage() {
           )}
         </main>
 
+        {commentsOpen && <CommentsPanel docId={docId} />}
+        {approvalsOpen && <ApprovalsPanel docId={docId} />}
         {panelOpen && health.data && <HealthPanel health={health.data.health} docId={docId} />}
       </div>
     </div>

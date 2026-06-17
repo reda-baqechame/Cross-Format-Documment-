@@ -14,12 +14,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from docos.api import (
+    routes_approvals,
+    routes_comments,
     routes_documents,
     routes_export,
     routes_forms,
     routes_health,
     routes_health_panel,
     routes_library,
+    routes_notebook,
     routes_pages,
     routes_patches,
     routes_query,
@@ -64,6 +67,9 @@ def create_app() -> FastAPI:
     app.include_router(routes_library.router)
     app.include_router(routes_forms.router)
     app.include_router(routes_export.router)
+    app.include_router(routes_comments.router)
+    app.include_router(routes_notebook.router)
+    app.include_router(routes_approvals.router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",
