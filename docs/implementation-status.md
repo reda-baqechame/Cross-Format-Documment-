@@ -18,17 +18,19 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Parse to structured model (nodes, reading order, tables)
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
-- ✅ Document classification — `services/semantic/classify.py` · ⬜ Searchable-PDF generation
+- ✅ Document classification — `services/semantic/classify.py`
+- ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
 - ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
-- ✅ Rich formatting (bold/italic/underline) — toolbar over `update_node` — `components/canvas/FormatToolbar`
-   · 🟡 size/color (model + writers support them; no UI control yet)
+- ✅ Rich formatting (bold/italic/underline/size/color) — toolbar over `update_node` — `components/canvas/FormatToolbar`
 - ✅ Comment threads UI (anchored to nodes, reply/resolve, versioned) — `services/collab/comments.py`, `components/canvas/CommentsPanel`
+- ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
+- ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py`
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- ⬜ Track-changes (suggest mode) · ⬜ Templates & styles library · ⬜ Slide/spreadsheet editing UX
+- ⬜ Slide/spreadsheet editing UX
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
@@ -40,9 +42,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## E. Sign & agree
 - ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`
 - ✅ Approval / multi-party sign-off workflow (ordered or parallel, audited) — `routes_approvals.py`, `services/collab/approvals.py`
+- ✅ Bulk send (one packet to many recipients; per-recipient copy + sign-off) — `routes_bulk_send.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
   payments — needs a certificate authority / regulated signing & KYC provider
-- ⬜ Bulk send (one packet to many recipients) · ⬜ Full CLM (clause library, renewals)
+- ⬜ Full CLM (clause library, renewals)
 
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel

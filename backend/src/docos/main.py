@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from docos.api import (
     routes_approvals,
+    routes_bulk_send,
     routes_comments,
     routes_documents,
     routes_export,
@@ -26,6 +27,8 @@ from docos.api import (
     routes_pages,
     routes_patches,
     routes_query,
+    routes_suggestions,
+    routes_templates,
 )
 from docos.settings import get_settings
 
@@ -70,6 +73,9 @@ def create_app() -> FastAPI:
     app.include_router(routes_comments.router)
     app.include_router(routes_notebook.router)
     app.include_router(routes_approvals.router)
+    app.include_router(routes_templates.router)
+    app.include_router(routes_suggestions.router)
+    app.include_router(routes_bulk_send.router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",

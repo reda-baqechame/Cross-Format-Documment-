@@ -25,6 +25,7 @@ from docos.services.docengine.writers.markup import (
     model_to_markdown,
 )
 from docos.services.docengine.writers.pptx_writer import model_to_pptx
+from docos.services.docengine.writers.searchable_pdf import model_to_searchable_pdf
 from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
 from docos.storage.blob import BlobStore
 
@@ -110,6 +111,44 @@ async def _export_pdf(doc_id: str, session: Session, blob_store: BlobStore) -> R
     )
     session.commit()
     filename = f"{_safe_filename(record.title, doc_id)}.pdf"
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{doc_id}/searchable-pdf")
+async def searchable_pdf(
+    doc_id: str,
+    session: Session = Depends(db_session),
+    blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
+) -> Response:
+    """Produce a searchable PDF: scans get an invisible OCR text layer over the page
+    image; every other format becomes a clean, born-digital selectable-text PDF."""
+    record, doc = _load_latest(session, doc_id)
+    page_images: dict[int, bytes] = {}
+
+    if record.source_format == "image" and record.blob_key:
+        page_images[0] = await blob_store.get(record.blob_key)
+    elif record.source_format == "pdf" and record.blob_key:
+        original = await blob_store.get(record.blob_key)
+        adapter = registry.resolve_by_format("pdf")
+        page_count = sum(1 for n in doc.children_of(doc.root_id) if n.type == "page")
+        for i in range(page_count):
+            try:
+                page_images[i] = adapter.render_preview_bytes(original, page=i)  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001 - fall back to born-digital text for that page
+                continue
+
+    data = model_to_searchable_pdf(doc, page_images)
+
+    get_provenance(session).record_event(
+        doc_id, "document.exported", actor="api", detail={"format": "searchable-pdf"}
+    )
+    session.commit()
+    filename = f"{_safe_filename(record.title, doc_id)}_searchable.pdf"
     return Response(
         content=data,
         media_type="application/pdf",

@@ -18,13 +18,21 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
   const isRun = node?.type === "run";
 
   const toggle = useMutation({
-    mutationFn: (changes: { bold?: boolean; italic?: boolean; underline?: boolean }) =>
-      formatRun(docId, selectedId!, changes),
+    mutationFn: (changes: {
+      bold?: boolean;
+      italic?: boolean;
+      underline?: boolean;
+      size?: number | null;
+      color?: string | null;
+    }) => formatRun(docId, selectedId!, changes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["model", docId] });
       queryClient.invalidateQueries({ queryKey: ["health", docId] });
     },
   });
+
+  const runSize = isRun ? (node as { size?: number | null }).size : undefined;
+  const runColor = isRun ? (node as { color?: string | null }).color : undefined;
 
   const btn = (active: boolean | undefined) =>
     [
@@ -68,6 +76,34 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
       >
         U
       </button>
+
+      <span className="mx-0.5 h-5 w-px bg-slate-200" aria-hidden />
+
+      <input
+        type="number"
+        min={6}
+        max={96}
+        step={1}
+        disabled={!isRun || toggle.isPending}
+        value={runSize ?? ""}
+        placeholder="pt"
+        onChange={(e) => {
+          const v = e.target.value.trim();
+          toggle.mutate({ size: v === "" ? null : Number(v) });
+        }}
+        className="h-7 w-12 rounded border border-slate-300 px-1 text-center text-sm disabled:cursor-not-allowed disabled:opacity-40"
+        title={isRun ? "Font size (points)" : "Select text to set its size"}
+        aria-label="Font size"
+      />
+      <input
+        type="color"
+        disabled={!isRun || toggle.isPending}
+        value={runColor ?? "#0f172a"}
+        onChange={(e) => toggle.mutate({ color: e.target.value })}
+        className="h-7 w-7 cursor-pointer rounded border border-slate-300 p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+        title={isRun ? "Text color" : "Select text to set its color"}
+        aria-label="Text color"
+      />
     </div>
   );
 }

@@ -69,11 +69,17 @@ export function setRunText(docId: string, nodeId: string, text: string): Promise
   return submitPatch(docId, { ops: [{ op: "set_text", target_id: nodeId, payload: { text } }] });
 }
 
-/** Convenience: toggle rich formatting on a run (bold/italic/underline/…). */
+/** Convenience: set rich formatting on a run (bold/italic/underline/size/color/…). */
 export function formatRun(
   docId: string,
   nodeId: string,
-  changes: { bold?: boolean; italic?: boolean; underline?: boolean },
+  changes: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    size?: number | null;
+    color?: string | null;
+  },
 ): Promise<PatchResponse> {
   return submitPatch(docId, {
     ops: [{ op: "update_node", target_id: nodeId, payload: changes }],
@@ -548,3 +554,141 @@ export const compressPdf = (docId: string) => pdfTool(docId, "compress");
 export const protectPdf = (docId: string, password: string) =>
   pdfTool(docId, "protect", { password });
 export const watermarkPdf = (docId: string, text: string) => pdfTool(docId, "watermark", { text });
+
+/** Generate a searchable PDF (invisible OCR layer for scans; selectable text otherwise). */
+export async function downloadSearchablePdf(docId: string, filename?: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}/searchable-pdf`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  triggerDownload(await res.blob(), filename ?? `${docId}_searchable.pdf`);
+}
+
+// ── Templates & styles library ────────────────────────────────────────────────
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  source_format: string;
+  created_at: string;
+}
+
+export async function listTemplates(): Promise<TemplateSummary[]> {
+  const res = await json<{ templates: TemplateSummary[] }>(await fetch(`${BASE}/templates`));
+  return res.templates;
+}
+
+export async function saveAsTemplate(
+  docId: string,
+  name: string,
+  description?: string,
+): Promise<TemplateSummary> {
+  return json<TemplateSummary>(
+    await fetch(`${BASE}/documents/${docId}/save-as-template`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description: description ?? null }),
+    }),
+  );
+}
+
+export async function instantiateTemplate(
+  templateId: string,
+  title?: string,
+): Promise<{ doc_id: string; version_id: string; template_id: string }> {
+  return json(
+    await fetch(`${BASE}/templates/${templateId}/instantiate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title ?? null }),
+    }),
+  );
+}
+
+export async function deleteTemplate(templateId: string): Promise<void> {
+  const res = await fetch(`${BASE}/templates/${templateId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+// ── Track-changes / suggest mode ──────────────────────────────────────────────
+export interface SuggestionView {
+  id: string;
+  doc_id: string;
+  author: string | null;
+  intent: string | null;
+  status: "pending" | "accepted" | "rejected";
+  op_count: number;
+  new_version_id: string | null;
+  created_at: string;
+  decided_at: string | null;
+}
+
+export async function listSuggestions(
+  docId: string,
+  status?: "pending" | "accepted" | "rejected",
+): Promise<SuggestionView[]> {
+  const q = status ? `?status=${status}` : "";
+  const res = await json<{ doc_id: string; suggestions: SuggestionView[] }>(
+    await fetch(`${BASE}/documents/${docId}/suggestions${q}`),
+  );
+  return res.suggestions;
+}
+
+export async function suggestEdit(
+  docId: string,
+  ops: PatchRequest["ops"],
+  opts?: { intent?: string; author?: string },
+): Promise<SuggestionView> {
+  return json<SuggestionView>(
+    await fetch(`${BASE}/documents/${docId}/suggestions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ops, intent: opts?.intent ?? null, author: opts?.author ?? null }),
+    }),
+  );
+}
+
+export async function decideSuggestion(
+  docId: string,
+  suggestionId: string,
+  decision: "accept" | "reject",
+): Promise<SuggestionView> {
+  return json<SuggestionView>(
+    await fetch(`${BASE}/documents/${docId}/suggestions/${suggestionId}/${decision}`, {
+      method: "POST",
+    }),
+  );
+}
+
+// ── Bulk send (one packet to many recipients) ─────────────────────────────────
+export interface BulkSendPacketView {
+  recipient: string;
+  packet_doc_id: string;
+  state: string;
+}
+
+export interface BulkSendBatch {
+  batch_id: string;
+  source_doc_id: string;
+  message: string | null;
+  packets: BulkSendPacketView[];
+}
+
+export async function bulkSend(
+  docId: string,
+  recipients: string[],
+  message?: string,
+): Promise<BulkSendBatch> {
+  return json<BulkSendBatch>(
+    await fetch(`${BASE}/documents/${docId}/bulk-send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipients, message: message ?? null }),
+    }),
+  );
+}
+
+export async function listBulkSends(docId: string): Promise<BulkSendBatch[]> {
+  const res = await json<{ source_doc_id: string; batches: BulkSendBatch[] }>(
+    await fetch(`${BASE}/documents/${docId}/bulk-send`),
+  );
+  return res.batches;
+}

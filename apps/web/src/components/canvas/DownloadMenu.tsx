@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { downloadExport, type ExportFormat } from "@/lib/api";
+import { downloadExport, downloadSearchablePdf, type ExportFormat } from "@/lib/api";
 import { useDismissOnOutside } from "@/lib/useDismiss";
 import { friendlyApiError } from "@/lib/upload";
 
@@ -21,22 +21,24 @@ const FORMATS: { format: ExportFormat; label: string; show?: (sf?: string) => bo
 /** Download the current document — rebuilt from the canonical model — in any format. */
 export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFormat?: string }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState<ExportFormat | null>(null);
+  const [busy, setBusy] = useState<ExportFormat | "searchable" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ref = useDismissOnOutside(open, () => setOpen(false));
 
-  async function download(format: ExportFormat) {
+  async function run(label: ExportFormat | "searchable", fn: () => Promise<void>) {
     setOpen(false);
-    setBusy(format);
+    setBusy(label);
     setError(null);
     try {
-      await downloadExport(docId, format);
+      await fn();
     } catch (e) {
       setError(friendlyApiError(e, "Export failed."));
     } finally {
       setBusy(null);
     }
   }
+
+  const download = (format: ExportFormat) => run(format, () => downloadExport(docId, format));
 
   return (
     <div className="relative" ref={ref}>
@@ -71,6 +73,15 @@ export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFor
               {f.label}
             </button>
           ))}
+          <div className="my-1 border-t border-slate-100" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void run("searchable", () => downloadSearchablePdf(docId))}
+            className="block min-h-[44px] w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+          >
+            Searchable PDF (OCR layer)
+          </button>
         </div>
       )}
     </div>

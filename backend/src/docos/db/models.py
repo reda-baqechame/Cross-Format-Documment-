@@ -89,6 +89,65 @@ class ApprovalStep(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class Template(Base):
+    """A reusable document template — a stored canonical-model snapshot.
+
+    ``model`` is a serialized :class:`CanonicalDocument`; instantiating a template
+    regenerates ids into a brand-new document (see ``services/templates``). State lives
+    in its own table because a template is a library asset, not a versioned document.
+    """
+
+    __tablename__ = "templates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_doc_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_format: Mapped[str] = mapped_column(String, default="txt")
+    model: Mapped[dict] = mapped_column(JSON)  # serialized CanonicalDocument snapshot
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class SuggestedEdit(Base):
+    """A proposed (not-yet-applied) reversible patch — track-changes / suggest mode.
+
+    A suggestion stores a :class:`ReversiblePatch` payload as JSON. Accepting it runs the
+    patch through the normal apply → commit_version → audit path; rejecting it just marks
+    the row. Pending suggestions never alter the document, so review is non-destructive.
+    """
+
+    __tablename__ = "suggested_edits"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    author: Mapped[str | None] = mapped_column(String, nullable=True)
+    intent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    patch: Mapped[dict] = mapped_column(JSON)  # serialized ReversiblePatch (forward ops)
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending|accepted|rejected
+    new_version_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BulkSendPacket(Base):
+    """One recipient's copy in a bulk-send batch (one packet → many recipients).
+
+    Bulk send stamps out an independent document copy per recipient and starts a
+    single-approver workflow on each, so recipients act on their own packet without
+    seeing each other. Rows sharing a ``batch_id`` form one send.
+    """
+
+    __tablename__ = "bulk_send_packets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[str] = mapped_column(String, index=True)
+    source_doc_id: Mapped[str] = mapped_column(String, index=True)
+    recipient: Mapped[str] = mapped_column(String)
+    packet_doc_id: Mapped[str] = mapped_column(String)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class JobRecord(Base):
     __tablename__ = "jobs"
 
