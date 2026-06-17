@@ -51,6 +51,17 @@ export function setRunText(docId: string, nodeId: string, text: string): Promise
   return submitPatch(docId, { ops: [{ op: "set_text", target_id: nodeId, payload: { text } }] });
 }
 
+/** Convenience: toggle rich formatting on a run (bold/italic/underline/…). */
+export function formatRun(
+  docId: string,
+  nodeId: string,
+  changes: { bold?: boolean; italic?: boolean; underline?: boolean },
+): Promise<PatchResponse> {
+  return submitPatch(docId, {
+    ops: [{ op: "update_node", target_id: nodeId, payload: changes }],
+  });
+}
+
 /** Convenience: redact a node (true removal applied on export). */
 export function redactNode(docId: string, nodeId: string): Promise<PatchResponse> {
   return submitPatch(docId, { ops: [{ op: "redact", target_id: nodeId }] });
@@ -62,7 +73,16 @@ export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
   );
 }
 
-export type ExportFormat = "docx" | "txt" | "pdf" | "md" | "html" | "csv";
+export type ExportFormat =
+  | "docx"
+  | "txt"
+  | "pdf"
+  | "md"
+  | "html"
+  | "csv"
+  | "xlsx"
+  | "pptx"
+  | "png";
 
 export function exportUrl(docId: string, format: ExportFormat): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;

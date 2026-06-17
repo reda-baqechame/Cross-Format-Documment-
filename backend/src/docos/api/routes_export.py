@@ -18,11 +18,14 @@ from docos.db.models import Document
 from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.registry import AdapterRegistry
+from docos.services.docengine.writers.image_writer import model_to_png
 from docos.services.docengine.writers.markup import (
     model_to_csv,
     model_to_html,
     model_to_markdown,
 )
+from docos.services.docengine.writers.pptx_writer import model_to_pptx
+from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
 from docos.storage.blob import BlobStore
 
 router = APIRouter(prefix="/documents", tags=["export"])
@@ -32,11 +35,19 @@ _FORMATS = {
     "txt": ("txt", "text/plain", "txt"),
     "docx": ("docx", _DOCX_MIME, "docx"),
 }
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
 # Function-based writers that serialise the canonical model directly (no adapter needed).
+# Text writers return str; binary writers (xlsx/pptx/png) return bytes — both are fine
+# as a Response body.
 _DIRECT_WRITERS = {
     "md": (model_to_markdown, "text/markdown", "md"),
     "html": (model_to_html, "text/html", "html"),
     "csv": (model_to_csv, "text/csv", "csv"),
+    "xlsx": (model_to_xlsx, _XLSX_MIME, "xlsx"),
+    "pptx": (model_to_pptx, _PPTX_MIME, "pptx"),
+    "png": (model_to_png, "image/png", "png"),
 }
 
 

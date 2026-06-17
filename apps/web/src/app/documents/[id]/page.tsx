@@ -8,6 +8,7 @@ import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { AskPanel } from "@/components/canvas/AskPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
+import { FormatToolbar } from "@/components/canvas/FormatToolbar";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
@@ -39,6 +40,7 @@ export default function DocumentPage() {
           )}
         </div>
         <div className="flex items-center gap-4">
+          {model.data && <FormatToolbar doc={model.data.document} docId={docId} />}
           <AiEditBar docId={docId} />
           <ToolsMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
           <DownloadMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
@@ -47,6 +49,11 @@ export default function DocumentPage() {
           </button>
         </div>
       </header>
+
+      <div className="border-b border-slate-200 bg-blue-50/60 px-6 py-1.5 text-center text-xs text-slate-500">
+        Tip: double-click any text to edit it · ask AI to make changes · use Tools to protect or
+        classify · then Download in any format
+      </div>
 
       <div className="flex flex-1">
         <main className="flex-1 overflow-auto bg-slate-100 p-8">

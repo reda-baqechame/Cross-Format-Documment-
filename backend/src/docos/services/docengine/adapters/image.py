@@ -132,4 +132,6 @@ class ImageAdapter(FormatAdapter):
         raise NotImplementedError("ImageAdapter.render_preview — original bytes serve as preview")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("ImageAdapter.export — download as DOCX/TXT from the model")
+        from docos.services.docengine.writers.image_writer import model_to_png
+
+        return model_to_png(doc)

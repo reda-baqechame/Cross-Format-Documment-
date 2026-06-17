@@ -54,3 +54,34 @@ def test_unknown_format_rejected(client):
         "doc_id"
     ]
     assert client.get(f"/documents/{doc_id}/export", params={"format": "xyz"}).status_code == 400
+
+
+def test_export_spreadsheet_as_xlsx(client, sample_xlsx_bytes):
+    xlsx_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    doc_id = client.post(
+        "/documents", files={"file": ("d.xlsx", io.BytesIO(sample_xlsx_bytes), xlsx_mime)}
+    ).json()["doc_id"]
+    out = client.get(f"/documents/{doc_id}/export", params={"format": "xlsx"})
+    assert out.status_code == 200
+    assert out.headers["content-type"].startswith(xlsx_mime)
+    assert out.content[:2] == b"PK"  # a real OOXML (zip) container
+
+
+def test_export_any_doc_as_pptx(client, sample_docx_bytes):
+    docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    doc_id = client.post(
+        "/documents", files={"file": ("d.docx", io.BytesIO(sample_docx_bytes), docx_mime)}
+    ).json()["doc_id"]
+    out = client.get(f"/documents/{doc_id}/export", params={"format": "pptx"})
+    assert out.status_code == 200
+    assert out.content[:2] == b"PK"
+
+
+def test_export_any_doc_as_png(client):
+    doc_id = client.post(
+        "/documents", files={"file": ("d.txt", b"Render me to an image", "text/plain")}
+    ).json()["doc_id"]
+    out = client.get(f"/documents/{doc_id}/export", params={"format": "png"})
+    assert out.status_code == 200
+    assert out.headers["content-type"].startswith("image/png")
+    assert out.content[:8] == b"\x89PNG\r\n\x1a\n"

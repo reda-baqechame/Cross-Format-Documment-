@@ -16,13 +16,16 @@ export function DocumentList() {
 
   if (docs.isLoading) return <p className="text-sm text-slate-500">Loading documents…</p>;
   const documents = docs.data?.documents ?? [];
-  if (documents.length === 0) return null;
+  if (documents.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+        No documents yet. Drop your first file above to get started.
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Recent documents
-      </h2>
       <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
         {documents.map((d) => (
           <li key={d.doc_id} className="flex items-center justify-between px-4 py-3">
