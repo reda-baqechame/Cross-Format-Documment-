@@ -8,10 +8,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## A. Capture & ingest
 - ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/image (magic-byte validated) — `services/ingestion`
+- ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - 🟡 OCR scans (Tesseract best-effort) — `services/ocr` structure extraction still a stub
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
 - 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
-- ⬜ Handwriting OCR · ⬜ Bulk/folder import
+- ⬜ Handwriting OCR
 
 ## B. Understand it (OCR, IDP, structure)
 - ✅ Parse to structured model (nodes, reading order, tables)
@@ -23,15 +24,17 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
 - ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
-- 🟡 Rich formatting (bold/italic/size/color)
+- ✅ Rich formatting (bold/italic/underline) — toolbar over `update_node` — `components/canvas/FormatToolbar`
+   · 🟡 size/color (model + writers support them; no UI control yet)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
 - ⬜ Comments/track-changes UI · ⬜ Templates & styles library · ⬜ Slide/spreadsheet editing UX
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
 - ✅ Markdown / HTML / CSV export — `writers/markup.py`
+- ✅ XLSX / PPTX / PNG export from any source format — `writers/{xlsx,pptx,image}_writer.py`
 - ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
-- ✅ Compress (PDF) — `pageops.compress_pdf` · ⬜ XLSX/PPTX export · ⬜ image export
+- ✅ Compress (PDF) — `pageops.compress_pdf`
 
 ## E. Sign & agree
 - ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`

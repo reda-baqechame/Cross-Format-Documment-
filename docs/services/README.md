@@ -6,7 +6,7 @@ Implementations are pluggable; the privacy mode and settings decide which are wi
 | Service | Interface | Functional today | Stubbed extension points |
 |---|---|---|---|
 | Ingestion & safety | `IngestionGateway` | allow-list, magic-byte sniff, noop scan, local staging | `ClamAVScanner`, real `Sandbox` |
-| Document engine | `FormatAdapter` | `TxtAdapter`, `DocxAdapter` (parse) | PDF/XLSX/PPTX/RTF/image adapters; previews; exporters |
+| Document engine | `FormatAdapter` | parse for all formats; DOCX/XLSX/PPTX/PNG/MD/HTML/CSV/PDF export | RTF export; faithful PDF text-reflow on write-back; in-engine previews |
 | OCR & structure | `OcrStructureService` | — | `TesseractOcr` cleanup/recognize/tables/reading-order |
 | Semantic orchestration | `SemanticOrchestrator` | `apply`/`revert` patches; noop `interpret` | OpenAI/Anthropic `LLMClient`, real intent→patch planning |
 | Provenance & policy | `ProvenancePolicyService` | versions, audit, labels, health, metadata-sanitize patch | richer policy engine, signature verification |

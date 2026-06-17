@@ -107,4 +107,6 @@ class PptxAdapter(FormatAdapter):
         raise NotImplementedError("PptxAdapter.render_preview — slides render in the canvas")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("PptxAdapter.export — download as DOCX/TXT from the model")
+        from docos.services.docengine.writers.pptx_writer import model_to_pptx
+
+        return model_to_pptx(doc)

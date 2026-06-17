@@ -95,8 +95,10 @@ drift, and typechecks/builds the web app on every push.
 **Open** TXT, DOCX, PDF, XLSX, PPTX, RTF, and images (best-effort OCR when Tesseract has language
 data) into one canonical model. **Edit** inline, via explicit deterministic ops, or with AI
 natural-language instructions (LLM tool-use → validated patch ops; deterministic no-op offline).
-**Save** every change as a versioned, audited, reversible patch — with one-click undo. **Download**
-as TXT or DOCX from any source format, or as a **PDF with edits and redactions burned in**.
+**Save** every change as a versioned, audited, reversible patch — with one-click undo, plus a
+rich-formatting toolbar (bold/italic/underline) that rides the same patch pipeline. **Download**
+from any source format as DOCX, XLSX, PPTX, PNG, Markdown, HTML, CSV or TXT — or as a **PDF with
+edits and redactions burned in**.
 **Trust**: metadata sanitization, true redaction on export, tamper-evident e-signature, and the
 document-health panel. **Infra**: local or S3 blob storage, document CRUD, Alembic migrations.
 

@@ -8,6 +8,7 @@ import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { AskPanel } from "@/components/canvas/AskPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
+import { FormatToolbar } from "@/components/canvas/FormatToolbar";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
@@ -39,6 +40,7 @@ export default function DocumentPage() {
           )}
         </div>
         <div className="flex items-center gap-4">
+          {model.data && <FormatToolbar doc={model.data.document} docId={docId} />}
           <AiEditBar docId={docId} />
           <ToolsMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
           <DownloadMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />

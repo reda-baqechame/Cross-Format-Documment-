@@ -103,4 +103,6 @@ class XlsxAdapter(FormatAdapter):
         raise NotImplementedError("XlsxAdapter.render_preview — sheets render in the canvas")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("XlsxAdapter.export — download as DOCX/TXT from the model")
+        from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
+
+        return model_to_xlsx(doc)
