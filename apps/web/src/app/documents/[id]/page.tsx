@@ -48,6 +48,11 @@ export default function DocumentPage() {
         </div>
       </header>
 
+      <div className="border-b border-slate-200 bg-blue-50/60 px-6 py-1.5 text-center text-xs text-slate-500">
+        Tip: double-click any text to edit it · ask AI to make changes · use Tools to protect or
+        classify · then Download in any format
+      </div>
+
       <div className="flex flex-1">
         <main className="flex-1 overflow-auto bg-slate-100 p-8">
           {model.isLoading && <p className="text-slate-500">Loading model…</p>}

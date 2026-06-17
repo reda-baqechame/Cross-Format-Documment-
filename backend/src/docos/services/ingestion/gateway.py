@@ -38,11 +38,23 @@ class IngestionGatewayImpl(IngestionGateway):
         self.scanner = scanner or NoopScanner()
 
     async def validate(self, filename: str, data: bytes) -> IngestResult:
+        if not data:
+            return IngestResult(ok=False, mime="", reason="the file is empty")
         if len(data) > self.max_bytes:
-            return IngestResult(ok=False, mime="", reason="file exceeds size limit")
+            max_mb = self.max_bytes // (1024 * 1024)
+            return IngestResult(
+                ok=False, mime="", reason=f"the file is too large (max {max_mb} MB)"
+            )
         mime = sniff_mime(filename, data)
         if not is_allowed(mime, self.allowed_mimes):
-            return IngestResult(ok=False, mime=mime, reason=f"mime not allowed: {mime}")
+            return IngestResult(
+                ok=False,
+                mime=mime,
+                reason=(
+                    "this file type isn't supported yet — try PDF, Word, Excel, "
+                    "PowerPoint, RTF, an image, or plain text"
+                ),
+            )
         return IngestResult(ok=True, mime=mime, detected_format=_FORMAT_BY_MIME.get(mime))
 
     async def scan(self, data: bytes) -> ScanResult:
