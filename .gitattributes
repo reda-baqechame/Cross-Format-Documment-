@@ -1,0 +1,6 @@
+# Shell scripts and Dockerfiles must use LF — CRLF breaks execution in Linux containers
+# (e.g. "/usr/bin/env: 'sh\r': No such file or directory").
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+docker-entrypoint.sh text eol=lf
