@@ -121,6 +121,20 @@ function RunSpan({
   const redacted = isRedacted(doc, node.id);
   const canEdit = doc.permissions?.can_edit ?? true;
   const editing = editingNodeId === node.id;
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLongPress = () => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  };
+
+  const startLongPress = () => {
+    if (!canEdit) return;
+    clearLongPress();
+    longPressRef.current = setTimeout(() => setEditing(node.id), 450);
+  };
 
   if (redacted) {
     return (
@@ -155,6 +169,15 @@ function RunSpan({
     <span
       onClick={() => select(node.id)}
       onDoubleClick={() => canEdit && setEditing(node.id)}
+      onTouchStart={startLongPress}
+      onTouchEnd={clearLongPress}
+      onTouchMove={clearLongPress}
+      onContextMenu={(e) => {
+        if (canEdit) {
+          e.preventDefault();
+          setEditing(node.id);
+        }
+      }}
       className={[
         node.bold ? "font-bold" : "",
         node.italic ? "italic" : "",
@@ -162,7 +185,7 @@ function RunSpan({
         selected ? "bg-yellow-100" : "",
         canEdit ? "cursor-text" : "cursor-default",
       ].join(" ")}
-      title={canEdit ? "Double-click to edit" : undefined}
+      title={canEdit ? "Double-click or long-press to edit" : undefined}
     >
       {node.text}
     </span>
@@ -247,7 +270,7 @@ function RunOverlay({ doc, node }: { doc: CanonicalDocument; node: DocNode }) {
   return (
     <span
       onClick={() => select(node.id)}
-      title={redacted ? "Redacted — removed from exports" : "Click to select"}
+      title={redacted ? "Redacted — removed from exports" : "Tap to select · use Trust panel to redact"}
       style={style}
       className={[
         "absolute cursor-pointer",

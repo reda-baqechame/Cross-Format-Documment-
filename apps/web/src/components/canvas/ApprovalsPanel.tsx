@@ -28,6 +28,7 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
   const queryClient = useQueryClient();
   const [names, setNames] = useState("");
   const [ordered, setOrdered] = useState(true);
+  const [showNewForm, setShowNewForm] = useState(false);
 
   const workflow = useQuery({ queryKey: ["approvals", docId], queryFn: () => getApprovals(docId) });
   const set = (w: WorkflowStatus) => queryClient.setQueryData(["approvals", docId], w);
@@ -42,6 +43,7 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
     onSuccess: (w) => {
       set(w);
       setNames("");
+      setShowNewForm(false);
     },
   });
 
@@ -52,10 +54,11 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
   });
 
   const w = workflow.data;
-  const active = w && w.state !== "none";
+  const finished = w && (w.state === "approved" || w.state === "rejected");
+  const active = w && w.state !== "none" && !(finished && showNewForm);
 
   return (
-    <aside className="w-80 shrink-0 space-y-4 overflow-auto border-l border-slate-200 bg-white p-4">
+    <aside className="w-full shrink-0 space-y-4 overflow-auto border-l border-slate-200 bg-white p-4 lg:w-80">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-800">Approvals</h2>
         {w && (
@@ -144,20 +147,29 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
             })}
           </ol>
 
+          {finished && (
+            <button
+              type="button"
+              onClick={() => setShowNewForm(true)}
+              className="text-xs text-brand-600 hover:underline"
+            >
+              Start a new workflow
+            </button>
+          )}
           {w.state === "in_progress" && (
             <p className="text-xs text-slate-500">
               Waiting on: {w.current_approvers.join(", ") || "—"}
             </p>
           )}
-          {w.state !== "in_progress" && (
-            <button
-              onClick={() => set({ ...w, state: "none", steps: [], current_approvers: [] })}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              Start a new workflow
-            </button>
-          )}
         </div>
+      )}
+
+      {(start.isError || decide.isError) && (
+        <p role="alert" className="text-xs text-red-600">
+          {(start.error ?? decide.error) instanceof Error
+            ? (start.error ?? decide.error)!.message
+            : String(start.error ?? decide.error)}
+        </p>
       )}
     </aside>
   );

@@ -70,6 +70,20 @@ export function validateFile(file: File): string | null {
 
 /** Turn a thrown upload error (often `"<status>: <detail>"`) into plain language. */
 export function friendlyUploadError(err: unknown): string {
+  return friendlyApiError(err, "Upload failed. Please try again.");
+}
+
+/** Turn a thrown read/API error into plain language for the document canvas. */
+export function friendlyLoadError(err: unknown): string {
+  return friendlyApiError(
+    err,
+    "Couldn’t load this document. Please try again.",
+    "Can't reach the server right now. Check your connection and try again.",
+  );
+}
+
+/** Shared friendly error mapper for mutations and downloads. */
+export function friendlyApiError(err: unknown, fallback: string, unreachableHint?: string): string {
   const raw = err instanceof Error ? err.message : String(err);
   const status = Number(raw.match(/^(\d{3}):/)?.[1]);
 
@@ -85,9 +99,12 @@ export function friendlyUploadError(err: unknown): string {
   if (status === 501) {
     return "That format is recognized but not fully supported yet. Try PDF, Word, or text.";
   }
-  if (status === 502 || /unreachable|failed to fetch|networkerror/i.test(raw)) {
-    return "Can't reach the server right now. Check your connection and try again.";
+  if (status === 404) {
+    return "That document wasn't found — it may have been deleted or the upload didn't finish.";
+  }
+  if (status === 502 || /unreachable|failed to fetch|networkerror|ECONNREFUSED/i.test(raw)) {
+    return unreachableHint ?? "Can't reach the server right now. Check your connection and try again.";
   }
   // Strip a leading "NNN: " status code so the user never sees a bare HTTP code.
-  return raw.replace(/^\d{3}:\s*/, "") || "Upload failed. Please try again.";
+  return raw.replace(/^\d{3}:\s*/, "") || fallback;
 }

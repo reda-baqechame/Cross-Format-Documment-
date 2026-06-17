@@ -8,10 +8,12 @@
  * and binary downloads (export/preview) pass through untouched.
  */
 
+import { resolveApiProxyTarget } from "@/lib/proxy-target";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const TARGET = (process.env.API_PROXY_TARGET ?? "http://localhost:8000").replace(/\/+$/, "");
+const TARGET = resolveApiProxyTarget();
 
 // Hop-by-hop / length headers we must not forward verbatim (the runtime recomputes them).
 const STRIP_REQUEST = new Set(["host", "connection", "content-length", "transfer-encoding"]);

@@ -1,12 +1,21 @@
-"""OpenAI LLM client — STUB.
-
-Extension point: build an AsyncOpenAI client and map ``complete`` to the chat
-completions / responses API with tool calling. Install with ``pip install -e .[openai]``.
-"""
+"""OpenAI LLM client — maps the provider-agnostic contract onto Chat Completions + tools."""
 
 from __future__ import annotations
 
+import json
+
 from docos.services.semantic.llm.base import LLMClient, LLMResponse
+
+
+def _to_openai_tool(tool: dict) -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool.get("description", ""),
+            "parameters": tool.get("input_schema", tool.get("parameters", {})),
+        },
+    }
 
 
 class OpenAIClient(LLMClient):
@@ -21,4 +30,32 @@ class OpenAIClient(LLMClient):
         *,
         tools: list[dict] | None = None,
     ) -> LLMResponse:
-        raise NotImplementedError("OpenAIClient.complete — wire up the OpenAI SDK")
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=self.api_key)
+        kwargs: dict = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        if tools:
+            kwargs["tools"] = [_to_openai_tool(t) for t in tools]
+            kwargs["tool_choice"] = "auto"
+
+        response = await client.chat.completions.create(**kwargs)
+        message = response.choices[0].message
+
+        tool_calls: list[dict] = []
+        if message.tool_calls:
+            for tc in message.tool_calls:
+                tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "name": tc.function.name,
+                        "input": json.loads(tc.function.arguments or "{}"),
+                    }
+                )
+
+        return LLMResponse(text=message.content or "", tool_calls=tool_calls)

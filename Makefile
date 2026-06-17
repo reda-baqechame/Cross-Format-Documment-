@@ -7,15 +7,18 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 up: ## Start all services (postgres, redis, minio, api, worker, web)
+	@test -f .env || cp .env.example .env
 	$(COMPOSE) up --build
 
 down: ## Stop all services
 	$(COMPOSE) down
 
 dev: ## Run API and web locally (no docker) — requires deps installed
+	@test -f .env || cp .env.example .env
 	@echo "Run 'make backend-install' and 'make web-install' first if needed."
 	$(COMPOSE) up -d postgres redis minio
-	cd backend && uvicorn docos.main:app --reload --host 0.0.0.0 --port 8000 & \
+	cd backend && uv run alembic upgrade head
+	cd backend && uv run uvicorn docos.main:app --reload --host 0.0.0.0 --port 8000 & \
 	pnpm --filter @docos/web dev
 
 backend-install: ## Install Python deps with uv

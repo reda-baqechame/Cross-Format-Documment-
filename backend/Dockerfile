@@ -28,5 +28,5 @@ RUN useradd --create-home --uid 10001 app && chown -R app /app
 USER app
 
 EXPOSE 8000
+ENV PORT=8000
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["uvicorn", "docos.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

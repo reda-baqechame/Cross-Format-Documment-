@@ -99,14 +99,14 @@ export function UploadDropzone() {
           if (files.length) void handleFiles(files);
         }}
         className={[
-          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-12 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors sm:p-12",
           dragActive
-            ? "border-blue-500 bg-blue-50"
-            : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50",
+            ? "border-brand-500 bg-brand-50"
+            : "border-slate-300 bg-white hover:border-brand-400 hover:bg-brand-50/30",
           busy ? "pointer-events-none opacity-80" : "",
         ].join(" ")}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-2xl">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-3xl sm:h-12 sm:w-12 sm:rounded-full sm:text-2xl">
           {busy ? "⏳" : "📄"}
         </div>
 
@@ -122,12 +122,16 @@ export function UploadDropzone() {
         ) : (
           <>
             <p className="text-lg font-medium text-slate-800">
-              Drag documents here, or{" "}
-              <span className="text-blue-600 underline underline-offset-2">browse your files</span>
+              <span className="sm:hidden">Tap to choose a file</span>
+              <span className="hidden sm:inline">
+                Drag documents here, or{" "}
+                <span className="text-brand-600 underline underline-offset-2">browse your files</span>
+              </span>
             </p>
             <p className="text-sm text-slate-500">
-              {supportedSummary()} · up to {MAX_UPLOAD_MB} MB · multiple files OK
+              {supportedSummary()} · up to {MAX_UPLOAD_MB} MB
             </p>
+            <p className="hidden text-xs text-slate-400 sm:block">Multiple files OK</p>
           </>
         )}
 

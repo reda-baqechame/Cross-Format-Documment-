@@ -74,16 +74,18 @@ services:
         condition: service_healthy
 
   web:
-    build:
-      context: ./apps/web
-    command: pnpm dev
+    image: node:20-slim
+    working_dir: /repo
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @docos/web dev"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      # Browser calls /api/* on this app; the handler forwards server-side to the API
+      # container (localhost inside the web container is NOT the API service).
+      API_PROXY_TARGET: http://api:8000
     ports:
-      - "3000:3000"
+      - "3100:3100"
     volumes:
-      - ./apps/web:/app
-      - /app/node_modules
+      - .:/repo
+      - web_node_modules:/repo/node_modules
     depends_on:
       - api
 
@@ -91,3 +93,4 @@ volumes:
   pgdata:
   minio-data:
   blobs:
+  web_node_modules:

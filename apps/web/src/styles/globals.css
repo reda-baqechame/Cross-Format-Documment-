@@ -7,5 +7,9 @@
 }
 
 body {
-  @apply bg-canvas text-ink;
+  @apply bg-canvas text-ink antialiased;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

@@ -23,6 +23,7 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
   const pct = Math.round(health.accessibility_score * 100);
   const queryClient = useQueryClient();
   const selectedNodeId = useWorkspace((s) => s.selectedNodeId);
+  const select = useWorkspace((s) => s.select);
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["model", docId] });
@@ -57,7 +58,7 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
   });
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-slate-200 bg-white p-5">
+    <aside className="flex w-full shrink-0 flex-col gap-4 border-l border-slate-200 bg-white p-5 lg:w-96">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Document health
       </h2>
@@ -148,6 +149,49 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
           ))}
         </ul>
       </div>
+
+      {sensitive.data && sensitive.data.findings.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase text-slate-400">
+            Sensitive data detected
+          </h3>
+          <ul className="max-h-48 space-y-2 overflow-auto">
+            {sensitive.data.findings.map((f) => (
+              <li key={f.node_id}>
+                <button
+                  type="button"
+                  onClick={() => select(f.node_id)}
+                  className="w-full rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-left text-xs hover:bg-amber-100"
+                >
+                  <span className="font-medium capitalize text-amber-900">{f.category}</span>
+                  <span className="mt-0.5 block text-amber-800">{f.excerpt}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(sanitize.isError ||
+        fixA11y.isError ||
+        redact.isError ||
+        cleanSensitive.isError ||
+        sign.isError ||
+        sensitive.isError) && (
+        <p role="alert" className="text-xs text-red-600">
+          {[
+            sanitize.error,
+            fixA11y.error,
+            redact.error,
+            cleanSensitive.error,
+            sign.error,
+            sensitive.error,
+          ]
+            .filter(Boolean)
+            .map((e) => (e instanceof Error ? e.message : String(e)))
+            .join(" · ")}
+        </p>
+      )}
     </aside>
   );
 }

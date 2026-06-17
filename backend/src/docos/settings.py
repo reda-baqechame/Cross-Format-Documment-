@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PrivacyMode = Literal["offline", "enterprise", "cloud"]
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     app_env: Literal["dev", "staging", "production"] = "dev"
 
     # CORS allow-list for the browser app (comma-separated origins).
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3100"
 
     # storage
     blob_backend: BlobBackend = "local"
@@ -58,6 +59,14 @@ class Settings(BaseSettings):
         "image/jpeg,"
         "image/tiff"
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: object) -> object:
+        """Railway Postgres URLs use postgresql:// — SQLAlchemy needs postgresql+psycopg://."""
+        if isinstance(v, str) and v.startswith("postgresql://") and "+psycopg" not in v:
+            return v.replace("postgresql://", "postgresql+psycopg://", 1)
+        return v
 
     @property
     def allowed_mimes(self) -> set[str]:

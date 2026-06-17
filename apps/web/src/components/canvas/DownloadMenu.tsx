@@ -2,59 +2,77 @@
 
 import { useState } from "react";
 
-import { exportUrl, type ExportFormat } from "@/lib/api";
+import { downloadExport, type ExportFormat } from "@/lib/api";
+import { useDismissOnOutside } from "@/lib/useDismiss";
+import { friendlyApiError } from "@/lib/upload";
+
+const FORMATS: { format: ExportFormat; label: string; show?: (sf?: string) => boolean }[] = [
+  { format: "docx", label: "Word (.docx)" },
+  { format: "xlsx", label: "Excel (.xlsx)" },
+  { format: "pptx", label: "PowerPoint (.pptx)" },
+  { format: "png", label: "Image (.png)" },
+  { format: "txt", label: "Plain text (.txt)" },
+  { format: "md", label: "Markdown (.md)" },
+  { format: "html", label: "HTML (.html)" },
+  { format: "csv", label: "CSV (.csv)" },
+  { format: "pdf", label: "PDF (with edits)", show: (sf) => sf === "pdf" },
+];
 
 /** Download the current document — rebuilt from the canonical model — in any format. */
 export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFormat?: string }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<ExportFormat | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ref = useDismissOnOutside(open, () => setOpen(false));
 
-  const download = (format: ExportFormat) => {
+  async function download(format: ExportFormat) {
     setOpen(false);
-    const a = document.createElement("a");
-    a.href = exportUrl(docId, format);
-    a.download = "";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
+    setBusy(format);
+    setError(null);
+    try {
+      await downloadExport(docId, format);
+    } catch (e) {
+      setError(friendlyApiError(e, "Export failed."));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        disabled={!!busy}
+        className="min-h-[44px] rounded-lg bg-ink px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
       >
-        Download ▾
+        {busy ? "Exporting…" : "Export ▾"}
       </button>
+      {error && (
+        <p role="alert" className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg bg-red-50 px-2 py-1 text-xs text-red-700">
+          {error}
+        </p>
+      )}
       {open && (
         <div
-          className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
-          onMouseLeave={() => setOpen(false)}
+          role="menu"
+          className="absolute right-0 z-10 mt-1 max-h-[70vh] w-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
-          <MenuItem label="Word (.docx)" onClick={() => download("docx")} />
-          <MenuItem label="Excel (.xlsx)" onClick={() => download("xlsx")} />
-          <MenuItem label="PowerPoint (.pptx)" onClick={() => download("pptx")} />
-          <MenuItem label="Image (.png)" onClick={() => download("png")} />
-          <MenuItem label="Plain text (.txt)" onClick={() => download("txt")} />
-          <MenuItem label="Markdown (.md)" onClick={() => download("md")} />
-          <MenuItem label="HTML (.html)" onClick={() => download("html")} />
-          <MenuItem label="CSV (.csv)" onClick={() => download("csv")} />
-          {sourceFormat === "pdf" && (
-            <MenuItem label="PDF (with edits)" onClick={() => download("pdf")} />
-          )}
+          {FORMATS.filter((f) => !f.show || f.show(sourceFormat)).map((f) => (
+            <button
+              key={f.format}
+              type="button"
+              role="menuitem"
+              onClick={() => void download(f.format)}
+              className="block min-h-[44px] w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
-  );
-}
-
-function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-    >
-      {label}
-    </button>
   );
 }

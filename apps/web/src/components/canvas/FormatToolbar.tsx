@@ -44,6 +44,7 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
         onClick={() => toggle.mutate({ bold: !node?.bold })}
         className={`font-bold ${btn(node?.bold)}`}
         aria-pressed={!!node?.bold}
+        aria-label="Bold"
       >
         B
       </button>
@@ -53,6 +54,7 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
         onClick={() => toggle.mutate({ italic: !node?.italic })}
         className={`italic ${btn(node?.italic)}`}
         aria-pressed={!!node?.italic}
+        aria-label="Italic"
       >
         I
       </button>
@@ -62,6 +64,7 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
         onClick={() => toggle.mutate({ underline: !node?.underline })}
         className={`underline ${btn(node?.underline)}`}
         aria-pressed={!!node?.underline}
+        aria-label="Underline"
       >
         U
       </button>

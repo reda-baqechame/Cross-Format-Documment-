@@ -14,12 +14,30 @@ import type {
 // so there's no API URL baked into the client bundle and no CORS to configure.
 const BASE = "/api";
 
+export interface BackendHealth {
+  status: string;
+  privacy_mode: string;
+  blob_backend: string;
+  db: string;
+}
+
 async function json<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type") ?? "";
+  const body = await res.text();
   if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`${res.status}: ${detail}`);
+    throw new Error(`${res.status}: ${body.slice(0, 300)}`);
   }
-  return res.json() as Promise<T>;
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "Unexpected response from the server — the backend may not be running (start it on port 8000).",
+    );
+  }
+  return JSON.parse(body) as T;
+}
+
+/** Liveness check for the home-page backend banner. */
+export async function fetchBackendHealth(): Promise<BackendHealth> {
+  return json<BackendHealth>(await fetch(`${BASE}/health`));
 }
 
 export async function uploadDocument(file: File): Promise<UploadResponse> {
@@ -86,6 +104,70 @@ export type ExportFormat =
 
 export function exportUrl(docId: string, format: ExportFormat): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;
+}
+
+/** Fetch export bytes and trigger a download — surfaces HTTP errors instead of saving JSON. */
+export async function downloadExport(
+  docId: string,
+  format: ExportFormat,
+  filename?: string,
+): Promise<void> {
+  const res = await fetch(exportUrl(docId, format));
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename ?? `${docId}.${format === "md" ? "md" : format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface VersionRef {
+  version_id: string;
+  parent_id: string | null;
+  patch_id: string | null;
+  created_at: string;
+}
+
+export async function fetchHistory(
+  docId: string,
+): Promise<{ doc_id: string; versions: VersionRef[] }> {
+  return json(await fetch(`${BASE}/documents/${docId}/history`));
+}
+
+export async function translateDocument(
+  docId: string,
+  targetLanguage: string,
+): Promise<{ translated_text: string; target_language: string }> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_language: targetLanguage }),
+    }),
+  );
+}
+
+export interface ExtractEntity {
+  type: string;
+  value: string;
+  node_id: string;
+}
+
+export interface ExtractField {
+  key: string;
+  value: string;
+  node_id: string;
+}
+
+export async function fetchExtract(docId: string): Promise<{
+  doc_id: string;
+  extraction: { entities: ExtractEntity[]; fields: ExtractField[] };
+}> {
+  return json(await fetch(`${BASE}/documents/${docId}/extract`));
 }
 
 export function previewUrl(docId: string, page: number): string {

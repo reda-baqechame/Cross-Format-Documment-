@@ -62,7 +62,7 @@ cp .env.example .env
 make up            # postgres, redis, minio, api, worker, web
 make migrate       # apply database schema
 # API:  http://localhost:8000  (docs at /docs)
-# Web:  http://localhost:3000
+# Web:  http://localhost:3100
 make codegen       # regenerate packages/shared-types from the live OpenAPI schema
 make test          # backend tests
 ```
@@ -71,6 +71,8 @@ Drag any supported file into the web app: it is parsed into the canonical model,
 canvas, editable, and scored in the document-health panel.
 
 ## Production deployment
+
+See **[docs/railway.md](docs/railway.md)** for Railway (two services: API + Web, phone-ready).
 
 ```bash
 cp .env.example .env          # set APP_ENV=production, SIGNING_SECRET, POSTGRES_PASSWORD,

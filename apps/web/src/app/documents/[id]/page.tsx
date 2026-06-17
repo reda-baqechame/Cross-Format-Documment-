@@ -1,88 +1,124 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
-import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { AskPanel } from "@/components/canvas/AskPanel";
-import { CommentsPanel } from "@/components/canvas/CommentsPanel";
+import { ComparePanel } from "@/components/canvas/ComparePanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
-import { DownloadMenu } from "@/components/canvas/DownloadMenu";
-import { FormatToolbar } from "@/components/canvas/FormatToolbar";
-import { ToolsMenu } from "@/components/canvas/ToolsMenu";
+import {
+  DocumentMobileActions,
+  DocumentWorkspaceHeader,
+  type WorkspaceTab,
+} from "@/components/canvas/DocumentWorkspaceHeader";
+import { CommentsPanel } from "@/components/canvas/CommentsPanel";
+import { ExtractPanel } from "@/components/canvas/ExtractPanel";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
-import { useWorkspace } from "@/lib/store";
+import { friendlyLoadError } from "@/lib/upload";
 
 export default function DocumentPage() {
   const params = useParams<{ id: string }>();
   const docId = params.id;
-  const panelOpen = useWorkspace((s) => s.panelOpen);
-  const togglePanel = useWorkspace((s) => s.togglePanel);
-  const commentsOpen = useWorkspace((s) => s.commentsOpen);
-  const toggleComments = useWorkspace((s) => s.toggleComments);
-  const approvalsOpen = useWorkspace((s) => s.approvalsOpen);
-  const toggleApprovals = useWorkspace((s) => s.toggleApprovals);
+  const [tab, setTab] = useState<WorkspaceTab>("document");
 
-  const model = useQuery({ queryKey: ["model", docId], queryFn: () => fetchModel(docId) });
-  const health = useQuery({ queryKey: ["health", docId], queryFn: () => fetchHealth(docId) });
+  const model = useQuery({
+    queryKey: ["model", docId],
+    queryFn: () => fetchModel(docId),
+    enabled: Boolean(docId),
+  });
+  const health = useQuery({
+    queryKey: ["health", docId],
+    queryFn: () => fetchHealth(docId),
+    enabled: Boolean(docId),
+  });
+
+  const doc = model.data?.document;
+  const showDocument = tab === "document";
+  const showTrust = tab === "trust";
+  const showComments = tab === "comments";
+  const showApprovals = tab === "approvals";
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-sm text-slate-500 hover:underline">
-            ← Back
-          </Link>
-          <span className="text-sm font-medium">
-            {model.data?.document.meta.title ?? `Document ${docId.slice(0, 10)}…`}
-          </span>
-          {model.data && (
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs uppercase text-slate-500">
-              {model.data.document.meta.source_format}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          {model.data && <FormatToolbar doc={model.data.document} docId={docId} />}
-          <AiEditBar docId={docId} />
-          <ToolsMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
-          <DownloadMenu docId={docId} sourceFormat={model.data?.document.meta.source_format} />
-          <button onClick={toggleComments} className="text-sm text-slate-500 hover:underline">
-            {commentsOpen ? "Hide" : "Show"} comments
-          </button>
-          <button onClick={toggleApprovals} className="text-sm text-slate-500 hover:underline">
-            {approvalsOpen ? "Hide" : "Show"} approvals
-          </button>
-          <button onClick={togglePanel} className="text-sm text-slate-500 hover:underline">
-            {panelOpen ? "Hide" : "Show"} health
-          </button>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-canvas pb-20 sm:pb-0">
+      <DocumentWorkspaceHeader
+        docId={docId}
+        doc={doc}
+        activeTab={tab}
+        onTabChange={setTab}
+      />
 
-      <div className="border-b border-slate-200 bg-blue-50/60 px-6 py-1.5 text-center text-xs text-slate-500">
-        Tip: double-click any text to edit it · ask AI to make changes · use Tools to protect or
-        classify · then Download in any format
+      <p className="hidden border-b border-slate-100 bg-brand-50/50 px-4 py-2 text-center text-xs text-slate-600 sm:block">
+        Double-click or long-press text to edit · AI bar for natural-language changes · Tools for
+        protect &amp; classify · Download to export
+      </p>
+      <p className="border-b border-slate-100 bg-brand-50/50 px-4 py-2 text-center text-xs text-slate-600 sm:hidden">
+        Long-press text to edit · Use tabs for Trust, Comments, and Approvals
+      </p>
+
+      <div className="flex flex-1 flex-col lg:flex-row">
+        {/* Main canvas */}
+        {(showDocument || !doc) && (
+          <main
+            className="flex-1 overflow-auto p-4 sm:p-8"
+            id="document-canvas"
+            aria-label="Document content"
+          >
+            {model.isLoading && (
+              <p className="text-slate-500" aria-live="polite">
+                Loading document…
+              </p>
+            )}
+            {model.isError && (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <p className="font-medium">Couldn&apos;t open this document</p>
+                <p className="mt-1">{friendlyLoadError(model.error)}</p>
+              </div>
+            )}
+            {doc && (
+              <>
+                <AskPanel docId={docId} />
+                <ExtractPanel docId={docId} />
+                <ComparePanel docId={docId} />
+                <DocumentCanvas doc={doc} docId={docId} />
+              </>
+            )}
+          </main>
+        )}
+
+        {/* Side / full-width panels */}
+        {showTrust && health.isError && (
+          <div role="alert" className="w-full p-8 text-sm text-red-600">
+            {friendlyLoadError(health.error)}
+          </div>
+        )}
+        {showTrust && health.isLoading && (
+          <p className="p-8 text-sm text-slate-500" aria-live="polite">
+            Loading trust panel…
+          </p>
+        )}
+        {showTrust && health.data && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <HealthPanel health={health.data.health} docId={docId} />
+          </aside>
+        )}
+        {showComments && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <CommentsPanel docId={docId} />
+          </aside>
+        )}
+        {showApprovals && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <ApprovalsPanel docId={docId} />
+          </aside>
+        )}
       </div>
 
-      <div className="flex flex-1">
-        <main className="flex-1 overflow-auto bg-slate-100 p-8">
-          {model.isLoading && <p className="text-slate-500">Loading model…</p>}
-          {model.isError && <p className="text-red-600">Failed to load: {String(model.error)}</p>}
-          {model.data && (
-            <>
-              <AskPanel docId={docId} />
-              <DocumentCanvas doc={model.data.document} docId={docId} />
-            </>
-          )}
-        </main>
-
-        {commentsOpen && <CommentsPanel docId={docId} />}
-        {approvalsOpen && <ApprovalsPanel docId={docId} />}
-        {panelOpen && health.data && <HealthPanel health={health.data.health} docId={docId} />}
-      </div>
+      {doc && (
+        <DocumentMobileActions docId={docId} sourceFormat={doc.meta.source_format} />
+      )}
     </div>
   );
 }

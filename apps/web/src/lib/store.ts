@@ -18,7 +18,7 @@ interface WorkspaceState {
 export const useWorkspace = create<WorkspaceState>((set) => ({
   selectedNodeId: null,
   editingNodeId: null,
-  panelOpen: true,
+  panelOpen: false,
   commentsOpen: false,
   approvalsOpen: false,
   select: (id) => set({ selectedNodeId: id }),
