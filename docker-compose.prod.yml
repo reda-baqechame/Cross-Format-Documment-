@@ -2,7 +2,7 @@
 # migrations on API start, serve the standalone web build, no source bind-mounts.
 #   docker compose -f docker-compose.prod.yml up --build -d
 # Required env (see .env.example): POSTGRES_PASSWORD, SIGNING_SECRET, CORS_ORIGINS,
-# NEXT_PUBLIC_API_URL, and S3/MinIO credentials.
+# API_PROXY_TARGET, and S3/MinIO credentials.
 services:
   postgres:
     image: postgres:16
