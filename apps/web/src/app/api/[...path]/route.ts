@@ -4,8 +4,14 @@
  * The browser only ever talks to this app's own origin (`/api/*`); this handler
  * forwards each request to the backend (`API_PROXY_TARGET`, server-side). That keeps
  * the backend private, removes any build-time API URL from the client bundle, and
- * sidesteps CORS entirely. Bodies and responses are streamed, so multipart uploads
- * and binary downloads (export/preview) pass through untouched.
+ * sidesteps CORS entirely.
+ *
+ * Production notes:
+ * - The request body is **streamed** (`duplex: "half"`), not buffered. Buffering via
+ *   `req.arrayBuffer()` trips Next's in-handler body size limit (~1 MB) and large uploads
+ *   fail; streaming pipes the body straight through, so uploads up to MAX_UPLOAD_MB work.
+ *   Responses are streamed too, for binary downloads (export/preview).
+ * - Upstream calls have a timeout so a hung backend yields a clear 504, not a stuck tab.
  */
 
 import { resolveApiProxyTarget } from "@/lib/proxy-target";
@@ -14,9 +20,31 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TARGET = resolveApiProxyTarget();
+const UPSTREAM_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS ?? 60_000);
+
+// Fail loudly in logs if prod is about to proxy to localhost (the #1 Railway misconfig).
+if (
+  process.env.NODE_ENV === "production" &&
+  /^https?:\/\/(localhost|127\.0\.0\.1)\b/.test(TARGET)
+) {
+  console.warn(
+    `[api-proxy] API_PROXY_TARGET is "${TARGET}" in production — on Railway this is NOT ` +
+      "the API service. Set API_PROXY_TARGET to the API's private host, e.g. " +
+      "http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}",
+  );
+}
 
 // Hop-by-hop / length headers we must not forward verbatim (the runtime recomputes them).
-const STRIP_REQUEST = new Set(["host", "connection", "content-length", "transfer-encoding"]);
+// `expect` is included because undici's fetch rejects an `Expect: 100-continue` header
+// (NotSupportedError) — some clients/edges add it for larger uploads, which would
+// otherwise fail the request.
+const STRIP_REQUEST = new Set([
+  "host",
+  "connection",
+  "content-length",
+  "transfer-encoding",
+  "expect",
+]);
 const STRIP_RESPONSE = new Set([
   "content-encoding",
   "content-length",
@@ -45,14 +73,26 @@ async function handler(req: Request, ctx: { params: { path?: string[] } }): Prom
     init.duplex = "half"; // required when streaming a request body in Node fetch
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  init.signal = controller.signal;
+
   let upstream: Response;
   try {
     upstream = await fetch(target, init);
   } catch (err) {
-    return new Response(
-      JSON.stringify({ detail: `proxy: backend unreachable at ${TARGET} (${String(err)})` }),
-      { status: 502, headers: { "content-type": "application/json" } },
-    );
+    const timedOut = err instanceof Error && err.name === "AbortError";
+    const status = timedOut ? 504 : 502;
+    const cause = err instanceof Error && err.cause ? ` cause=${String(err.cause)}` : "";
+    const detail = timedOut
+      ? `proxy: backend timed out after ${UPSTREAM_TIMEOUT_MS}ms at ${TARGET}`
+      : `proxy: backend unreachable at ${TARGET} (${String(err)}${cause})`;
+    return new Response(JSON.stringify({ detail }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  } finally {
+    clearTimeout(timer);
   }
 
   const responseHeaders = new Headers();
