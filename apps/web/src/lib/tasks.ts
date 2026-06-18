@@ -142,7 +142,10 @@ export const TASKS: TaskDef[] = [
     accept: ANY,
     acceptLabel: "contract, SOW, proposal, or agreement",
     cta: "Open workflow",
-    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=editor` }),
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=contract_packet`,
+    }),
   },
   {
     slug: "vendor-onboarding",
@@ -153,7 +156,10 @@ export const TASKS: TaskDef[] = [
     accept: ANY,
     acceptLabel: "vendor packet document",
     cta: "Build packet",
-    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=forms` }),
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=vendor_onboarding`,
+    }),
   },
   {
     slug: "invoice-approval",
@@ -164,7 +170,10 @@ export const TASKS: TaskDef[] = [
     accept: ANY,
     acceptLabel: "invoice, quote, or receipt",
     cta: "Review invoice",
-    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=autopilot` }),
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=invoice_approval`,
+    }),
   },
   {
     slug: "employee-form-packet",
@@ -175,7 +184,10 @@ export const TASKS: TaskDef[] = [
     accept: ANY,
     acceptLabel: "HR or intake packet",
     cta: "Prepare forms",
-    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=forms` }),
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=employee_form_packet`,
+    }),
   },
   {
     slug: "proposal-to-signature",
@@ -186,7 +198,10 @@ export const TASKS: TaskDef[] = [
     accept: ANY,
     acceptLabel: "proposal, SOW, or pitch document",
     cta: "Prepare send",
-    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=editor` }),
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=proposal_to_signature`,
+    }),
   },
   {
     slug: "bulk-send-from-template",

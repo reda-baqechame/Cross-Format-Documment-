@@ -127,6 +127,81 @@ export async function planDocumentOps(
   );
 }
 
+export type WorkflowPreset =
+  | "contract_packet"
+  | "invoice_approval"
+  | "vendor_onboarding"
+  | "employee_form_packet"
+  | "proposal_to_signature"
+  | "bulk_send_template";
+
+export interface WorkflowStep {
+  id: string;
+  label: string;
+  status: string;
+  tool: string;
+  requires_approval: boolean;
+  destructive: boolean;
+  reason: string;
+  result: string | null;
+}
+
+export interface WorkflowPreview {
+  doc_id: string;
+  preset: WorkflowPreset;
+  classification: string;
+  steps: WorkflowStep[];
+  warnings: string[];
+}
+
+export interface WorkflowExecuteResponse {
+  doc_id: string;
+  preset: WorkflowPreset;
+  classification: string;
+  executed_steps: WorkflowStep[];
+  skipped_steps: WorkflowStep[];
+  next_required_approval: WorkflowStep | null;
+  warnings: string[];
+}
+
+export async function previewWorkflow(
+  docId: string,
+  preset: WorkflowPreset,
+): Promise<WorkflowPreview> {
+  return json<WorkflowPreview>(
+    await fetch(`${BASE}/documents/${docId}/workflows/preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset }),
+    }),
+  );
+}
+
+export async function executeWorkflow(
+  docId: string,
+  body: {
+    preset: WorkflowPreset;
+    approved_step_ids?: string[];
+    confirm_destructive?: boolean;
+    recipients?: string[];
+    approvers?: string[];
+  },
+): Promise<WorkflowExecuteResponse> {
+  return json<WorkflowExecuteResponse>(
+    await fetch(`${BASE}/documents/${docId}/workflows/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preset: body.preset,
+        approved_step_ids: body.approved_step_ids ?? [],
+        confirm_destructive: body.confirm_destructive ?? false,
+        recipients: body.recipients ?? [],
+        approvers: body.approvers ?? [],
+      }),
+    }),
+  );
+}
+
 export async function submitPatch(docId: string, body: PatchRequest): Promise<PatchResponse> {
   return json<PatchResponse>(
     await fetch(`${BASE}/documents/${docId}/patches`, {

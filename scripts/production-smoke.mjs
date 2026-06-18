@@ -39,6 +39,8 @@ await requireOk("/api/openapi.json", (text) => {
     "/documents/{doc_id}/editor/session",
     "/documents/{doc_id}/ops-agent/plan",
     "/documents/{doc_id}/fields/detect",
+    "/documents/{doc_id}/workflows/preview",
+    "/documents/{doc_id}/workflows/execute",
   ]) {
     if (!paths[path]) {
       const message = `OpenAPI missing ${path}`;

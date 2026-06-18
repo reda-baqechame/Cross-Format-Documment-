@@ -3,19 +3,24 @@ import { expect, test } from "@playwright/test";
 test("home page exposes business document command-center workflows", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Every document tool, in one place" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Workflow" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Open any document. Do anything. Trust the output." }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Command or upload" })).toBeVisible();
 
   for (const name of [
-    "Build a form",
-    "Create contract packet",
+    "Contract packet",
     "Vendor onboarding",
     "Invoice approval",
+    "Employee form packet",
     "Proposal to signature",
     "Bulk send from template",
   ]) {
-    await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(name) }).first()).toBeVisible();
   }
+
+  await expect(page.getByText("Export validation", { exact: true })).toBeVisible();
+  await expect(page.getByText("All document tools")).toBeVisible();
 });
 
 test("create from template is runnable without requiring a starter upload", async ({ page }) => {

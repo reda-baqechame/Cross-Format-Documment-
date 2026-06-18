@@ -8,7 +8,7 @@ shared with the frontend.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -334,4 +334,55 @@ class OpsAgentPlanResponse(BaseModel):
     goal: str
     classification: str
     actions: list[OpsAgentAction]
+    warnings: list[str] = Field(default_factory=list)
+
+
+WorkflowPreset = Literal[
+    "contract_packet",
+    "invoice_approval",
+    "vendor_onboarding",
+    "employee_form_packet",
+    "proposal_to_signature",
+    "bulk_send_template",
+]
+
+
+class WorkflowPreviewRequest(BaseModel):
+    preset: WorkflowPreset
+
+
+class WorkflowStep(BaseModel):
+    id: str
+    label: str
+    status: str = "pending"
+    tool: str
+    requires_approval: bool = False
+    destructive: bool = False
+    reason: str
+    result: str | None = None
+
+
+class WorkflowPreviewResponse(BaseModel):
+    doc_id: str
+    preset: WorkflowPreset
+    classification: str
+    steps: list[WorkflowStep]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class WorkflowExecuteRequest(BaseModel):
+    preset: WorkflowPreset
+    approved_step_ids: list[str] = Field(default_factory=list)
+    confirm_destructive: bool = False
+    recipients: list[str] = Field(default_factory=list, max_length=100)
+    approvers: list[str] = Field(default_factory=list, max_length=50)
+
+
+class WorkflowExecuteResponse(BaseModel):
+    doc_id: str
+    preset: WorkflowPreset
+    classification: str
+    executed_steps: list[WorkflowStep]
+    skipped_steps: list[WorkflowStep]
+    next_required_approval: WorkflowStep | None = None
     warnings: list[str] = Field(default_factory=list)

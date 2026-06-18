@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { FileUp, Loader2, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -31,7 +32,6 @@ export function UploadDropzone() {
   async function handleFiles(files: File[]) {
     if (files.length === 0) return;
 
-    // Single file: validate up front and jump straight into the document.
     if (files.length === 1) {
       const file = files[0];
       const problem = validateFile(file);
@@ -50,7 +50,6 @@ export function UploadDropzone() {
       return;
     }
 
-    // Bulk: upload sequentially, collect failures, stay on the home shelf.
     const failures: string[] = [];
     let ok = 0;
     for (let i = 0; i < files.length; i++) {
@@ -99,39 +98,43 @@ export function UploadDropzone() {
           if (files.length) void handleFiles(files);
         }}
         className={[
-          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors sm:p-12",
+          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-8 text-center transition-colors sm:p-10",
           dragActive
             ? "border-brand-500 bg-brand-50"
             : "border-slate-300 bg-white hover:border-brand-400 hover:bg-brand-50/30",
           busy ? "pointer-events-none opacity-80" : "",
         ].join(" ")}
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-3xl sm:h-12 sm:w-12 sm:rounded-full sm:text-2xl">
-          {busy ? "⏳" : "📄"}
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileUp className="h-6 w-6" />}
         </div>
 
         {status.kind === "uploading" ? (
           <>
             <p className="text-lg font-medium text-slate-800">
               {status.total > 1
-                ? `Uploading ${status.done + 1} of ${status.total}…`
-                : `Opening “${status.name}”…`}
+                ? `Uploading ${status.done + 1} of ${status.total}...`
+                : `Opening "${status.name}"...`}
             </p>
-            <p className="text-sm text-slate-500">Reading your document…</p>
+            <p className="text-sm text-slate-500">Reading your document...</p>
           </>
         ) : (
           <>
             <p className="text-lg font-medium text-slate-800">
               <span className="sm:hidden">Tap to choose a file</span>
               <span className="hidden sm:inline">
-                Drag documents here, or{" "}
-                <span className="text-brand-600 underline underline-offset-2">browse your files</span>
+                Drop files here or{" "}
+                <span className="text-brand-600 underline underline-offset-2">
+                  browse your files
+                </span>
               </span>
             </p>
             <p className="text-sm text-slate-500">
-              {supportedSummary()} · up to {MAX_UPLOAD_MB} MB
+              {supportedSummary()} - up to {MAX_UPLOAD_MB} MB
             </p>
-            <p className="hidden text-xs text-slate-400 sm:block">Multiple files OK</p>
+            <p className="hidden text-xs text-slate-400 sm:block">
+              Single files open immediately. Multiple files stay in your library.
+            </p>
           </>
         )}
 
@@ -143,7 +146,7 @@ export function UploadDropzone() {
           className="hidden"
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
-            e.target.value = ""; // allow re-picking the same file(s)
+            e.target.value = "";
             if (files.length) void handleFiles(files);
           }}
         />
@@ -154,7 +157,7 @@ export function UploadDropzone() {
           role="alert"
           className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
         >
-          <span aria-hidden>⚠️</span>
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>{status.message}</span>
         </p>
       )}
@@ -166,11 +169,11 @@ export function UploadDropzone() {
         >
           <p className="font-medium text-slate-700">
             Added {status.ok} document{status.ok === 1 ? "" : "s"}
-            {status.failures.length > 0 && ` · ${status.failures.length} failed`}.
+            {status.failures.length > 0 && ` - ${status.failures.length} failed`}.
           </p>
           {status.failures.map((f) => (
             <p key={f} className="flex items-start gap-2 text-red-700">
-              <span aria-hidden>⚠️</span>
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>{f}</span>
             </p>
           ))}

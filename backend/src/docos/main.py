@@ -31,6 +31,7 @@ from docos.api import (
     routes_query,
     routes_suggestions,
     routes_templates,
+    routes_workflows,
 )
 from docos.api.session import SessionMiddleware
 from docos.settings import get_settings
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_templates.router)
     app.include_router(routes_suggestions.router)
     app.include_router(routes_bulk_send.router)
+    app.include_router(routes_workflows.router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",
