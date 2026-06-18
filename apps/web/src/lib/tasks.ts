@@ -54,7 +54,7 @@ export interface OptionField {
 }
 
 export type TaskResult =
-  | { kind: "downloaded" }
+  | { kind: "downloaded"; validation?: { status: "pass" | "warn" | "fail"; summary: string } }
   | { kind: "navigate"; href: string }
   | { kind: "text"; title: string; body: string; citations?: string[] }
   | { kind: "list"; title: string; items: string[] };
@@ -235,9 +235,11 @@ export const TASKS: TaskDef[] = [
     cta: "Convert",
     run: async ({ docIds, options }) => {
       const target = options.target ?? "pdf";
-      if (target === "pdf") await downloadSearchablePdf(docIds[0]);
-      else await downloadExport(docIds[0], target as ExportFormat);
-      return { kind: "downloaded" };
+      const validation =
+        target === "pdf"
+          ? await downloadSearchablePdf(docIds[0])
+          : await downloadExport(docIds[0], target as ExportFormat);
+      return { kind: "downloaded", validation: validation ?? undefined };
     },
   },
 
@@ -339,20 +341,20 @@ export const TASKS: TaskDef[] = [
   },
   {
     slug: "sign",
-    title: "Sign document",
-    blurb: "Apply a tamper-evident signature recording who signed and when.",
+    title: "Add integrity seal",
+    blurb: "Seal the document so any later change is detectable, recording who sealed it and when.",
     category: "Secure",
     emoji: "🖋️",
     accept: ANY,
     acceptLabel: "any document",
     options: [{ name: "signer", label: "Your name", type: "text", placeholder: "e.g. Jane Doe" }],
-    cta: "Sign",
+    cta: "Seal",
     run: async ({ docIds, options }) => {
       const res = await signDocument(docIds[0], options.signer ?? "");
       return {
         kind: "text",
-        title: "Signed",
-        body: `Signed by ${res.signer ?? options.signer}. The signature is tamper-evident — any later change invalidates it.`,
+        title: "Sealed",
+        body: `Sealed by ${res.signer ?? options.signer}. The integrity seal detects any later change — it is not a legally-binding e-signature.`,
       };
     },
   },

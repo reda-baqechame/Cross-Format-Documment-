@@ -7,17 +7,19 @@ at this scale; a dedicated text index is the next step for large corpora.)
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api._corpus import load_corpus
+from docos.api.access import get_owned_document
 from docos.api.schemas import (
     SearchHit,
     SearchResponse,
     TagRequest,
     TagsResponse,
 )
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document, DocumentVersion, Label
 from docos.deps import db_session
 from docos.model.serialize import from_dict
@@ -33,18 +35,21 @@ def _tags(session: Session, doc_id: str) -> list[str]:
 
 
 @router.get("/documents/{doc_id}/tags", response_model=TagsResponse)
-def list_tags(doc_id: str, session: Session = Depends(db_session)) -> TagsResponse:
-    if session.get(Document, doc_id) is None:
-        raise HTTPException(status_code=404, detail="document not found")
+def list_tags(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> TagsResponse:
+    get_owned_document(session, doc_id, actor)
     return TagsResponse(doc_id=doc_id, tags=_tags(session, doc_id))
 
 
 @router.post("/documents/{doc_id}/tags", response_model=TagsResponse)
 def add_tag(
-    doc_id: str, body: TagRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: TagRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> TagsResponse:
-    if session.get(Document, doc_id) is None:
-        raise HTTPException(status_code=404, detail="document not found")
+    get_owned_document(session, doc_id, actor)
     tag = body.tag.strip()
     if tag and tag not in _tags(session, doc_id):
         session.add(Label(document_id=doc_id, label=tag))
@@ -53,7 +58,10 @@ def add_tag(
 
 
 @router.delete("/documents/{doc_id}/tags/{tag}", response_model=TagsResponse)
-def remove_tag(doc_id: str, tag: str, session: Session = Depends(db_session)) -> TagsResponse:
+def remove_tag(
+    doc_id: str, tag: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> TagsResponse:
+    get_owned_document(session, doc_id, actor)
     rows = session.scalars(
         select(Label).where(Label.document_id == doc_id, Label.label == tag)
     ).all()
@@ -67,12 +75,17 @@ def remove_tag(doc_id: str, tag: str, session: Session = Depends(db_session)) ->
 def search(
     q: str = Query(..., min_length=1),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     limit: int = Query(20, ge=1, le=100),
 ) -> SearchResponse:
     """Full-text search across every document's current content (redaction-aware)."""
     needle = q.lower()
     hits: list[SearchHit] = []
-    records = session.scalars(select(Document).order_by(Document.created_at.desc())).all()
+    records = session.scalars(
+        select(Document)
+        .where(Document.owner_session_id == actor.session_id)
+        .order_by(Document.created_at.desc())
+    ).all()
     for record in records:
         if record.current_version_id is None:
             continue
@@ -98,6 +111,7 @@ def search(
 def semantic_search(
     q: str = Query(..., min_length=1),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[corpus_service.SemanticHit]:
     """Relevance-ranked search across the corpus (TF-IDF cosine; offline, deterministic).
@@ -105,4 +119,5 @@ def semantic_search(
     Unlike substring ``/search``, this ranks whole documents by semantic relevance, so a
     query matches documents that discuss the topic even without the exact word.
     """
-    return corpus_service.semantic_search(load_corpus(session), q, limit=limit)
+    corpus = load_corpus(session, owner_session_id=actor.session_id)
+    return corpus_service.semantic_search(corpus, q, limit=limit)

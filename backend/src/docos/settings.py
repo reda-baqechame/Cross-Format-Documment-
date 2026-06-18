@@ -15,6 +15,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PrivacyMode = Literal["offline", "enterprise", "cloud"]
 BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
+Scanner = Literal["noop", "clamav"]
+BlobEncryption = Literal["none", "aesgcm"]
 
 
 class Settings(BaseSettings):
@@ -29,6 +31,11 @@ class Settings(BaseSettings):
     # storage
     blob_backend: BlobBackend = "local"
     local_blob_dir: str = "./data/blobs"
+    # application-level encryption-at-rest. ``none`` (offline default) stores plaintext;
+    # ``aesgcm`` wraps the backend with AES-256-GCM keyed by BLOB_ENCRYPTION_KEY (or, if
+    # unset, derived from SIGNING_SECRET).
+    blob_encryption: BlobEncryption = "none"
+    blob_encryption_key: str | None = None
     s3_endpoint_url: str | None = None
     s3_bucket: str = "docos"
     s3_access_key: str | None = None
@@ -48,6 +55,21 @@ class Settings(BaseSettings):
 
     # e-signature (HMAC key; override in production via SIGNING_SECRET)
     signing_secret: str = "docos-dev-signing-secret"
+
+    # malware scanning. ``noop`` (the offline default) accepts everything; ``clamav`` streams
+    # uploads to a clamd daemon and fails closed if it is unreachable.
+    scanner: Scanner = "noop"
+    clamav_host: str = "localhost"
+    clamav_port: int = 3310
+
+    # archive (OOXML/zip) safety limits — defense against zip bombs.
+    zip_max_entries: int = 2000
+    zip_max_uncompressed_mb: int = 200
+    zip_max_ratio: int = 100
+
+    # upload rate limiting (per session, falling back to client IP).
+    rate_limit_enabled: bool = True
+    rate_limit_uploads_per_min: int = 30
 
     # ingestion limits
     max_upload_mb: int = 50
@@ -95,6 +117,10 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    @property
+    def zip_max_uncompressed_bytes(self) -> int:
+        return self.zip_max_uncompressed_mb * 1024 * 1024
 
 
 @lru_cache

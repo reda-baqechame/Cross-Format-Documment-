@@ -31,7 +31,7 @@ export default function HomePage() {
         <Section
           id="library"
           title="Your recent documents"
-          description="Files you’ve opened recently. Search by keyword to find one fast."
+          description="Private to this browser session — only you can see them. Search by keyword to find one fast."
         >
           <div className="space-y-4">
             <SearchBar />

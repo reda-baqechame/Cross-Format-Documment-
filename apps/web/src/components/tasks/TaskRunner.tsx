@@ -272,7 +272,27 @@ function ResultView({ result, onAgain }: { result: TaskResult; onAgain: () => vo
   return (
     <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 text-center">
       {result.kind === "downloaded" && (
-        <p className="text-lg font-medium text-emerald-800">✅ Done — your download has started.</p>
+        <div className="space-y-2">
+          <p className="text-lg font-medium text-emerald-800">✅ Done — your download has started.</p>
+          {result.validation && (
+            <p
+              className={
+                result.validation.status === "fail"
+                  ? "text-sm font-medium text-red-700"
+                  : result.validation.status === "warn"
+                    ? "text-sm font-medium text-amber-700"
+                    : "text-sm font-medium text-emerald-700"
+              }
+            >
+              {result.validation.status === "fail"
+                ? "✕ "
+                : result.validation.status === "warn"
+                  ? "⚠ "
+                  : "✓ "}
+              Output verified: {result.validation.summary}
+            </p>
+          )}
+        </div>
       )}
       {result.kind === "text" && (
         <div className="space-y-2 text-left">

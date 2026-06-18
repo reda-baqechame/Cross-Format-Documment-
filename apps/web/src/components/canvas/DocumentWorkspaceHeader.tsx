@@ -8,7 +8,14 @@ import { FormatToolbar } from "@/components/canvas/FormatToolbar";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
 import type { CanonicalDocument } from "@docos/shared-types";
 
-type WorkspaceTab = "document" | "insights" | "forms" | "trust" | "comments" | "approvals";
+type WorkspaceTab =
+  | "document"
+  | "autopilot"
+  | "insights"
+  | "forms"
+  | "trust"
+  | "comments"
+  | "approvals";
 
 export function DocumentWorkspaceHeader({
   docId,
@@ -26,6 +33,7 @@ export function DocumentWorkspaceHeader({
 
   const tabs: { id: WorkspaceTab; label: string; short: string }[] = [
     { id: "document", label: "Document", short: "Doc" },
+    { id: "autopilot", label: "Autopilot", short: "Auto" },
     { id: "insights", label: "Insights", short: "Insights" },
     { id: "forms", label: "Forms", short: "Forms" },
     { id: "trust", label: "Trust & health", short: "Trust" },

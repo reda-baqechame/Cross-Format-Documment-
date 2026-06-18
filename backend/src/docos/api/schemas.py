@@ -18,10 +18,12 @@ from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
+from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.intelligence import DocumentInsight
 from docos.services.semantic.reader import Citation
+from docos.services.semantic.skills.autopilot import AutopilotReport
 
 
 class HealthCheck(BaseModel):
@@ -49,6 +51,16 @@ class DocumentModelResponse(BaseModel):
 class DocumentHealthResponse(BaseModel):
     doc_id: str
     health: DocumentHealth
+
+
+class ValidationReportResponse(BaseModel):
+    doc_id: str
+    validation: ValidationReport
+
+
+class AutopilotResponse(BaseModel):
+    doc_id: str
+    autopilot: AutopilotReport
 
 
 class HistoryResponse(BaseModel):

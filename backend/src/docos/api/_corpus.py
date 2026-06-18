@@ -11,10 +11,22 @@ from docos.model.serialize import from_dict
 from docos.services.semantic.corpus import CorpusDoc
 
 
-def load_corpus(session: Session, doc_ids: list[str] | None = None) -> list[CorpusDoc]:
-    """Every document's current model (newest first), optionally filtered to ``doc_ids``."""
+def load_corpus(
+    session: Session,
+    doc_ids: list[str] | None = None,
+    *,
+    owner_session_id: str | None = None,
+) -> list[CorpusDoc]:
+    """Every document's current model (newest first), optionally filtered to ``doc_ids``.
+
+    When ``owner_session_id`` is given, only that session's documents are loaded — corpus
+    search and the notebook must never reach across owners.
+    """
     wanted = set(doc_ids) if doc_ids else None
-    records = session.scalars(select(Document).order_by(Document.created_at.desc())).all()
+    stmt = select(Document)
+    if owner_session_id is not None:
+        stmt = stmt.where(Document.owner_session_id == owner_session_id)
+    records = session.scalars(stmt.order_by(Document.created_at.desc())).all()
     corpus: list[CorpusDoc] = []
     for record in records:
         if wanted is not None and record.id not in wanted:

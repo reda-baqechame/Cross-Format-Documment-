@@ -28,6 +28,10 @@ class Document(Base):
     blob_key: Mapped[str] = mapped_column(String)  # original uploaded bytes
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     current_version_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Ownership: an anonymous session owns the document; a registered user can later claim it.
+    # NULL owner = orphaned/legacy and inaccessible to any session (see api/access.py).
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
     versions: Mapped[list[DocumentVersion]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
@@ -158,3 +162,22 @@ class JobRecord(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     finished: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class BlobTombstone(Base):
+    """A blob whose deletion failed — retry seam so deleted bytes don't silently linger.
+
+    When a document is deleted but its blob delete fails, we record the failure here (instead
+    of swallowing it) and audit it. A future sweeper retries ``blob_store.delete`` and flips
+    ``resolved``, so the platform can prove storage actually drained.
+    """
+
+    __tablename__ = "blob_tombstones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    blob_key: Mapped[str] = mapped_column(String, index=True)
+    reason: Mapped[str] = mapped_column(String, default="delete_failed")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

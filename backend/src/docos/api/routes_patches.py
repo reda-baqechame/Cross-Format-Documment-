@@ -22,6 +22,7 @@ from docos.api.schemas import (
     SignatureResponse,
     SignRequest,
 )
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document
 from docos.deps import db_session, get_orchestrator, get_provenance, get_settings
 from docos.model.ids import new_patch_id
@@ -38,9 +39,12 @@ _TARGETED_OPS = frozenset(
 
 @router.post("/{doc_id}/patches", response_model=PatchResponse)
 async def create_patch(
-    doc_id: str, body: PatchRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: PatchRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> PatchResponse:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
@@ -91,9 +95,11 @@ async def create_patch(
 
 
 @router.post("/{doc_id}/sanitize-metadata", response_model=PatchResponse)
-async def sanitize_metadata(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
+async def sanitize_metadata(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> PatchResponse:
     """Strip risky embedded metadata as a reversible, audited edit."""
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
@@ -119,9 +125,11 @@ async def sanitize_metadata(doc_id: str, session: Session = Depends(db_session))
 
 
 @router.get("/{doc_id}/sensitive", response_model=SensitiveScanResponse)
-def scan_sensitive(doc_id: str, session: Session = Depends(db_session)) -> SensitiveScanResponse:
+def scan_sensitive(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> SensitiveScanResponse:
     """Detect PII/secrets in the document without changing it (preview for redaction)."""
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     findings = sensitive.scan_document(doc)
     return SensitiveScanResponse(
         doc_id=doc_id,
@@ -132,14 +140,16 @@ def scan_sensitive(doc_id: str, session: Session = Depends(db_session)) -> Sensi
 
 
 @router.post("/{doc_id}/redact-sensitive", response_model=PatchResponse)
-def redact_sensitive(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
+def redact_sensitive(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> PatchResponse:
     """One-click "clean before export": redact every detected PII/secret node.
 
     Builds a single reversible redaction patch over the detected nodes and runs it
     through the same apply → commit_version → audit path as any other edit, so it is
     versioned and undoable. Redaction is true removal on export (see writers/redaction).
     """
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
@@ -185,9 +195,11 @@ def redact_sensitive(doc_id: str, session: Session = Depends(db_session)) -> Pat
 
 
 @router.post("/{doc_id}/remediate-accessibility", response_model=PatchResponse)
-def remediate_accessibility(doc_id: str, session: Session = Depends(db_session)) -> PatchResponse:
+def remediate_accessibility(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> PatchResponse:
     """Auto-fix accessibility (heading tags, reading order, image alt) as a reversible patch."""
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
@@ -228,10 +240,17 @@ def remediate_accessibility(doc_id: str, session: Session = Depends(db_session))
 
 @router.post("/{doc_id}/sign", response_model=SignatureResponse)
 def sign_document(
-    doc_id: str, body: SignRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: SignRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> SignatureResponse:
-    """Apply a tamper-evident e-signature, committed as a new version."""
-    record, doc = _load_latest(session, doc_id)
+    """Apply an integrity seal (HMAC over the model), committed as a new version.
+
+    This proves the document hasn't changed under the server's key. It is **not** a
+    legally-binding e-signature: there is no signer identity verification or PKI.
+    """
+    record, doc = _load_latest(session, doc_id, actor)
     secret = get_settings().signing_secret
     signed = signing.sign(doc, signer=body.signer, secret=secret)
 
@@ -253,9 +272,11 @@ def sign_document(
 
 
 @router.get("/{doc_id}/signature", response_model=SignatureResponse)
-def signature_status(doc_id: str, session: Session = Depends(db_session)) -> SignatureResponse:
-    """Report signature status, re-verifying the digest against current content."""
-    _record, doc = _load_latest(session, doc_id)
+def signature_status(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> SignatureResponse:
+    """Report integrity-seal status, re-verifying the digest against current content."""
+    _record, doc = _load_latest(session, doc_id, actor)
     valid = signing.verify(doc, secret=get_settings().signing_secret)
     return SignatureResponse(
         doc_id=doc_id,

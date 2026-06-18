@@ -7,6 +7,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
+import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import {
   DocumentMobileActions,
@@ -20,7 +21,15 @@ import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
 
-const TABS: WorkspaceTab[] = ["document", "insights", "forms", "trust", "comments", "approvals"];
+const TABS: WorkspaceTab[] = [
+  "document",
+  "autopilot",
+  "insights",
+  "forms",
+  "trust",
+  "comments",
+  "approvals",
+];
 
 export default function DocumentPage() {
   const params = useParams<{ id: string }>();
@@ -30,7 +39,7 @@ export default function DocumentPage() {
   const [tab, setTab] = useState<WorkspaceTab>(
     initialTab && (TABS as string[]).includes(initialTab)
       ? (initialTab as WorkspaceTab)
-      : "document",
+      : "autopilot",
   );
 
   const model = useQuery({
@@ -46,6 +55,7 @@ export default function DocumentPage() {
 
   const doc = model.data?.document;
   const showDocument = tab === "document";
+  const showAutopilot = tab === "autopilot";
   const showInsights = tab === "insights";
   const showForms = tab === "forms";
   const showTrust = tab === "trust";
@@ -66,8 +76,8 @@ export default function DocumentPage() {
       </p>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        {/* Main canvas */}
-        {(showDocument || !doc) && (
+        {/* Main canvas — visible on its own tab and alongside the Autopilot panel */}
+        {(showDocument || showAutopilot || !doc) && (
           <main
             className="flex-1 overflow-auto p-4 sm:p-8"
             id="document-canvas"
@@ -104,6 +114,11 @@ export default function DocumentPage() {
         )}
 
         {/* Side / full-width panels */}
+        {showAutopilot && doc && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <AutopilotPanel docId={docId} />
+          </aside>
+        )}
         {showInsights && (
           <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
             <IntelligencePanel docId={docId} />
