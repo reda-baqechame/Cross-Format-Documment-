@@ -15,7 +15,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from docos.db.models import ApprovalStep, Document
+from docos.api.access import get_owned_document
+from docos.api.session import Actor, get_actor
+from docos.db.models import ApprovalStep
 from docos.deps import db_session, get_provenance
 from docos.services.collab import approvals
 
@@ -59,22 +61,26 @@ def _status(doc_id: str, steps: list[ApprovalStep]) -> approvals.WorkflowStatus:
     )
 
 
-def _require_doc(session: Session, doc_id: str) -> None:
-    if session.get(Document, doc_id) is None:
-        raise HTTPException(status_code=404, detail="document not found")
+def _require_doc(session: Session, doc_id: str, actor: Actor) -> None:
+    get_owned_document(session, doc_id, actor)
 
 
 @router.get("/{doc_id}/approvals", response_model=approvals.WorkflowStatus)
-def get_workflow(doc_id: str, session: Session = Depends(db_session)) -> approvals.WorkflowStatus:
-    _require_doc(session, doc_id)
+def get_workflow(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> approvals.WorkflowStatus:
+    _require_doc(session, doc_id, actor)
     return _status(doc_id, _steps(session, doc_id))
 
 
 @router.post("/{doc_id}/approvals", response_model=approvals.WorkflowStatus)
 def start_workflow(
-    doc_id: str, body: StartWorkflowRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: StartWorkflowRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> approvals.WorkflowStatus:
-    _require_doc(session, doc_id)
+    _require_doc(session, doc_id, actor)
     names = [a.strip() for a in body.approvers if a.strip()]
     if not names:
         raise HTTPException(status_code=422, detail="at least one approver is required")
@@ -111,9 +117,12 @@ def start_workflow(
 
 @router.post("/{doc_id}/approvals/decision", response_model=approvals.WorkflowStatus)
 def decide(
-    doc_id: str, body: DecisionRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: DecisionRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> approvals.WorkflowStatus:
-    _require_doc(session, doc_id)
+    _require_doc(session, doc_id, actor)
     if body.decision not in ("approve", "reject"):
         raise HTTPException(status_code=422, detail="decision must be 'approve' or 'reject'")
 
@@ -128,9 +137,7 @@ def decide(
             detail=f"it is not {approver or 'this approver'}'s turn to decide",
         )
 
-    step = next(
-        s for s in steps if s.approver == approver and s.status == approvals.PENDING
-    )
+    step = next(s for s in steps if s.approver == approver and s.status == approvals.PENDING)
     step.status = approvals.APPROVED if body.decision == "approve" else approvals.REJECTED
     step.note = body.note
     step.decided_at = datetime.now(UTC)

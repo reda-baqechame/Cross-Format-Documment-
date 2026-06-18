@@ -7,7 +7,8 @@ what is actually built. Legend: ✅ done · 🟡 partial · 🔜 in progress · 
 This file is the source of truth for "don't forget anything." Update it as features land.
 
 ## A. Capture & ingest
-- ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/image (magic-byte validated) — `services/ingestion`
+- ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/image (magic-byte validated, OOXML verified by package
+  contents not extension, zip-bomb limits) — `services/ingestion`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - 🟡 OCR scans (Tesseract best-effort) — `services/ocr` structure extraction still a stub
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
@@ -40,7 +41,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Compress (PDF) — `pageops.compress_pdf`
 
 ## E. Sign & agree
-- ✅ Tamper-evident e-signature (HMAC) · ✅ Fillable form fields (list + fill) — `routes_forms.py`
+- ✅ Integrity seal (HMAC; detects post-seal changes — **not** a legally-binding e-signature) ·
+  ✅ Fillable form fields (list + fill) — `routes_forms.py`
 - ✅ Approval / multi-party sign-off workflow (ordered or parallel, audited) — `routes_approvals.py`, `services/collab/approvals.py`
 - ✅ Bulk send (one packet to many recipients; per-recipient copy + sign-off) — `routes_bulk_send.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
@@ -52,7 +54,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
-- 🔒 Malware scan — needs ClamAV daemon (NoopScanner seam ready)
+- ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
+  unreachable; offline default stays NoopScanner — `services/ingestion/scanner.py`
 - ✅ Watermark (text stamp) — `pageops.watermark_pdf` · ⬜ DRM
 
 ## G. Compare, review & collaborate
@@ -70,6 +73,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🔒 Doc → audio/podcast — needs a TTS service
 
 ## I. Store, find & manage
+- ✅ Per-session document ownership — every document is owned by a signed anonymous-session
+  cookie; cross-session access 404s (no IDOR). One authz chokepoint — `api/access.py`,
+  `api/session.py`. Registered-user *claim* seam reserved (`Document.owner_user_id`).
+- ✅ Upload hardening — streamed size cap (413), per-session upload rate limit (429),
+  ingest `JobRecord` seam — `api/ratelimit.py`, `routes_documents.py`
+- ✅ Verifiable deletion — failed blob deletes recorded as `BlobTombstone` + audited (not
+  swallowed) for retry — `routes_documents.py`
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
 - ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
 - ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`

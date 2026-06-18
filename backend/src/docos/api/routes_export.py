@@ -13,8 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
-from docos.db.models import Document
+from docos.api.session import Actor, get_actor
 from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.registry import AdapterRegistry
@@ -62,18 +63,19 @@ async def export_document(
     doc_id: str,
     format: str = Query("docx"),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
     if format == "pdf":
-        return await _export_pdf(doc_id, session, blob_store)
+        return await _export_pdf(doc_id, session, blob_store, actor)
 
     if format in _DIRECT_WRITERS:
-        record, doc = _load_latest(session, doc_id)
+        record, doc = _load_latest(session, doc_id, actor)
         writer, mime, ext = _DIRECT_WRITERS[format]
         data = writer(doc)
     elif format in _FORMATS:
-        record, doc = _load_latest(session, doc_id)
+        record, doc = _load_latest(session, doc_id, actor)
         format_id, mime, ext = _FORMATS[format]
         try:
             data = registry.resolve_by_format(format_id).export(doc, target_mime=mime)
@@ -94,9 +96,11 @@ async def export_document(
     )
 
 
-async def _export_pdf(doc_id: str, session: Session, blob_store: BlobStore) -> Response:
+async def _export_pdf(
+    doc_id: str, session: Session, blob_store: BlobStore, actor: Actor
+) -> Response:
     """PDF write-back: re-emit the original PDF with edits applied and redactions burned in."""
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     if record.source_format != "pdf":
         raise HTTPException(
             status_code=400, detail="PDF export is only available for PDF documents — use DOCX"
@@ -122,12 +126,13 @@ async def _export_pdf(doc_id: str, session: Session, blob_store: BlobStore) -> R
 async def searchable_pdf(
     doc_id: str,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
     registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     """Produce a searchable PDF: scans get an invisible OCR text layer over the page
     image; every other format becomes a clean, born-digital selectable-text PDF."""
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     page_images: dict[int, bytes] = {}
 
     if record.source_format == "image" and record.blob_key:
@@ -161,12 +166,11 @@ async def preview_page(
     doc_id: str,
     page: int = Query(0, ge=0),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
     registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
-    record = session.get(Document, doc_id)
-    if record is None:
-        raise HTTPException(status_code=404, detail="document not found")
+    record = get_owned_document(session, doc_id, actor)
     if record.source_format not in ("pdf", "image"):
         raise HTTPException(
             status_code=400, detail="preview is only available for PDF and image documents"

@@ -22,6 +22,7 @@ from docos.api.schemas import (
     TranslateRequest,
     TranslateResponse,
 )
+from docos.api.session import Actor, get_actor
 from docos.deps import db_session, get_llm_client, get_settings
 from docos.services.provenance import diff
 from docos.services.semantic import classify as classify_service
@@ -33,10 +34,13 @@ router = APIRouter(prefix="/documents", tags=["query"])
 
 @router.post("/{doc_id}/ask", response_model=AskResponse)
 async def ask_document(
-    doc_id: str, body: AskRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: AskRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> AskResponse:
     """Answer a question from the document's own text, citing the nodes used."""
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     use_llm = get_settings().llm_provider != "noop"
     result = await reader.answer(doc, body.question, get_llm_client(), use_llm=use_llm)
     return AskResponse(
@@ -49,10 +53,10 @@ async def ask_document(
 
 @router.get("/{doc_id}/summary", response_model=SummaryResponse)
 async def summarize_document(
-    doc_id: str, session: Session = Depends(db_session)
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
 ) -> SummaryResponse:
     """Summarize the document, citing the nodes the summary draws from."""
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     use_llm = get_settings().llm_provider != "noop"
     result = await reader.summarize(doc, get_llm_client(), use_llm=use_llm)
     return SummaryResponse(
@@ -68,37 +72,45 @@ def diff_documents(
     doc_id: str,
     against: str = Query(..., description="the other document id to compare against"),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> DiffResponse:
     """Block-level redline between this document and another (cross-format)."""
-    _record, base = _load_latest(session, doc_id)
-    _other_record, other = _load_latest(session, against)
+    _record, base = _load_latest(session, doc_id, actor)
+    _other_record, other = _load_latest(session, against, actor)
     return DiffResponse(doc_id=doc_id, against=against, result=diff.diff_documents(base, other))
 
 
 @router.get("/{doc_id}/extract", response_model=ExtractResponse)
-def extract_document(doc_id: str, session: Session = Depends(db_session)) -> ExtractResponse:
+def extract_document(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> ExtractResponse:
     """Pull entities (dates/money/emails/…) and Label:value fields, with provenance."""
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     return ExtractResponse(doc_id=doc_id, extraction=extract_service.extract(doc))
 
 
 @router.get("/{doc_id}/classify", response_model=ClassifyResponse)
-def classify_document(doc_id: str, session: Session = Depends(db_session)) -> ClassifyResponse:
+def classify_document(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> ClassifyResponse:
     """Detect the document type (invoice/contract/resume/…) with explainable signals."""
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     return ClassifyResponse(doc_id=doc_id, classification=classify_service.classify(doc))
 
 
 @router.post("/{doc_id}/translate", response_model=TranslateResponse)
 async def translate_document(
-    doc_id: str, body: TranslateRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: TranslateRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> TranslateResponse:
     """Translate the document text. Requires a configured LLM provider."""
     if get_settings().llm_provider == "noop":
         raise HTTPException(
             status_code=501, detail="translation requires LLM_PROVIDER=openai or anthropic"
         )
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     text = await reader.translate(doc, body.target_language, get_llm_client())
     return TranslateResponse(
         doc_id=doc_id, target_language=body.target_language, translated_text=text

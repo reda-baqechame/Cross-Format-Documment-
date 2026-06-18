@@ -22,6 +22,7 @@ from docos.api.schemas import (
     RotateRequest,
     WatermarkRequest,
 )
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document
 from docos.deps import blob_store_dep, db_session, get_provenance
 from docos.services.docengine import pageops
@@ -62,9 +63,10 @@ async def rotate(
     doc_id: str,
     body: RotateRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         out = pageops.rotate_pages(pdf, body.pages, body.degrees)
@@ -79,9 +81,10 @@ async def delete(
     doc_id: str,
     body: PagesRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         out = pageops.delete_pages(pdf, body.pages)
@@ -96,9 +99,10 @@ async def reorder(
     doc_id: str,
     body: ReorderRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         out = pageops.reorder_pages(pdf, body.order)
@@ -113,9 +117,10 @@ async def extract(
     doc_id: str,
     pages: str = Query(..., description="comma-separated 0-based page indices, e.g. 0,2,3"),
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         indices = [int(p) for p in pages.split(",") if p.strip() != ""]
@@ -131,12 +136,13 @@ async def merge_documents(
     doc_id: str,
     body: MergeRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     parts = [await _current_pdf(record, doc, blob_store)]
     for other_id in body.doc_ids:
-        other_rec, other_doc = _load_latest(session, other_id)
+        other_rec, other_doc = _load_latest(session, other_id, actor)
         parts.append(await _current_pdf(other_rec, other_doc, blob_store))
     try:
         out = pageops.merge(parts)
@@ -150,9 +156,10 @@ async def merge_documents(
 async def compress(
     doc_id: str,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     out = pageops.compress_pdf(pdf)
     _audit(session, doc_id, "compressed", {"bytes_in": len(pdf), "bytes_out": len(out)})
@@ -164,9 +171,10 @@ async def protect(
     doc_id: str,
     body: ProtectRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         out = pageops.encrypt_pdf(
@@ -183,9 +191,10 @@ async def watermark(
     doc_id: str,
     body: WatermarkRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     try:
         out = pageops.watermark_pdf(pdf, body.text)

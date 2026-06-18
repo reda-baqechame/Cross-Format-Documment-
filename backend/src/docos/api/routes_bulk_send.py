@@ -15,7 +15,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
+from docos.api.session import Actor, get_actor
 from docos.db.models import ApprovalStep, BulkSendPacket, Document
 from docos.deps import db_session, get_provenance
 from docos.services.collab import approvals
@@ -49,18 +51,19 @@ class BulkSendListResponse(BaseModel):
 
 def _packet_state(session: Session, packet_doc_id: str) -> str:
     steps = list(
-        session.scalars(
-            select(ApprovalStep).where(ApprovalStep.document_id == packet_doc_id)
-        ).all()
+        session.scalars(select(ApprovalStep).where(ApprovalStep.document_id == packet_doc_id)).all()
     )
     return approvals.overall_state(steps)
 
 
 @router.post("/{doc_id}/bulk-send", response_model=BulkSendBatch)
 def bulk_send(
-    doc_id: str, body: BulkSendRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: BulkSendRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> BulkSendBatch:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     recipients = [r.strip() for r in body.recipients if r.strip()]
     if not recipients:
         raise HTTPException(status_code=422, detail="at least one recipient is required")
@@ -81,6 +84,7 @@ def bulk_send(
             source_format=copy.meta.source_format,
             source_mime=copy.meta.source_mime,
             blob_key="",
+            owner_session_id=actor.session_id,
         )
         session.add(packet_record)
         session.flush()
@@ -131,9 +135,10 @@ def bulk_send(
 
 
 @router.get("/{doc_id}/bulk-send", response_model=BulkSendListResponse)
-def list_bulk_sends(doc_id: str, session: Session = Depends(db_session)) -> BulkSendListResponse:
-    if session.get(Document, doc_id) is None:
-        raise HTTPException(status_code=404, detail="document not found")
+def list_bulk_sends(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> BulkSendListResponse:
+    get_owned_document(session, doc_id, actor)
     rows = session.scalars(
         select(BulkSendPacket)
         .where(BulkSendPacket.source_doc_id == doc_id)

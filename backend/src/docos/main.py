@@ -30,6 +30,7 @@ from docos.api import (
     routes_suggestions,
     routes_templates,
 )
+from docos.api.session import SessionMiddleware
 from docos.settings import get_settings
 
 logger = logging.getLogger("docos")
@@ -60,6 +61,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Issue/validate the anonymous session cookie so every document gets a private owner.
+    app.add_middleware(SessionMiddleware)
 
     app.include_router(routes_health.router)
     app.include_router(routes_documents.router)

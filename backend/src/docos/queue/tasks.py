@@ -15,7 +15,9 @@ def ingest_document(blob_key: str, mime: str) -> dict:
     """Re-parse a staged blob into the canonical model asynchronously.
 
     Extension point: resolve the adapter, parse, and commit a version exactly as the
-    synchronous route does, for large/batch uploads.
+    synchronous route does, for large/batch uploads. Mirror the synchronous route's
+    ``JobRecord`` bookkeeping (kind="ingest", status succeeded/failed) so progress and
+    failures are observable from the ``jobs`` table.
     """
     return {"status": "queued", "blob_key": blob_key, "mime": mime}
 

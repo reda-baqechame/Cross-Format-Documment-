@@ -32,7 +32,7 @@ const CAPABILITIES = [
     items: [
       "True redaction on export (content removed, not hidden)",
       "PII scan + one-click redact · metadata sanitize",
-      "Accessibility score + auto-fix · tamper-evident sign",
+      "Accessibility score + auto-fix · integrity seal",
     ],
   },
   {

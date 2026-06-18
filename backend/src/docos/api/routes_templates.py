@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document, Template
 from docos.deps import db_session, get_provenance
 from docos.services.templates import library
@@ -62,9 +63,12 @@ def _summary(t: Template) -> TemplateSummary:
 
 @router.post("/documents/{doc_id}/save-as-template", response_model=TemplateSummary)
 def save_as_template(
-    doc_id: str, body: SaveTemplateRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: SaveTemplateRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> TemplateSummary:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=422, detail="template name is required")
@@ -86,14 +90,19 @@ def save_as_template(
 
 
 @router.get("/templates", response_model=TemplateListResponse)
-def list_templates(session: Session = Depends(db_session)) -> TemplateListResponse:
+def list_templates(
+    session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> TemplateListResponse:
     rows = session.scalars(select(Template).order_by(Template.created_at.desc())).all()
     return TemplateListResponse(templates=[_summary(t) for t in rows])
 
 
 @router.post("/templates/{template_id}/instantiate", response_model=InstantiateResponse)
 def instantiate_template(
-    template_id: str, body: InstantiateRequest, session: Session = Depends(db_session)
+    template_id: str,
+    body: InstantiateRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> InstantiateResponse:
     template = session.get(Template, template_id)
     if template is None:
@@ -106,6 +115,7 @@ def instantiate_template(
         source_format=doc.meta.source_format,
         source_mime=doc.meta.source_mime,
         blob_key="",  # born-digital from a template — no original upload bytes
+        owner_session_id=actor.session_id,
     )
     session.add(record)
     session.flush()
@@ -120,13 +130,13 @@ def instantiate_template(
         detail={"template_id": template_id},
     )
     session.commit()
-    return InstantiateResponse(
-        doc_id=doc.doc_id, version_id=version_id, template_id=template_id
-    )
+    return InstantiateResponse(doc_id=doc.doc_id, version_id=version_id, template_id=template_id)
 
 
 @router.delete("/templates/{template_id}", status_code=204)
-def delete_template(template_id: str, session: Session = Depends(db_session)) -> None:
+def delete_template(
+    template_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> None:
     template = session.get(Template, template_id)
     if template is None:
         raise HTTPException(status_code=404, detail="template not found")
