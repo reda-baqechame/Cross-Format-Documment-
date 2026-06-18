@@ -178,6 +178,36 @@ export async function fetchExtract(docId: string): Promise<{
   return json(await fetch(`${BASE}/documents/${docId}/extract`));
 }
 
+export interface InsightField {
+  key: string;
+  value: string;
+  node_id: string | null;
+  confidence: number;
+}
+
+export interface InsightCheck {
+  id: string;
+  label: string;
+  severity: "info" | "warn" | "error";
+  passed: boolean;
+  detail: string;
+}
+
+export interface DocumentInsight {
+  doc_type: string;
+  confidence: number;
+  fields: InsightField[];
+  checks: InsightCheck[];
+  summary: string;
+}
+
+/** Typed, validated read for the detected document kind (invoice/contract/résumé/…). */
+export async function fetchIntelligence(
+  docId: string,
+): Promise<{ doc_id: string; insight: DocumentInsight }> {
+  return json(await fetch(`${BASE}/documents/${docId}/intelligence`));
+}
+
 export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
 }

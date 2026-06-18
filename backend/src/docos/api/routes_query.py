@@ -18,6 +18,7 @@ from docos.api.schemas import (
     ClassifyResponse,
     DiffResponse,
     ExtractResponse,
+    IntelligenceResponse,
     SummaryResponse,
     TranslateRequest,
     TranslateResponse,
@@ -26,7 +27,7 @@ from docos.deps import db_session, get_llm_client, get_settings
 from docos.services.provenance import diff
 from docos.services.semantic import classify as classify_service
 from docos.services.semantic import extract as extract_service
-from docos.services.semantic import reader
+from docos.services.semantic import intelligence, reader
 
 router = APIRouter(prefix="/documents", tags=["query"])
 
@@ -87,6 +88,16 @@ def classify_document(doc_id: str, session: Session = Depends(db_session)) -> Cl
     """Detect the document type (invoice/contract/resume/…) with explainable signals."""
     _record, doc = _load_latest(session, doc_id)
     return ClassifyResponse(doc_id=doc_id, classification=classify_service.classify(doc))
+
+
+@router.get("/{doc_id}/intelligence", response_model=IntelligenceResponse)
+def document_intelligence(
+    doc_id: str, session: Session = Depends(db_session)
+) -> IntelligenceResponse:
+    """Typed read for the detected document kind: the fields that matter plus
+    actionable checks (totals reconcile, missing clauses, ATS/contact gaps)."""
+    _record, doc = _load_latest(session, doc_id)
+    return IntelligenceResponse(doc_id=doc_id, insight=intelligence.analyze(doc))
 
 
 @router.post("/{doc_id}/translate", response_model=TranslateResponse)

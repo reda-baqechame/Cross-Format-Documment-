@@ -15,6 +15,7 @@ import {
 } from "@/components/canvas/DocumentWorkspaceHeader";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
+import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
 
@@ -36,6 +37,7 @@ export default function DocumentPage() {
 
   const doc = model.data?.document;
   const showDocument = tab === "document";
+  const showInsights = tab === "insights";
   const showTrust = tab === "trust";
   const showComments = tab === "comments";
   const showApprovals = tab === "approvals";
@@ -92,6 +94,11 @@ export default function DocumentPage() {
         )}
 
         {/* Side / full-width panels */}
+        {showInsights && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <IntelligencePanel docId={docId} />
+          </aside>
+        )}
         {showTrust && health.isError && (
           <div role="alert" className="w-full p-8 text-sm text-red-600">
             {friendlyLoadError(health.error)}

@@ -15,6 +15,7 @@ from docos.services.docengine.writers.redaction import is_redacted
 # category -> signal keywords (lowercased, substring match on the document text)
 _SIGNALS: dict[str, tuple[str, ...]] = {
     "invoice": ("invoice", "amount due", "total due", "subtotal", "bill to", "due date"),
+    "receipt": ("receipt", "thank you for your", "cashier", "change due", "card ending"),
     "contract": ("agreement", "hereby", "the parties", "shall", "terms and conditions", "whereas"),
     "resume": ("experience", "education", "skills", "curriculum vitae", "résumé", "resume"),
     "letter": ("dear ", "sincerely", "best regards", "yours truly"),

@@ -19,6 +19,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
+- ✅ Typed document intelligence (invoice/receipt/contract/résumé): per-kind fields **plus
+  actionable checks** — invoice totals reconcile, contract clause gaps + risky language,
+  résumé ATS/contact gaps; redaction-aware, offline — `services/semantic/intelligence/`,
+  `GET /documents/{id}/intelligence`, `components/canvas/IntelligencePanel`
 - ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 

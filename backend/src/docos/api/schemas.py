@@ -20,6 +20,7 @@ from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.sensitive import SensitiveFinding
 from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
+from docos.services.semantic.intelligence import DocumentInsight
 from docos.services.semantic.reader import Citation
 
 
@@ -177,6 +178,11 @@ class ExtractResponse(BaseModel):
 class ClassifyResponse(BaseModel):
     doc_id: str
     classification: Classification
+
+
+class IntelligenceResponse(BaseModel):
+    doc_id: str
+    insight: DocumentInsight
 
 
 class TranslateRequest(BaseModel):
