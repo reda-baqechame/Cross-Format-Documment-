@@ -56,16 +56,27 @@ export interface DocNode {
   page_number?: number;
   width?: number;
   height?: number;
+  rotation?: number;
   // table
   rows?: number;
   cols?: number;
+  row?: number;
+  col?: number;
+  header?: boolean;
   // image
   alt_text?: string | null;
   blob_ref?: string;
   mime?: string;
   // field
   field_name?: string;
+  field_kind?: string;
   value?: string | null;
+  required?: boolean;
+  placeholder?: string | null;
+  help_text?: string | null;
+  options?: string[];
+  validation_pattern?: string | null;
+  default_value?: string | null;
 }
 
 export interface DocumentMeta {
@@ -161,7 +172,20 @@ export type PatchOpName =
   | "redact"
   | "unredact"
   | "sanitize_metadata"
-  | "restore_metadata";
+  | "restore_metadata"
+  | "duplicate_node"
+  | "insert_table_row"
+  | "delete_table_row"
+  | "insert_table_col"
+  | "delete_table_col"
+  | "set_table_cell"
+  | "insert_image"
+  | "replace_image"
+  | "set_image_attrs"
+  | "insert_link"
+  | "set_list_attrs"
+  | "duplicate_page"
+  | "set_page_attrs";
 
 export interface PatchOpDTO {
   op: PatchOpName;

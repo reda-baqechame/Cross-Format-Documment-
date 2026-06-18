@@ -15,6 +15,12 @@ logger = logging.getLogger("docos.ingestion")
 # Map sniffed mime -> the document-engine format id.
 _FORMAT_BY_MIME = {
     "text/plain": "txt",
+    "text/markdown": "md",
+    "text/x-markdown": "md",
+    "text/csv": "csv",
+    "application/csv": "csv",
+    "text/html": "html",
+    "application/xhtml+xml": "html",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
@@ -73,7 +79,7 @@ class IngestionGatewayImpl(IngestionGateway):
                 mime=mime,
                 reason=(
                     "this file type isn't supported yet — try PDF, Word, Excel, "
-                    "PowerPoint, RTF, an image, or plain text"
+                    "PowerPoint, Markdown, CSV, HTML, RTF, an image, or plain text"
                 ),
             )
         if mime in _ZIP_MIMES:

@@ -7,12 +7,14 @@ what is actually built. Legend: ✅ done · 🟡 partial · 🔜 in progress · 
 This file is the source of truth for "don't forget anything." Update it as features land.
 
 ## A. Capture & ingest
-- ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/image (magic-byte validated, OOXML verified by package
+- ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/MD/CSV/HTML/image (magic-byte validated, OOXML verified by package
   contents not extension, zip-bomb limits) — `services/ingestion`
+- ✅ First-class Markdown / CSV / HTML import adapters — `services/docengine/adapters`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - 🟡 OCR scans (Tesseract best-effort) — `services/ocr` structure extraction still a stub
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
 - 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
+- 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
 - ⬜ Handwriting OCR
 
 ## B. Understand it (OCR, IDP, structure)
@@ -32,24 +34,31 @@ This file is the source of truth for "don't forget anything." Update it as featu
   `components/canvas/IntelligencePanel`. Home "Analyze & validate" tile + library type badges.
 - ✅ **Document Skills + Autopilot** — recognizes the ~15-category document-purpose taxonomy,
   extracts typed fields per purpose with confidence, runs checks (e.g. invoice totals), flags
-  what needs human review, and recommends next actions. Deep skills: invoice, contract, résumé;
-  generic fallback for every other recognized type. `GET /documents/{id}/autopilot` +
+  what needs human review, and recommends next actions. Deep skills: invoice, contract, résumé,
+  proposals/SOWs, reports, SOPs/manuals, marketing/sales, financial, legal, technical,
+  research/education, import-export/shipping, and real-estate documents; generic fallback for
+  every other recognized type. `GET /documents/{id}/autopilot` +
   Autopilot workspace tab — `services/semantic/skills/`
 - ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
-- ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
+- ✅ Reversible patch history + undo · ✅ add/move/remove/update/set-text plus duplicate,
+  table, image, link, list, and page patch ops
 - ✅ Rich formatting (bold/italic/underline/size/color) — toolbar over `update_node` — `components/canvas/FormatToolbar`
 - ✅ Block structure editing UI (move up/down, delete) over add/move/remove_node — `components/canvas/NodeRenderer` (BlockWrap)
-- ✅ Forms fill UI (list + fill fillable fields, reversible) — `components/canvas/FormsPanel`, `routes_forms.py`
+- ✅ Modify Studio (insert, duplicate, delete, page/slide strip, text, table, image, link, list,
+  form-field, and export-safe reversible edits) — `components/canvas/ModifyStudio`
+- ✅ Form Builder + fill UI (detect blanks, create/edit/delete fields, required/options metadata,
+  reusable template handoff, reversible fill) — `components/canvas/FormsPanel`, `routes_forms.py`
 - ✅ Templates UI (save-as-template + browse/stamp-out gallery) — `components/templates/TemplateGallery`, `ToolsMenu`
 - ✅ Comment threads UI (anchored to nodes, reply/resolve, versioned) — `services/collab/comments.py`, `components/canvas/CommentsPanel`
 - ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
 - ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py` (UI: `TemplateGallery`)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- 🟡 Slide/spreadsheet editing UX (deck analysis + block edits landed; native slide canvas pending)
+- 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
+  table primitives; high-fidelity slide thumbnails/formula editor still pending)
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export

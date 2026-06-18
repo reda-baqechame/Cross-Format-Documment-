@@ -33,7 +33,27 @@ router = APIRouter(prefix="/documents", tags=["semantic"])
 
 # Ops that act on an existing node and therefore require a valid ``target_id``.
 _TARGETED_OPS = frozenset(
-    {"set_text", "update_node", "retag", "redact", "unredact", "remove_node", "move_node"}
+    {
+        "set_text",
+        "update_node",
+        "retag",
+        "redact",
+        "unredact",
+        "remove_node",
+        "move_node",
+        "duplicate_node",
+        "insert_table_row",
+        "delete_table_row",
+        "insert_table_col",
+        "delete_table_col",
+        "set_table_cell",
+        "replace_image",
+        "set_image_attrs",
+        "insert_link",
+        "set_list_attrs",
+        "duplicate_page",
+        "set_page_attrs",
+    }
 )
 
 
@@ -52,6 +72,8 @@ async def create_patch(
         for op in body.ops:
             if op.op in _TARGETED_OPS and (op.target_id is None or op.target_id not in doc.nodes):
                 raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
+            if op.target_id is not None and op.target_id not in doc.nodes:
+                raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
         patch = ReversiblePatch(
             id=new_patch_id(),
             patches=[Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops],
@@ -66,7 +88,10 @@ async def create_patch(
     new_version_id: str | None = None
 
     if applied:
-        updated = orchestrator.apply(doc, patch)
+        try:
+            updated = orchestrator.apply(doc, patch)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         new_version_id = provenance.commit_version(updated, patch=patch)
         record = session.get(Document, doc_id)
         if record is not None:

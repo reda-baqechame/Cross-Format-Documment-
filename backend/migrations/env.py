@@ -11,8 +11,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from docos.db.base import Base
 from docos.db import models  # noqa: F401  (import registers tables on Base.metadata)
+from docos.db.base import Base
 from docos.settings import get_settings
 
 config = context.config

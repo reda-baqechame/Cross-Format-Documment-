@@ -50,3 +50,18 @@ def test_image_ingests_and_previews(client, sample_image_bytes):
     assert preview.status_code == 200
     assert preview.headers["content-type"] == "image/png"
     assert preview.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_markdown_csv_and_html_ingest_as_first_class_formats(client):
+    cases = [
+        ("notes.md", b"# Title\n\nBody text", "text/markdown", "md"),
+        ("data.csv", b"Name,Total\nAlice,10", "text/csv", "csv"),
+        ("page.html", b"<h1>Title</h1><p>Body text</p>", "text/html", "html"),
+    ]
+    for filename, data, mime, expected in cases:
+        res = client.post("/documents", files={"file": (filename, data, mime)})
+        assert res.status_code == 200
+        assert res.json()["detected_format"] == expected
+        doc_id = res.json()["doc_id"]
+        model = client.get(f"/documents/{doc_id}/model").json()["document"]
+        assert model["meta"]["source_format"] == expected

@@ -105,7 +105,29 @@ export interface FormField {
   field_name: string;
   field_kind: string;
   value: string | null;
+  required: boolean;
+  placeholder: string | null;
+  help_text: string | null;
+  options: string[];
+  validation_pattern: string | null;
+  default_value: string | null;
 }
+
+export interface FieldDraft {
+  field_name: string;
+  field_kind?: string;
+  parent_id?: string | null;
+  index?: number | null;
+  value?: string | null;
+  required?: boolean;
+  placeholder?: string | null;
+  help_text?: string | null;
+  options?: string[];
+  validation_pattern?: string | null;
+  default_value?: string | null;
+}
+
+export type FieldUpdate = Partial<Omit<FieldDraft, "parent_id" | "index">>;
 
 /** List a document's fillable form-field placeholders. */
 export async function listFields(docId: string): Promise<FormField[]> {
@@ -130,6 +152,42 @@ export async function fillField(
   );
 }
 
+export async function detectFields(
+  docId: string,
+): Promise<{ doc_id: string; detected: number; patch: PatchResponse }> {
+  return json(await fetch(`${BASE}/documents/${docId}/fields/detect`, { method: "POST" }));
+}
+
+export async function createField(docId: string, draft: FieldDraft): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/fields/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    }),
+  );
+}
+
+export async function updateField(
+  docId: string,
+  fieldId: string,
+  changes: FieldUpdate,
+): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/fields/${fieldId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    }),
+  );
+}
+
+export async function deleteField(docId: string, fieldId: string): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/fields/${fieldId}`, { method: "DELETE" }),
+  );
+}
+
 /** Delete a block (reversible — restorable via undo). */
 export function deleteNode(docId: string, nodeId: string): Promise<PatchResponse> {
   return submitPatch(docId, { ops: [{ op: "remove_node", target_id: nodeId }] });
@@ -144,6 +202,185 @@ export function moveNode(
 ): Promise<PatchResponse> {
   return submitPatch(docId, {
     ops: [{ op: "move_node", target_id: nodeId, payload: { parent_id: parentId, index } }],
+  });
+}
+
+export const duplicateNode = (docId: string, nodeId: string): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "duplicate_node", target_id: nodeId }] });
+
+export const duplicatePage = (docId: string, nodeId: string): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "duplicate_page", target_id: nodeId }] });
+
+export const setPageAttrs = (
+  docId: string,
+  nodeId: string,
+  changes: { rotation?: number; width?: number; height?: number; page_number?: number },
+): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "set_page_attrs", target_id: nodeId, payload: changes }] });
+
+export const setTableCell = (
+  docId: string,
+  cellId: string,
+  changes: { text?: string; header?: boolean; number_format?: string | null },
+): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "set_table_cell", target_id: cellId, payload: changes }] });
+
+export const insertTableRow = (
+  docId: string,
+  tableId: string,
+  index?: number,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [{ op: "insert_table_row", target_id: tableId, payload: { index } }],
+  });
+
+export const deleteTableRow = (
+  docId: string,
+  tableId: string,
+  index?: number,
+  rowId?: string,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [{ op: "delete_table_row", target_id: tableId, payload: { index, row_id: rowId } }],
+  });
+
+export const insertTableCol = (
+  docId: string,
+  tableId: string,
+  index?: number,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [{ op: "insert_table_col", target_id: tableId, payload: { index } }],
+  });
+
+export const deleteTableCol = (
+  docId: string,
+  tableId: string,
+  index?: number,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [{ op: "delete_table_col", target_id: tableId, payload: { index } }],
+  });
+
+export const insertLink = (docId: string, nodeId: string, href: string): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "insert_link", target_id: nodeId, payload: { href } }] });
+
+export const setListAttrs = (
+  docId: string,
+  nodeId: string,
+  ordered: boolean,
+): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "set_list_attrs", target_id: nodeId, payload: { ordered } }] });
+
+export interface AssetUpload {
+  doc_id: string;
+  blob_ref: string;
+  mime: string;
+  filename: string | null;
+}
+
+export async function uploadDocumentAsset(docId: string, file: File): Promise<AssetUpload> {
+  const body = new FormData();
+  body.append("file", file);
+  return json<AssetUpload>(
+    await fetch(`${BASE}/documents/${docId}/assets`, { method: "POST", body }),
+  );
+}
+
+export const insertImage = (
+  docId: string,
+  parentId: string,
+  asset: Pick<AssetUpload, "blob_ref" | "mime">,
+  altText?: string,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [
+      {
+        op: "insert_image",
+        target_id: parentId,
+        payload: { blob_ref: asset.blob_ref, mime: asset.mime, alt_text: altText ?? null },
+      },
+    ],
+  });
+
+export const replaceImage = (
+  docId: string,
+  imageId: string,
+  asset: Pick<AssetUpload, "blob_ref" | "mime">,
+  altText?: string,
+): Promise<PatchResponse> =>
+  submitPatch(docId, {
+    ops: [
+      {
+        op: "replace_image",
+        target_id: imageId,
+        payload: { blob_ref: asset.blob_ref, mime: asset.mime, alt_text: altText ?? null },
+      },
+    ],
+  });
+
+export const setImageAttrs = (
+  docId: string,
+  imageId: string,
+  changes: { alt_text?: string | null; attrs?: Record<string, unknown> },
+): Promise<PatchResponse> =>
+  submitPatch(docId, { ops: [{ op: "set_image_attrs", target_id: imageId, payload: changes }] });
+
+function localNodeId(prefix: string): string {
+  const raw =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replaceAll("-", "")
+      : Math.random().toString(16).slice(2);
+  return `${prefix}_${raw.slice(0, 12)}`;
+}
+
+export function addTextBlock(
+  docId: string,
+  parentId: string,
+  text: string,
+  opts?: { heading?: boolean; index?: number | null },
+): Promise<PatchResponse> {
+  const blockId = localNodeId(opts?.heading ? "h" : "p");
+  const runId = localNodeId("run");
+  return submitPatch(docId, {
+    ops: [
+      {
+        op: "add_node",
+        payload: {
+          node: {
+            id: blockId,
+            type: opts?.heading ? "heading" : "paragraph",
+            parent_id: parentId,
+            children: [runId],
+            attrs: {},
+            tags: opts?.heading ? ["H2"] : [],
+            level: opts?.heading ? 2 : undefined,
+          },
+          nodes: [
+            {
+              id: blockId,
+              type: opts?.heading ? "heading" : "paragraph",
+              parent_id: parentId,
+              children: [runId],
+              attrs: {},
+              tags: opts?.heading ? ["H2"] : [],
+              level: opts?.heading ? 2 : undefined,
+            },
+            {
+              id: runId,
+              type: "run",
+              parent_id: blockId,
+              children: [],
+              attrs: {},
+              tags: [],
+              text,
+            },
+          ],
+          parent_id: parentId,
+          index: opts?.index,
+        },
+      },
+    ],
   });
 }
 

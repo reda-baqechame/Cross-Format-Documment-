@@ -22,6 +22,7 @@ import {
   parsePageList,
   protectPdf,
   redactSensitive,
+  remediateAccessibility,
   reorderPages,
   rotatePdf,
   sanitizeMetadata,
@@ -32,9 +33,17 @@ import {
   type ExportFormat,
 } from "./api";
 
-export type TaskCategory = "Organize PDF" | "Convert" | "Edit" | "Secure" | "Ask AI" | "Review";
+export type TaskCategory =
+  | "Create"
+  | "Organize PDF"
+  | "Convert"
+  | "Edit"
+  | "Secure"
+  | "Ask AI"
+  | "Review";
 
 export const CATEGORY_ORDER: TaskCategory[] = [
+  "Create",
   "Organize PDF",
   "Convert",
   "Edit",
@@ -82,11 +91,46 @@ export interface TaskDef {
 
 const PDF = "application/pdf";
 const ANY =
-  "application/pdf,.docx,.doc,.xlsx,.pptx,.rtf,.txt,image/png,image/jpeg,image/tiff,text/plain";
+  "application/pdf,.docx,.xlsx,.pptx,.rtf,.txt,.md,.csv,.html,image/png,image/jpeg,image/tiff,text/plain,text/markdown,text/csv,text/html";
 
 const downloaded = async (): Promise<TaskResult> => ({ kind: "downloaded" });
 
 export const TASKS: TaskDef[] = [
+  {
+    slug: "build-form",
+    title: "Build a form",
+    blurb: "Detect blanks, add fields, set required inputs, and turn any document into a reusable form.",
+    category: "Create",
+    emoji: "FORM",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Open builder",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=forms` }),
+  },
+  {
+    slug: "make-template",
+    title: "Make a template",
+    blurb: "Open a document, add placeholders, then save it to the template gallery.",
+    category: "Create",
+    emoji: "TPL",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Open template",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=modify` }),
+  },
+  {
+    slug: "create-from-template",
+    title: "Create from template",
+    blurb: "Browse saved templates and stamp out a fresh editable copy.",
+    category: "Create",
+    emoji: "NEW",
+    accept: ANY,
+    acceptLabel: "optional starter document",
+    minFiles: 0,
+    cta: "Open templates",
+    run: async () => ({ kind: "navigate", href: "/#templates" }),
+  },
+
   // ── Organize PDF ────────────────────────────────────────────────────────────
   {
     slug: "merge-pdf",
@@ -269,6 +313,39 @@ export const TASKS: TaskDef[] = [
       href: `/documents/${docIds[0]}?tab=forms`,
     }),
   },
+  {
+    slug: "edit-deck",
+    title: "Edit a deck or visual",
+    blurb: "Open slides, flyers, diagrams, or visual documents with slide/page controls.",
+    category: "Edit",
+    emoji: "DECK",
+    accept: ANY,
+    acceptLabel: "PowerPoint, PDF, image, or document",
+    cta: "Open visual editor",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=modify` }),
+  },
+  {
+    slug: "edit-table",
+    title: "Edit a table",
+    blurb: "Change cell text, add rows or columns, and export back to Excel.",
+    category: "Edit",
+    emoji: "GRID",
+    accept: ANY,
+    acceptLabel: "Excel, CSV, Word, PDF, or document",
+    cta: "Open table editor",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=modify` }),
+  },
+  {
+    slug: "insert-image-link",
+    title: "Insert image or link",
+    blurb: "Add images, replace visuals, write alt text, or link selected text.",
+    category: "Edit",
+    emoji: "LINK",
+    accept: ANY,
+    acceptLabel: "any editable document",
+    cta: "Open modify tools",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=modify` }),
+  },
 
   // ── Secure ──────────────────────────────────────────────────────────────────
   {
@@ -356,6 +433,41 @@ export const TASKS: TaskDef[] = [
         title: "Sealed",
         body: `Sealed by ${res.signer ?? options.signer}. The integrity seal detects any later change — it is not a legally-binding e-signature.`,
       };
+    },
+  },
+  {
+    slug: "make-accessible",
+    title: "Make accessible",
+    blurb: "Auto-tag headings, reading order, and missing image alt text before sharing.",
+    category: "Secure",
+    emoji: "A11Y",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Fix accessibility",
+    run: async ({ docIds }) => {
+      const res = await remediateAccessibility(docIds[0]);
+      return {
+        kind: "text",
+        title: "Accessibility fixes applied",
+        body: res.intent ?? "The document was remediated with reversible accessibility fixes.",
+      };
+    },
+  },
+  {
+    slug: "clean-sign-send",
+    title: "Clean, seal, send",
+    blurb: "Redact sensitive data, remove metadata, add an integrity seal, then route for approval.",
+    category: "Secure",
+    emoji: "SAFE",
+    accept: ANY,
+    acceptLabel: "any document",
+    options: [{ name: "signer", label: "Signer", type: "text", placeholder: "Your name" }],
+    cta: "Clean & seal",
+    run: async ({ docIds, options }) => {
+      await redactSensitive(docIds[0]);
+      await sanitizeMetadata(docIds[0]);
+      await signDocument(docIds[0], options.signer || "Signer");
+      return { kind: "navigate", href: `/documents/${docIds[0]}?tab=approvals` };
     },
   },
 
@@ -501,6 +613,28 @@ export const TASKS: TaskDef[] = [
         body: `${r.added} added · ${r.removed} removed · ${r.changed} changed · ${r.unchanged} unchanged blocks.`,
       };
     },
+  },
+  {
+    slug: "prepare-approval",
+    title: "Prepare approval",
+    blurb: "Open approval routing, choose ordered or parallel approvers, and track decisions.",
+    category: "Review",
+    emoji: "OK",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Open approvals",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=approvals` }),
+  },
+  {
+    slug: "bulk-send",
+    title: "Bulk send",
+    blurb: "Prepare one document packet for many recipients with independent approval copies.",
+    category: "Review",
+    emoji: "SEND",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Open approvals",
+    run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}?tab=approvals` }),
   },
 ];
 

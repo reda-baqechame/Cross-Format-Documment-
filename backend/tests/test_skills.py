@@ -90,10 +90,11 @@ def test_generic_fallback_for_recognized_but_undeep_type():
         "Acceptance criteria apply.\n"
     )
     report = analyze(_doc(sow))
-    assert report.deep is False
+    assert report.deep is True
     assert report.category == "Sales"
     assert report.type == "Statement of work"
-    # Generic still offers a real next action and never crashes.
+    assert any(f.code == "deliverables.present" for f in report.findings)
+    assert any(f.code == "acceptance.present" for f in report.findings)
     assert report.actions
 
 

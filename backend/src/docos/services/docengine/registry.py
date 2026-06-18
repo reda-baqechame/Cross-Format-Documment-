@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from docos.services.docengine.adapters.csv import CsvAdapter
 from docos.services.docengine.adapters.docx import DocxAdapter
+from docos.services.docengine.adapters.html import HtmlAdapter
 from docos.services.docengine.adapters.image import ImageAdapter
+from docos.services.docengine.adapters.markdown import MarkdownAdapter
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.adapters.pptx import PptxAdapter
 from docos.services.docengine.adapters.rtf import RtfAdapter
@@ -37,6 +40,9 @@ def default_registry() -> AdapterRegistry:
     return AdapterRegistry(
         [
             TxtAdapter(),
+            MarkdownAdapter(),
+            CsvAdapter(),
+            HtmlAdapter(),
             DocxAdapter(),
             PdfAdapter(),
             XlsxAdapter(),

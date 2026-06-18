@@ -103,11 +103,11 @@ export function NodeRenderer({
     case "field":
       return <FieldNode node={node} />;
     case "table":
-      return <table className="w-full border-collapse text-sm">{children}</table>;
+      return <SelectableTable node={node}>{children}</SelectableTable>;
     case "table_row":
       return <tr>{children}</tr>;
     case "table_cell":
-      return <td className="border border-slate-300 px-2 py-1">{children}</td>;
+      return <SelectableCell node={node}>{children}</SelectableCell>;
     default:
       return <div data-node-type={node.type}>{children}</div>;
   }
@@ -256,15 +256,38 @@ function PageView({
   docId: string;
   children: React.ReactNode;
 }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
   const isPdf = doc.meta.source_format === "pdf";
   if (!isPdf || !node.width || !node.height) {
-    return <div className="my-4 rounded bg-white p-8 shadow-sm">{children}</div>;
+    return (
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget) select(node.id);
+        }}
+        className={[
+          "my-4 rounded bg-white p-8 shadow-sm",
+          selected ? "outline outline-2 outline-brand-300" : "",
+        ].join(" ")}
+      >
+        {children}
+      </div>
+    );
   }
   const w = node.width * PDF_SCALE;
   const h = node.height * PDF_SCALE;
   const runs = collectRuns(doc, node.id).filter((r) => r.bbox);
   return (
-    <div className="relative mx-auto my-4 bg-white shadow" style={{ width: w, height: h }}>
+    <div
+      className={[
+        "relative mx-auto my-4 bg-white shadow",
+        selected ? "outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+      style={{ width: w, height: h }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) select(node.id);
+      }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={previewUrl(docId, (node.page_number ?? 1) - 1)}
@@ -314,18 +337,32 @@ function ImageNode({
   docId: string;
 }) {
   // For image-origin documents the uploaded bytes are the image — show them.
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
   if (doc.meta.source_format === "image" && node.blob_ref === "original") {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={previewUrl(docId, 0)}
         alt={node.alt_text ?? "Uploaded image"}
-        className="mx-auto my-2 max-w-full rounded border border-slate-200"
+        onClick={() => select(node.id)}
+        className={[
+          "mx-auto my-2 max-w-full rounded border border-slate-200",
+          selected ? "outline outline-2 outline-brand-300" : "",
+        ].join(" ")}
       />
     );
   }
   return (
-    <div className="my-2 flex items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) select(node.id);
+      }}
+      className={[
+        "my-2 flex cursor-pointer items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500",
+        selected ? "outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+    >
       <span aria-hidden>🖼️</span>
       <span>{node.alt_text ?? "Image"}</span>
       {!node.alt_text && (
@@ -336,11 +373,53 @@ function ImageNode({
 }
 
 function FieldNode({ node }: { node: DocNode }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
   return (
-    <span className="mx-0.5 inline-flex items-center gap-1 rounded border border-slate-300 bg-slate-50 px-2 py-0.5 text-sm">
+    <span
+      onClick={() => select(node.id)}
+      className={[
+        "mx-0.5 inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-slate-50 px-2 py-0.5 text-sm",
+        selected ? "outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+    >
       <span className="text-xs uppercase text-slate-400">{node.field_name ?? "field"}</span>
       <span>{node.value ?? "—"}</span>
     </span>
+  );
+}
+
+function SelectableTable({ node, children }: { node: DocNode; children: React.ReactNode }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  return (
+    <table
+      onClick={() => select(node.id)}
+      className={[
+        "w-full border-collapse text-sm",
+        selected ? "outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+    >
+      {children}
+    </table>
+  );
+}
+
+function SelectableCell({ node, children }: { node: DocNode; children: React.ReactNode }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  return (
+    <td
+      onClick={(e) => {
+        if (e.target === e.currentTarget) select(node.id);
+      }}
+      className={[
+        "border border-slate-300 px-2 py-1",
+        selected ? "bg-brand-50 outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+    >
+      {children}
+    </td>
   );
 }
 

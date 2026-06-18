@@ -232,6 +232,12 @@ class FieldInfo(BaseModel):
     field_name: str
     field_kind: str
     value: str | None
+    required: bool = False
+    placeholder: str | None = None
+    help_text: str | None = None
+    options: list[str] = Field(default_factory=list)
+    validation_pattern: str | None = None
+    default_value: str | None = None
 
 
 class FieldsResponse(BaseModel):
@@ -242,3 +248,42 @@ class FieldsResponse(BaseModel):
 class FillFieldRequest(BaseModel):
     node_id: str
     value: str = Field(max_length=5000)
+
+
+class CreateFieldRequest(BaseModel):
+    field_name: str = Field(min_length=1, max_length=120)
+    field_kind: str = Field(default="text", max_length=40)
+    parent_id: str | None = None
+    index: int | None = Field(default=None, ge=0)
+    value: str | None = Field(default=None, max_length=5000)
+    required: bool = False
+    placeholder: str | None = Field(default=None, max_length=200)
+    help_text: str | None = Field(default=None, max_length=500)
+    options: list[str] = Field(default_factory=list, max_length=50)
+    validation_pattern: str | None = Field(default=None, max_length=300)
+    default_value: str | None = Field(default=None, max_length=5000)
+
+
+class UpdateFieldRequest(BaseModel):
+    field_name: str | None = Field(default=None, min_length=1, max_length=120)
+    field_kind: str | None = Field(default=None, max_length=40)
+    value: str | None = Field(default=None, max_length=5000)
+    required: bool | None = None
+    placeholder: str | None = Field(default=None, max_length=200)
+    help_text: str | None = Field(default=None, max_length=500)
+    options: list[str] | None = Field(default=None, max_length=50)
+    validation_pattern: str | None = Field(default=None, max_length=300)
+    default_value: str | None = Field(default=None, max_length=5000)
+
+
+class DetectFieldsResponse(BaseModel):
+    doc_id: str
+    detected: int
+    patch: PatchResponse
+
+
+class AssetUploadResponse(BaseModel):
+    doc_id: str
+    blob_ref: str
+    mime: str
+    filename: str | None

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from docos.api.access import get_owned_document
 from docos.api.ratelimit import enforce_upload_rate
 from docos.api.schemas import (
+    AssetUploadResponse,
     DocumentListResponse,
     DocumentModelResponse,
     DocumentSummary,
@@ -29,15 +30,25 @@ from docos.api.schemas import (
 )
 from docos.api.session import Actor, get_actor
 from docos.db.models import BlobTombstone, Document, DocumentVersion, JobRecord, Label
-from docos.deps import db_session, get_ingestion_gateway, get_provenance, get_registry
+from docos.deps import (
+    blob_store_dep,
+    db_session,
+    get_ingestion_gateway,
+    get_provenance,
+    get_registry,
+)
 from docos.model.document import CanonicalDocument
 from docos.model.serialize import from_dict
 from docos.services.docengine.registry import AdapterRegistry
+from docos.services.ingestion.allowlist import sniff_mime
 from docos.services.ingestion.interface import IngestionGateway
+from docos.storage.blob import BlobStore
 
 logger = logging.getLogger("docos.documents")
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+_ASSET_IMAGE_MIMES = {"image/png", "image/jpeg", "image/tiff"}
 
 
 def _load_latest(session: Session, doc_id: str, actor: Actor) -> tuple[Document, CanonicalDocument]:
@@ -162,6 +173,41 @@ async def upload_document(
     return UploadResponse(
         doc_id=doc.doc_id, version_id=version_id, detected_format=result.detected_format
     )
+
+
+@router.post("/{doc_id}/assets", response_model=AssetUploadResponse)
+async def upload_asset(
+    doc_id: str,
+    file: UploadFile = File(...),
+    session: Session = Depends(db_session),
+    gateway: IngestionGateway = Depends(get_ingestion_gateway),
+    blob_store: BlobStore = Depends(blob_store_dep),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_upload_rate),
+) -> AssetUploadResponse:
+    """Attach an image asset to a document for insert/replace-image patch ops."""
+    get_owned_document(session, doc_id, actor)
+    data = await _read_capped(file, gateway.max_bytes)
+    mime = sniff_mime(file.filename or "asset", data)
+    if mime not in _ASSET_IMAGE_MIMES:
+        raise HTTPException(status_code=415, detail="document assets must be PNG, JPEG, or TIFF")
+    scan = await gateway.scan(data)
+    if not scan.clean:
+        get_provenance(session).record_event(
+            doc_id, "asset.infected", actor=actor.session_id, detail={"sig": scan.signature}
+        )
+        session.commit()
+        raise HTTPException(status_code=422, detail="asset failed malware scan")
+    key = f"assets/{doc_id}/{uuid.uuid4().hex}"
+    await blob_store.put(key, data)
+    get_provenance(session).record_event(
+        doc_id,
+        "asset.uploaded",
+        actor=actor.session_id,
+        detail={"blob_ref": key, "mime": mime, "filename": file.filename},
+    )
+    session.commit()
+    return AssetUploadResponse(doc_id=doc_id, blob_ref=key, mime=mime, filename=file.filename)
 
 
 @router.get("/{doc_id}/model", response_model=DocumentModelResponse)

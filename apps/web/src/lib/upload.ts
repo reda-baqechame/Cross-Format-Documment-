@@ -16,6 +16,8 @@ export const SUPPORTED_FORMATS: { ext: string; label: string }[] = [
   { ext: ".txt", label: "Text" },
   { ext: ".md", label: "Markdown" },
   { ext: ".csv", label: "CSV" },
+  { ext: ".html", label: "HTML" },
+  { ext: ".htm", label: "HTML" },
   { ext: ".png", label: "PNG" },
   { ext: ".jpg", label: "JPEG" },
   { ext: ".jpeg", label: "JPEG" },

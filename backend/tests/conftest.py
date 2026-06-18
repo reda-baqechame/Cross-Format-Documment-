@@ -20,12 +20,16 @@ def _sessionmaker(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCAL_BLOB_DIR", str(tmp_path / "blobs"))
     monkeypatch.setenv(
         "ALLOWED_MIME_TYPES",
-        "text/plain,application/pdf,"
+        "text/plain,text/markdown,text/x-markdown,text/csv,application/csv,"
+        "text/html,application/xhtml+xml,application/pdf,"
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
         "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
         "application/rtf,image/png,image/jpeg,image/tiff",
     )
+    from docos.settings import get_settings
+
+    get_settings.cache_clear()
 
     from docos.api import ratelimit
 

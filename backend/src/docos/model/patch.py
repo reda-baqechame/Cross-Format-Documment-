@@ -24,6 +24,19 @@ PatchOp = Literal[
     "unredact",
     "sanitize_metadata",
     "restore_metadata",
+    "duplicate_node",
+    "insert_table_row",
+    "delete_table_row",
+    "insert_table_col",
+    "delete_table_col",
+    "set_table_cell",
+    "insert_image",
+    "replace_image",
+    "set_image_attrs",
+    "insert_link",
+    "set_list_attrs",
+    "duplicate_page",
+    "set_page_attrs",
 ]
 
 

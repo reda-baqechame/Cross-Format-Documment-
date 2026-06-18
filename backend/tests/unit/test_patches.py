@@ -6,6 +6,15 @@ import asyncio
 from datetime import UTC, datetime
 
 from docos.model.ids import new_patch_id
+from docos.model.nodes import (
+    ImageNode,
+    ListNode,
+    PageNode,
+    RunNode,
+    TableCellNode,
+    TableNode,
+    TableRowNode,
+)
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.adapters.txt import TxtAdapter
 from docos.services.semantic.llm.noop import LocalNoopClient
@@ -18,6 +27,40 @@ def _orchestrator():
 
 def _first_run(doc):
     return next(n for n in doc.nodes.values() if n.type == "run")
+
+
+def _table_doc():
+    doc = TxtAdapter().parse(b"table doc")
+    root = doc.nodes[doc.root_id]
+    table = TableNode(id="table_1", parent_id=root.id, rows=2, cols=2)
+    root.children.append(table.id)
+    doc.add_node(table)
+    for ri in range(2):
+        row = TableRowNode(id=f"row_{ri}", parent_id=table.id, row=ri)
+        table.children.append(row.id)
+        doc.add_node(row)
+        for ci in range(2):
+            cell = TableCellNode(id=f"cell_{ri}_{ci}", parent_id=row.id, row=ri, col=ci)
+            run = RunNode(id=f"run_{ri}_{ci}", parent_id=cell.id, text=f"{ri},{ci}")
+            cell.children.append(run.id)
+            row.children.append(cell.id)
+            doc.add_node(cell)
+            doc.add_node(run)
+    return doc
+
+
+def _matrix(doc):
+    table = doc.nodes["table_1"]
+    out = []
+    for row_id in table.children:
+        row = doc.nodes[row_id]
+        out.append(
+            [
+                "".join(getattr(doc.nodes[rid], "text", "") for rid in doc.nodes[cell_id].children)
+                for cell_id in row.children
+            ]
+        )
+    return out
 
 
 def test_set_text_apply_then_revert_restores_original():
@@ -153,3 +196,79 @@ def test_sanitize_metadata_op_clears_keys_and_revert_restores():
     reverted = orch.revert(applied, patch)
     assert reverted.meta.custom.get("author") == "Alice"
     assert reverted.redaction.metadata_sanitized is False
+
+
+def test_table_modification_ops_are_reversible():
+    doc = _table_doc()
+    orch = _orchestrator()
+    before = _matrix(doc)
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[
+            Patch(op="set_table_cell", target_id="cell_0_0", payload={"text": "changed"}),
+            Patch(op="insert_table_row", target_id="table_1", payload={"index": 1}),
+            Patch(op="insert_table_col", target_id="table_1", payload={"index": 1}),
+            Patch(op="delete_table_col", target_id="table_1", payload={"index": 2}),
+            Patch(op="delete_table_row", target_id="table_1", payload={"index": 2}),
+        ],
+        created_at=datetime.now(UTC),
+    )
+    applied = orch.apply(doc, patch)
+    assert applied.nodes["table_1"].rows == 2
+    assert applied.nodes["table_1"].cols == 2
+    assert _matrix(applied)[0][0] == "changed"
+
+    reverted = orch.revert(applied, patch)
+    assert _matrix(reverted) == before
+    assert reverted.nodes["table_1"].rows == 2
+    assert reverted.nodes["table_1"].cols == 2
+
+
+def test_visual_link_list_and_page_ops_are_reversible():
+    doc = TxtAdapter().parse(b"hello")
+    root = doc.nodes[doc.root_id]
+    run = _first_run(doc)
+    image = ImageNode(id="img_1", parent_id=root.id, blob_ref="old", alt_text="old")
+    page = PageNode(id="page_1", parent_id=root.id, page_number=1, width=100, height=100)
+    list_node = ListNode(id="list_1", parent_id=root.id, ordered=False)
+    for node in (image, page, list_node):
+        root.children.append(node.id)
+        doc.add_node(node)
+    before_children = list(root.children)
+    orch = _orchestrator()
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[
+            Patch(op="insert_link", target_id=run.id, payload={"href": "https://example.com"}),
+            Patch(op="set_list_attrs", target_id=list_node.id, payload={"ordered": True}),
+            Patch(
+                op="replace_image",
+                target_id=image.id,
+                payload={"blob_ref": "new", "alt_text": "new"},
+            ),
+            Patch(op="set_image_attrs", target_id=image.id, payload={"alt_text": "better"}),
+            Patch(
+                op="insert_image",
+                target_id=root.id,
+                payload={"blob_ref": "asset", "mime": "image/png"},
+            ),
+            Patch(op="set_page_attrs", target_id=page.id, payload={"rotation": 90}),
+            Patch(op="duplicate_page", target_id=page.id),
+            Patch(op="duplicate_node", target_id=run.parent_id),
+        ],
+        created_at=datetime.now(UTC),
+    )
+    applied = orch.apply(doc, patch)
+    assert applied.nodes[run.id].link_href == "https://example.com"
+    assert applied.nodes[list_node.id].ordered is True
+    assert applied.nodes[image.id].blob_ref == "new"
+    assert applied.nodes[page.id].rotation == 90
+    assert len(applied.nodes[doc.root_id].children) > len(before_children)
+
+    reverted = orch.revert(applied, patch)
+    assert reverted.nodes[run.id].link_href is None
+    assert reverted.nodes[list_node.id].ordered is False
+    assert reverted.nodes[image.id].blob_ref == "old"
+    assert reverted.nodes[image.id].alt_text == "old"
+    assert reverted.nodes[page.id].rotation == 0
+    assert reverted.nodes[doc.root_id].children == before_children

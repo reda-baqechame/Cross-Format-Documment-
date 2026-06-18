@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from pathlib import Path
 
 # Minimal magic-byte signatures -> canonical mime. Office files are ZIP containers,
 # so the detected mime is refined by inspecting the package contents downstream.
@@ -86,6 +87,13 @@ def sniff_mime(filename: str, data: bytes) -> str:
     # Fall back to plain text when bytes decode as UTF-8.
     try:
         data[:4096].decode("utf-8")
+        ext = Path(filename).suffix.lower()
+        if ext in {".md", ".markdown"}:
+            return "text/markdown"
+        if ext == ".csv":
+            return "text/csv"
+        if ext in {".html", ".htm"}:
+            return "text/html"
         return "text/plain"
     except UnicodeDecodeError:
         return "application/octet-stream"

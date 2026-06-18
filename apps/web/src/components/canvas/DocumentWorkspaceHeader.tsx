@@ -10,6 +10,7 @@ import type { CanonicalDocument } from "@docos/shared-types";
 
 type WorkspaceTab =
   | "document"
+  | "modify"
   | "autopilot"
   | "insights"
   | "forms"
@@ -33,6 +34,7 @@ export function DocumentWorkspaceHeader({
 
   const tabs: { id: WorkspaceTab; label: string; short: string }[] = [
     { id: "document", label: "Document", short: "Doc" },
+    { id: "modify", label: "Modify", short: "Modify" },
     { id: "autopilot", label: "Autopilot", short: "Auto" },
     { id: "insights", label: "Insights", short: "Insights" },
     { id: "forms", label: "Forms", short: "Forms" },

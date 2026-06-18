@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     max_upload_mb: int = 50
     allowed_mime_types: str = (
         "text/plain,"
+        "text/markdown,"
+        "text/x-markdown,"
+        "text/csv,"
+        "application/csv,"
+        "text/html,"
+        "application/xhtml+xml,"
         "application/pdf,"
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"

@@ -67,3 +67,62 @@ def test_fill_unknown_field_404(client):
         ).status_code
         == 404
     )
+
+
+def test_form_builder_detect_create_update_delete(client):
+    doc_id = client.post(
+        "/documents",
+        files={"file": ("form.txt", b"Name: ______\nEmail: ______", "text/plain")},
+    ).json()["doc_id"]
+
+    detected = client.post(f"/documents/{doc_id}/fields/detect")
+    assert detected.status_code == 200
+    assert detected.json()["detected"] == 2
+    fields = client.get(f"/documents/{doc_id}/fields").json()["fields"]
+    assert {f["field_name"] for f in fields} == {"Name", "Email"}
+    assert all(f["required"] for f in fields)
+
+    created = client.post(
+        f"/documents/{doc_id}/fields/create",
+        json={"field_name": "Signature", "field_kind": "signature", "required": True},
+    )
+    assert created.status_code == 200 and created.json()["applied"] is True
+    signature = next(
+        f for f in client.get(f"/documents/{doc_id}/fields").json()["fields"]
+        if f["field_name"] == "Signature"
+    )
+
+    updated = client.patch(
+        f"/documents/{doc_id}/fields/{signature['node_id']}",
+        json={"field_name": "Applicant signature", "field_kind": "signature"},
+    )
+    assert updated.status_code == 200 and updated.json()["applied"] is True
+    assert any(
+        f["field_name"] == "Applicant signature"
+        for f in client.get(f"/documents/{doc_id}/fields").json()["fields"]
+    )
+
+    deleted = client.delete(f"/documents/{doc_id}/fields/{signature['node_id']}")
+    assert deleted.status_code == 200 and deleted.json()["applied"] is True
+    assert all(
+        f["node_id"] != signature["node_id"]
+        for f in client.get(f"/documents/{doc_id}/fields").json()["fields"]
+    )
+
+
+def test_asset_upload_accepts_images_only(client, sample_image_bytes):
+    doc_id = client.post("/documents", files={"file": ("d.txt", b"x", "text/plain")}).json()[
+        "doc_id"
+    ]
+    ok = client.post(
+        f"/documents/{doc_id}/assets",
+        files={"file": ("asset.png", io.BytesIO(sample_image_bytes), "image/png")},
+    )
+    assert ok.status_code == 200
+    assert ok.json()["blob_ref"].startswith(f"assets/{doc_id}/")
+
+    bad = client.post(
+        f"/documents/{doc_id}/assets",
+        files={"file": ("asset.txt", b"nope", "text/plain")},
+    )
+    assert bad.status_code == 415

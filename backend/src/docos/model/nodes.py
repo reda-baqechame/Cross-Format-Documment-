@@ -133,6 +133,12 @@ class FieldNode(BaseNode):
     field_name: str
     field_kind: str = "text"  # text | checkbox | signature | date | ...
     value: str | None = None
+    required: bool = False
+    placeholder: str | None = None
+    help_text: str | None = None
+    options: list[str] = Field(default_factory=list)
+    validation_pattern: str | None = None
+    default_value: str | None = None
 
 
 class CommentNode(BaseNode):
