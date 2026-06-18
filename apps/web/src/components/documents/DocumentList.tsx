@@ -3,8 +3,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
-import { deleteDocument, listDocuments } from "@/lib/api";
+import { classifyDocument, deleteDocument, listDocuments } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
+
+/** Lazily detect and show a document-type badge (invoice/contract/form/…). Cached. */
+function DocTypeBadge({ docId }: { docId: string }) {
+  const cls = useQuery({
+    queryKey: ["classify", docId],
+    queryFn: () => classifyDocument(docId),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const label = cls.data?.label;
+  if (!label || label === "other") return null;
+  return (
+    <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium capitalize text-brand-700">
+      {label}
+    </span>
+  );
+}
 
 /** Recent documents with open + delete — the workspace's home shelf. */
 export function DocumentList() {
@@ -41,6 +58,7 @@ export function DocumentList() {
               <span className="rounded bg-slate-100 px-2 py-0.5 text-xs uppercase text-slate-500">
                 {d.source_format}
               </span>
+              <DocTypeBadge docId={d.doc_id} />
               <span className="text-sm">{d.title ?? `Document ${d.doc_id.slice(0, 10)}…`}</span>
             </Link>
             <button

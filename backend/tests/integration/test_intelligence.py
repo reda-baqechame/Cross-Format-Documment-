@@ -48,3 +48,19 @@ def test_intelligence_is_redaction_aware(client):
     # the redacted total must not be read back out
     assert _check(insight, "has_total")["passed"] is False
     assert all("500.00" not in f["value"] for f in insight["fields"])
+
+
+def test_presentation_intelligence_endpoint(client):
+    body = (
+        b"Acme Investor Pitch\n\nAgenda\n\nProblem: customers waste time\n\n"
+        b"Solution: our product\n\nMarket: TAM is large\n\nTeam: ex-Google\n\n"
+        b"The ask: raising a seed round\n\nThank you\n"
+    )
+    doc_id = client.post(
+        "/documents", files={"file": ("deck.txt", body, "text/plain")}
+    ).json()["doc_id"]
+
+    insight = client.get(f"/documents/{doc_id}/intelligence").json()["insight"]
+    assert insight["doc_type"] == "presentation"
+    assert _check(insight, "has_agenda_or_closing")["passed"] is True
+    assert _check(insight, "deck_has_team")["passed"] is True

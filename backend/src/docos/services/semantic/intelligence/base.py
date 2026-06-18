@@ -95,6 +95,52 @@ def entities_of(extraction: Extraction, etype: str):
     return [e for e in extraction.entities if e.type == etype]
 
 
+def field_nodes(doc: CanonicalDocument):
+    """``FieldNode`` placeholders (form fields / template slots), redaction-aware."""
+    return [
+        node
+        for node in doc.walk()
+        if getattr(node, "type", "") == "field" and not is_redacted(doc, node.id)
+    ]
+
+
+def nodes_of_type(doc: CanonicalDocument, *types: str):
+    """All non-redacted nodes whose ``type`` is one of ``types`` (in reading order)."""
+    return [
+        node
+        for node in doc.walk()
+        if getattr(node, "type", "") in types and not is_redacted(doc, node.id)
+    ]
+
+
+def node_text(doc: CanonicalDocument, node) -> str:
+    """Concatenated non-redacted text of a node's child runs (e.g. a heading's text)."""
+    parts: list[str] = []
+    for child_id in getattr(node, "children", []) or []:
+        child = doc.get(child_id)
+        if child is None:
+            continue
+        text = getattr(child, "text", "")
+        if text and not is_redacted(doc, child.id):
+            parts.append(text)
+    return " ".join(parts).strip()
+
+
+_BLANK = re.compile(r"_{3,}|\.{4,}|\[\s*\]|\(\s*\)")
+
+
+def blank_lines(doc: CanonicalDocument) -> list[tuple[str, str]]:
+    """``(node_id, label)`` for lines that look like an unfilled fill-in blank
+    ("Name: ____", "Signature ........"). Redaction-aware."""
+    out: list[tuple[str, str]] = []
+    for node_id, text in visible_lines(doc):
+        if _BLANK.search(text):
+            label = _BLANK.split(text)[0].strip(" :\t-") or text.strip()
+            out.append((node_id, label[:60]))
+    return out
+
+
+
 _AMOUNT = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 

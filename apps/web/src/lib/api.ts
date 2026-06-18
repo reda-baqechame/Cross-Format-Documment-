@@ -99,6 +99,54 @@ export async function sanitizeMetadata(docId: string): Promise<PatchResponse> {
   );
 }
 
+// ── Forms (fillable fields) ───────────────────────────────────────────────────
+export interface FormField {
+  node_id: string;
+  field_name: string;
+  field_kind: string;
+  value: string | null;
+}
+
+/** List a document's fillable form-field placeholders. */
+export async function listFields(docId: string): Promise<FormField[]> {
+  const res = await json<{ doc_id: string; fields: FormField[] }>(
+    await fetch(`${BASE}/documents/${docId}/fields`),
+  );
+  return res.fields;
+}
+
+/** Fill a single form field (reversible + versioned, like any edit). */
+export async function fillField(
+  docId: string,
+  nodeId: string,
+  value: string,
+): Promise<PatchResponse> {
+  return json<PatchResponse>(
+    await fetch(`${BASE}/documents/${docId}/fields`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ node_id: nodeId, value }),
+    }),
+  );
+}
+
+/** Delete a block (reversible — restorable via undo). */
+export function deleteNode(docId: string, nodeId: string): Promise<PatchResponse> {
+  return submitPatch(docId, { ops: [{ op: "remove_node", target_id: nodeId }] });
+}
+
+/** Move a block to a new index under a parent (reversible). */
+export function moveNode(
+  docId: string,
+  nodeId: string,
+  parentId: string,
+  index: number,
+): Promise<PatchResponse> {
+  return submitPatch(docId, {
+    ops: [{ op: "move_node", target_id: nodeId, payload: { parent_id: parentId, index } }],
+  });
+}
+
 export type ExportFormat =
   | "docx"
   | "txt"

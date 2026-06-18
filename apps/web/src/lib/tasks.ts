@@ -16,6 +16,7 @@ import {
   downloadExport,
   downloadSearchablePdf,
   fetchExtract,
+  fetchIntelligence,
   fetchSummary,
   mergePdfs,
   parsePageList,
@@ -252,6 +253,20 @@ export const TASKS: TaskDef[] = [
     cta: "Open editor",
     run: async ({ docIds }) => ({ kind: "navigate", href: `/documents/${docIds[0]}` }),
   },
+  {
+    slug: "fill-form",
+    title: "Fill a form",
+    blurb: "Open a form, see what's still blank, and fill each field.",
+    category: "Edit",
+    emoji: "🖊️",
+    accept: ANY,
+    acceptLabel: "a form document",
+    cta: "Open form",
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=forms`,
+    }),
+  },
 
   // ── Secure ──────────────────────────────────────────────────────────────────
   {
@@ -438,6 +453,28 @@ export const TASKS: TaskDef[] = [
         title: "Document type",
         body: `${c.label} (${Math.round(c.confidence * 100)}% confidence)`,
       };
+    },
+  },
+  {
+    slug: "analyze",
+    title: "Analyze & validate",
+    blurb: "Check an invoice, contract, form, résumé, or pitch deck for problems.",
+    category: "Ask AI",
+    emoji: "🧠",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Analyze",
+    run: async ({ docIds }) => {
+      const { insight } = await fetchIntelligence(docIds[0]);
+      const items = [
+        insight.summary,
+        ...insight.checks.map(
+          (c) =>
+            `${c.passed ? "✓" : c.severity === "error" ? "✗" : "!"} ${c.label}` +
+            (c.passed || !c.detail ? "" : ` — ${c.detail}`),
+        ),
+      ];
+      return { kind: "list", title: `Analysis — ${insight.doc_type}`, items };
     },
   },
 

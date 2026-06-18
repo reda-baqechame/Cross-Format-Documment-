@@ -3,6 +3,7 @@ import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
 import { TaskGrid } from "@/components/tasks/TaskGrid";
+import { TemplateGallery } from "@/components/templates/TemplateGallery";
 
 export default function HomePage() {
   return (
@@ -36,6 +37,15 @@ export default function HomePage() {
             <SearchBar />
             <DocumentList />
           </div>
+        </Section>
+
+        {/* Templates */}
+        <Section
+          id="templates"
+          title="Start from a template"
+          description="Reuse a saved document as a fresh, independent starting point."
+        >
+          <TemplateGallery />
         </Section>
       </main>
     </AppShell>

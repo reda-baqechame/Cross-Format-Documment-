@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import Link from "next/link";
@@ -14,15 +14,24 @@ import {
   type WorkspaceTab,
 } from "@/components/canvas/DocumentWorkspaceHeader";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
+import { FormsPanel } from "@/components/canvas/FormsPanel";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
 
+const TABS: WorkspaceTab[] = ["document", "insights", "forms", "trust", "comments", "approvals"];
+
 export default function DocumentPage() {
   const params = useParams<{ id: string }>();
+  const search = useSearchParams();
   const docId = params.id;
-  const [tab, setTab] = useState<WorkspaceTab>("document");
+  const initialTab = search.get("tab");
+  const [tab, setTab] = useState<WorkspaceTab>(
+    initialTab && (TABS as string[]).includes(initialTab)
+      ? (initialTab as WorkspaceTab)
+      : "document",
+  );
 
   const model = useQuery({
     queryKey: ["model", docId],
@@ -38,6 +47,7 @@ export default function DocumentPage() {
   const doc = model.data?.document;
   const showDocument = tab === "document";
   const showInsights = tab === "insights";
+  const showForms = tab === "forms";
   const showTrust = tab === "trust";
   const showComments = tab === "comments";
   const showApprovals = tab === "approvals";
@@ -97,6 +107,11 @@ export default function DocumentPage() {
         {showInsights && (
           <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
             <IntelligencePanel docId={docId} />
+          </aside>
+        )}
+        {showForms && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <FormsPanel docId={docId} />
           </aside>
         )}
         {showTrust && health.isError && (

@@ -18,10 +18,14 @@ from docos.services.semantic.intelligence.base import (
     DocumentInsight,
     InsightCheck,
     InsightField,
+    blank_lines,
     entities_of,
+    field_nodes,
     find_field,
     first_entity,
     has_any,
+    node_text,
+    nodes_of_type,
     score_summary,
     to_amount,
     visible_lines,
@@ -371,6 +375,170 @@ def analyze_resume(
     )
 
 
+def analyze_form(
+    doc: CanonicalDocument, classification: Classification, extraction: Extraction
+) -> DocumentInsight:
+    """Forms & applications: enumerate fillable fields and flag what's still blank
+    or unsigned — the job a form actually needs done before it's submitted."""
+    nodes = field_nodes(doc)
+    blanks = blank_lines(doc)
+    text = visible_text(doc).lower()
+
+    filled = [n for n in nodes if (getattr(n, "value", None) or "").strip()]
+    empty = [n for n in nodes if not (getattr(n, "value", None) or "").strip()]
+
+    fields: list[InsightField] = []
+    for n in nodes:
+        value = (getattr(n, "value", None) or "").strip()
+        fields.append(
+            InsightField(
+                key=getattr(n, "field_name", "") or "field",
+                value=value or "(blank)",
+                node_id=n.id,
+                confidence=1.0,
+            )
+        )
+    for node_id, label in blanks[:20]:
+        fields.append(InsightField(key=label or "blank", value="(blank)", node_id=node_id))
+
+    total_blanks = len(empty) + len(blanks)
+    has_fields = bool(nodes or blanks)
+    checks: list[InsightCheck] = [
+        InsightCheck(
+            id="has_fields",
+            label="Fillable fields detected",
+            severity="error",
+            passed=has_fields,
+            detail="No form fields or blanks found — nothing to fill." if not has_fields else "",
+        ),
+        InsightCheck(
+            id="all_required_filled",
+            label="All fields completed",
+            severity="warn",
+            passed=has_fields and total_blanks == 0,
+            detail=(
+                f"{total_blanks} field(s) still blank"
+                + (
+                    ": " + ", ".join([getattr(n, "field_name", "field") for n in empty][:5])
+                    if empty
+                    else ""
+                )
+                if total_blanks
+                else ""
+            ),
+        ),
+        InsightCheck(
+            id="has_signature",
+            label="Signature line present",
+            severity="warn",
+            passed=has_any(text, "signature", "signed", "sign here")
+            or any(getattr(n, "field_kind", "") == "signature" for n in nodes),
+        ),
+        InsightCheck(
+            id="has_date",
+            label="Date field present",
+            severity="info",
+            passed=has_any(text, "date")
+            or any(getattr(n, "field_kind", "") == "date" for n in nodes),
+        ),
+    ]
+    summary = (
+        f"Form: {len(filled)}/{len(filled) + total_blanks} fields completed"
+        if has_fields
+        else "No fillable fields detected."
+    )
+    return DocumentInsight(
+        doc_type="form",
+        confidence=classification.confidence,
+        fields=fields,
+        checks=checks,
+        summary=summary if has_fields else score_summary("form", checks),
+    )
+
+
+# Investor/sales pitch-deck completeness — the classic narrative arc.
+_DECK_SECTIONS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("problem", "Problem", ("problem", "pain", "challenge")),
+    ("solution", "Solution", ("solution", "product", "how it works")),
+    ("market", "Market size", ("market", "tam", "opportunity")),
+    ("model", "Business model", ("business model", "pricing", "revenue", "monetiz")),
+    ("traction", "Traction", ("traction", "growth", "users", "revenue")),
+    ("team", "Team", ("team", "founder", "about us")),
+    ("ask", "The ask", ("ask", "raising", "investment", "funding", "use of funds")),
+)
+
+
+def analyze_presentation(
+    doc: CanonicalDocument, classification: Classification, extraction: Extraction
+) -> DocumentInsight:
+    """Slide decks & pitch decks: title slide, slide count, agenda/closing, and a
+    pitch-deck completeness checklist (problem→solution→market→…→ask)."""
+    pages = nodes_of_type(doc, "page")
+    heading_nodes = nodes_of_type(doc, "heading")
+    titles = [t for t in (node_text(doc, h) for h in heading_nodes) if t]
+    text = visible_text(doc).lower()
+    slide_count = len(pages) or len(heading_nodes) or 1
+
+    fields: list[InsightField] = []
+    if titles:
+        fields.append(InsightField(key="title", value=titles[0][:120], node_id=None))
+    fields.append(InsightField(key="slide_count", value=str(slide_count), node_id=None))
+    for t in titles[1:9]:
+        fields.append(InsightField(key="section", value=t[:80], node_id=None))
+
+    checks: list[InsightCheck] = [
+        InsightCheck(
+            id="has_title_slide",
+            label="Title slide present",
+            severity="error",
+            passed=bool(titles),
+            detail="No title/heading found to open the deck." if not titles else "",
+        ),
+        InsightCheck(
+            id="slide_count_reasonable",
+            label="Reasonable slide count",
+            severity="warn",
+            passed=3 <= slide_count <= 60,
+            detail=(
+                f"{slide_count} slides — decks usually run 5–30."
+                if not 3 <= slide_count <= 60
+                else ""
+            ),
+        ),
+        InsightCheck(
+            id="has_agenda_or_closing",
+            label="Agenda or closing slide",
+            severity="info",
+            passed=has_any(text, "agenda", "next steps", "thank you", "q&a", "summary"),
+        ),
+    ]
+
+    # If it reads like a pitch, score the investor-deck narrative arc.
+    looks_like_pitch = has_any(
+        text, "pitch", "investor", "raising", "seed", "series a", "valuation", "tam"
+    )
+    if looks_like_pitch:
+        for sid, label, terms in _DECK_SECTIONS:
+            present = has_any(text, *terms)
+            checks.append(
+                InsightCheck(
+                    id=f"deck_has_{sid}",
+                    label=f"{label} slide",
+                    severity="warn",
+                    passed=present,
+                    detail="" if present else f"No {label.lower()} content detected.",
+                )
+            )
+
+    return DocumentInsight(
+        doc_type="presentation",
+        confidence=classification.confidence,
+        fields=fields,
+        checks=checks,
+        summary=score_summary("presentation", checks),
+    )
+
+
 def analyze_generic(
     doc: CanonicalDocument, classification: Classification, extraction: Extraction
 ) -> DocumentInsight:
@@ -409,6 +577,8 @@ _REGISTRY: dict[str, Analyzer] = {
     "receipt": analyze_receipt,
     "contract": analyze_contract,
     "resume": analyze_resume,
+    "form": analyze_form,
+    "presentation": analyze_presentation,
 }
 
 

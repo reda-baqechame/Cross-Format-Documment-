@@ -19,10 +19,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
-- ✅ Typed document intelligence (invoice/receipt/contract/résumé): per-kind fields **plus
-  actionable checks** — invoice totals reconcile, contract clause gaps + risky language,
-  résumé ATS/contact gaps; redaction-aware, offline — `services/semantic/intelligence/`,
-  `GET /documents/{id}/intelligence`, `components/canvas/IntelligencePanel`
+- ✅ Typed document intelligence (invoice/receipt/contract/résumé/**form**/**presentation**):
+  per-kind fields **plus actionable checks** — invoice totals reconcile, contract clause gaps +
+  risky language, résumé ATS/contact gaps, form blank-field/signature gaps, pitch-deck
+  completeness (problem→solution→market→…→ask); redaction-aware, offline —
+  `services/semantic/intelligence/`, `GET /documents/{id}/intelligence`,
+  `components/canvas/IntelligencePanel`. Home "Analyze & validate" tile + library type badges.
 - ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
@@ -30,11 +32,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
 - ✅ Reversible patch history + undo · ✅ add_node / move_node ops (full reversible set)
 - ✅ Rich formatting (bold/italic/underline/size/color) — toolbar over `update_node` — `components/canvas/FormatToolbar`
+- ✅ Block structure editing UI (move up/down, delete) over add/move/remove_node — `components/canvas/NodeRenderer` (BlockWrap)
+- ✅ Forms fill UI (list + fill fillable fields, reversible) — `components/canvas/FormsPanel`, `routes_forms.py`
+- ✅ Templates UI (save-as-template + browse/stamp-out gallery) — `components/templates/TemplateGallery`, `ToolsMenu`
 - ✅ Comment threads UI (anchored to nodes, reply/resolve, versioned) — `services/collab/comments.py`, `components/canvas/CommentsPanel`
 - ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
-- ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py`
+- ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py` (UI: `TemplateGallery`)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- ⬜ Slide/spreadsheet editing UX
+- 🟡 Slide/spreadsheet editing UX (deck analysis + block edits landed; native slide canvas pending)
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export

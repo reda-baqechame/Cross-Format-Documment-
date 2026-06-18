@@ -21,6 +21,7 @@ _SIGNALS: dict[str, tuple[str, ...]] = {
     "letter": ("dear ", "sincerely", "best regards", "yours truly"),
     "report": ("introduction", "summary", "conclusion", "methodology", "findings"),
     "form": ("please fill", "signature", "date of birth", "checkbox", "applicant"),
+    "presentation": ("agenda", "next steps", "thank you", "slide", "q&a", "our mission"),
 }
 
 

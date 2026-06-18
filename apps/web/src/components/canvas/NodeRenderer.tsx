@@ -4,7 +4,7 @@ import type { CanonicalDocument, DocNode } from "@docos/shared-types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { previewUrl, setRunText } from "@/lib/api";
+import { deleteNode, moveNode, previewUrl, setRunText } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 
 // Matches the backend PdfAdapter.render_preview_bytes default so overlay coordinates
@@ -56,8 +56,32 @@ export function NodeRenderer({
   ));
 
   switch (node.type) {
-    case "root":
-      return <div className="space-y-3">{children}</div>;
+    case "root": {
+      // Born-digital docs get block-level structure actions (move/delete); PDF pages
+      // keep their faithful overlay and are edited via text/redaction instead.
+      const structural = doc.meta.source_format !== "pdf" && (doc.permissions?.can_edit ?? true);
+      return (
+        <div className="space-y-3">
+          {node.children.map((cid, i) =>
+            structural ? (
+              <BlockWrap
+                key={cid}
+                doc={doc}
+                docId={docId}
+                parentId={node.id}
+                nodeId={cid}
+                index={i}
+                count={node.children.length}
+              >
+                <NodeRenderer doc={doc} nodeId={cid} docId={docId} />
+              </BlockWrap>
+            ) : (
+              <NodeRenderer key={cid} doc={doc} nodeId={cid} docId={docId} />
+            ),
+          )}
+        </div>
+      );
+    }
     case "page":
       return <PageView doc={doc} node={node} docId={docId}>{children}</PageView>;
     case "heading":
@@ -317,5 +341,93 @@ function FieldNode({ node }: { node: DocNode }) {
       <span className="text-xs uppercase text-slate-400">{node.field_name ?? "field"}</span>
       <span>{node.value ?? "—"}</span>
     </span>
+  );
+}
+
+/**
+ * Hover affordance around a top-level block: move it up/down or delete it. Every
+ * action is a reversible, versioned patch (restorable via undo).
+ */
+function BlockWrap({
+  doc,
+  docId,
+  parentId,
+  nodeId,
+  index,
+  count,
+  children,
+}: {
+  doc: CanonicalDocument;
+  docId: string;
+  parentId: string;
+  nodeId: string;
+  index: number;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const queryClient = useQueryClient();
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["model", docId] });
+    queryClient.invalidateQueries({ queryKey: ["health", docId] });
+  };
+  const act = async (fn: () => Promise<unknown>) => {
+    await fn();
+    refresh();
+  };
+
+  return (
+    <div className="group relative">
+      <div className="absolute -left-1 top-0 z-10 hidden -translate-x-full flex-col gap-1 pr-1 group-hover:flex">
+        <BlockBtn
+          label="Move block up"
+          disabled={index === 0}
+          onClick={() => void act(() => moveNode(docId, nodeId, parentId, index - 1))}
+        >
+          ↑
+        </BlockBtn>
+        <BlockBtn
+          label="Move block down"
+          disabled={index === count - 1}
+          onClick={() => void act(() => moveNode(docId, nodeId, parentId, index + 1))}
+        >
+          ↓
+        </BlockBtn>
+        <BlockBtn
+          label="Delete block"
+          onClick={() => {
+            if (window.confirm("Delete this block? You can undo it."))
+              void act(() => deleteNode(docId, nodeId));
+          }}
+        >
+          ✕
+        </BlockBtn>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function BlockBtn({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="h-6 w-6 rounded border border-slate-200 bg-white text-xs text-slate-500 shadow-sm hover:bg-slate-50 disabled:opacity-30"
+    >
+      {children}
+    </button>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { classifyDocument, compressPdf, protectPdf, watermarkPdf } from "@/lib/api";
+import { classifyDocument, compressPdf, protectPdf, saveAsTemplate, watermarkPdf } from "@/lib/api";
 import { useDismissOnOutside } from "@/lib/useDismiss";
 import { friendlyApiError } from "@/lib/upload";
 
@@ -85,6 +85,17 @@ export function ToolsMenu({ docId, sourceFormat }: { docId: string; sourceFormat
             onClick={() => {
               const text = window.prompt("Watermark text:")?.trim();
               if (text) void run(() => watermarkPdf(docId, text));
+            }}
+          />
+          <MenuItem
+            label="Save as template"
+            onClick={() => {
+              const name = window.prompt("Template name:")?.trim();
+              if (name)
+                void run(async () => {
+                  await saveAsTemplate(docId, name);
+                  window.alert(`Saved "${name}" — find it under “Start from a template” on the home page.`);
+                });
             }}
           />
         </div>
