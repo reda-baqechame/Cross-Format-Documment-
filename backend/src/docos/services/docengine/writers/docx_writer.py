@@ -15,7 +15,7 @@ from docx.shared import Pt
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text
+from docos.services.docengine.writers.redaction import is_redacted, node_text, run_text
 
 
 def model_to_docx(doc: CanonicalDocument) -> bytes:
@@ -65,13 +65,13 @@ def _write_block(out: DocxDocument, doc: CanonicalDocument, node: AnyNode) -> No
         _write_table(out, doc, node)
 
     elif kind == "image":
-        alt = getattr(node, "alt_text", None) or "image"
-        out.add_paragraph(f"[image: {alt}]")
+        if not is_redacted(doc, node.id):
+            out.add_paragraph(f"[image: {node_text(doc, node) or 'image'}]")
 
     elif kind == "field":
-        name = getattr(node, "field_name", "field")
-        value = getattr(node, "value", None) or ""
-        out.add_paragraph(f"{name}: {value}")
+        if not is_redacted(doc, node.id):
+            name = getattr(node, "field_name", "field")
+            out.add_paragraph(f"{name}: {node_text(doc, node)}")
 
     # comment / annotation / metadata_block / run are not emitted as standalone blocks.
 

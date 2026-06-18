@@ -14,7 +14,13 @@ import io
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text
+from docos.services.docengine.writers.redaction import (
+    is_redacted,
+    node_text,
+    run_text,
+    safe_link_href,
+    spreadsheet_text,
+)
 
 
 def _runs(doc: CanonicalDocument, block: AnyNode) -> list[AnyNode]:
@@ -46,7 +52,7 @@ def _md_runs(doc: CanonicalDocument, block: AnyNode) -> str:
             text = f"**{text}**"
         elif getattr(r, "italic", False):
             text = f"*{text}*"
-        href = getattr(r, "link_href", None)
+        href = safe_link_href(getattr(r, "link_href", None))
         if href:
             text = f"[{text}]({href})"
         parts.append(text)
@@ -76,13 +82,13 @@ def _md_block(lines: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
     elif kind == "table":
         _md_table(lines, doc, node)
     elif kind == "image":
-        lines.append(f"![{getattr(node, 'alt_text', None) or 'image'}]()")
-        lines.append("")
+        if not is_redacted(doc, node.id):
+            lines.append(f"![{node_text(doc, node) or 'image'}]()")
+            lines.append("")
     elif kind == "field":
-        lines.append(
-            f"**{getattr(node, 'field_name', 'field')}:** {getattr(node, 'value', '') or ''}"
-        )
-        lines.append("")
+        if not is_redacted(doc, node.id):
+            lines.append(f"**{getattr(node, 'field_name', 'field')}:** {node_text(doc, node)}")
+            lines.append("")
 
 
 def _table_rows(doc: CanonicalDocument, tnode: AnyNode) -> list[list[str]]:
@@ -133,7 +139,7 @@ def _html_runs(doc: CanonicalDocument, block: AnyNode) -> str:
             text = f"<em>{text}</em>"
         if getattr(r, "underline", False):
             text = f"<u>{text}</u>"
-        href = getattr(r, "link_href", None)
+        href = safe_link_href(getattr(r, "link_href", None))
         if href:
             text = f'<a href="{html.escape(href, quote=True)}">{text}</a>'
         parts.append(text)
@@ -168,11 +174,13 @@ def _html_block(body: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
             ]
             body.append("<table>\n" + "\n".join(trs) + "\n</table>")
     elif kind == "image":
-        body.append(f"<p>[image: {html.escape(getattr(node, 'alt_text', None) or 'image')}]</p>")
+        if not is_redacted(doc, node.id):
+            body.append(f"<p>[image: {html.escape(node_text(doc, node) or 'image')}]</p>")
     elif kind == "field":
-        name = html.escape(getattr(node, "field_name", "field"))
-        value = html.escape(getattr(node, "value", "") or "")
-        body.append(f"<p><strong>{name}:</strong> {value}</p>")
+        if not is_redacted(doc, node.id):
+            name = html.escape(getattr(node, "field_name", "field"))
+            value = html.escape(node_text(doc, node))
+            body.append(f"<p><strong>{name}:</strong> {value}</p>")
 
 
 # ── CSV ─────────────────────────────────────────────────────────────────────────
@@ -184,12 +192,12 @@ def model_to_csv(doc: CanonicalDocument) -> bytes:
     for tnode in doc.walk():
         if tnode.type == "table":
             for row in _table_rows(doc, tnode):
-                writer.writerow(row)
+                writer.writerow([spreadsheet_text(cell) for cell in row])
             wrote = True
     if not wrote:
         for node in doc.walk():
             if node.type in ("paragraph", "heading"):
                 text = _plain(doc, node)
                 if text:
-                    writer.writerow([text])
+                    writer.writerow([spreadsheet_text(text)])
     return buf.getvalue().encode("utf-8")

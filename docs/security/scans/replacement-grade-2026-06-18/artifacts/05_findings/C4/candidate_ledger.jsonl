@@ -1,0 +1,3 @@
+{"candidate_id":"C4","phase":"discovery","status":"reportable","evidence":"Redaction and validation only covered run text; field values and image alt text could survive export."}
+{"candidate_id":"C4","phase":"validation","status":"fixed","evidence":"Regression test test_redacted_field_value_is_removed_and_validation_detects_leak proves writer removal and validation leak detection."}
+{"candidate_id":"C4","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Sensitive-data recovery from trusted exports closed across markup, DOCX, PPTX, XLSX, PDF validation inputs."}

@@ -58,6 +58,23 @@ export function TemplateGallery() {
               </span>
             </div>
             {t.description && <p className="mt-1 text-xs text-slate-500">{t.description}</p>}
+            {t.variables.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {t.variables.slice(0, 6).map((variable) => (
+                  <span
+                    key={variable}
+                    className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700"
+                  >
+                    {variable}
+                  </span>
+                ))}
+                {t.variables.length > 6 && (
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
+                    +{t.variables.length - 6}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="mt-3 flex items-center gap-2">
             <button

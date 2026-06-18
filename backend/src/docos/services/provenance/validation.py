@@ -123,9 +123,10 @@ def _redacted_strings(doc: CanonicalDocument) -> list[str]:
     for node in doc.nodes.values():
         if not is_redacted(doc, node.id):
             continue
-        text = (getattr(node, "text", "") or "").strip()
-        if len(text) >= _MIN_REDACTION_LEN:
-            out.append(text)
+        for attr in ("text", "value", "alt_text"):
+            text = (getattr(node, attr, "") or "").strip()
+            if len(text) >= _MIN_REDACTION_LEN:
+                out.append(text)
     return out
 
 

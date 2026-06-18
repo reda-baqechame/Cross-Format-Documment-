@@ -1,0 +1,3 @@
+{"candidate_id":"C8","phase":"discovery","status":"reportable","evidence":"Templates table and routes had no owner fields or actor filtering, making saved templates globally visible."}
+{"candidate_id":"C8","phase":"validation","status":"fixed","evidence":"Regression test test_templates_are_session_scoped proves cross-session list, instantiate, and delete are blocked."}
+{"candidate_id":"C8","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Cross-session template disclosure/tampering path closed by template ownership columns and route checks."}

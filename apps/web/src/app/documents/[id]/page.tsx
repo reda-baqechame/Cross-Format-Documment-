@@ -18,12 +18,14 @@ import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { FormsPanel } from "@/components/canvas/FormsPanel";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
+import { EditorSessionPanel } from "@/components/canvas/EditorSessionPanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
 
 const TABS: WorkspaceTab[] = [
   "document",
+  "editor",
   "modify",
   "autopilot",
   "insights",
@@ -57,6 +59,7 @@ export default function DocumentPage() {
 
   const doc = model.data?.document;
   const showDocument = tab === "document";
+  const showEditor = tab === "editor";
   const showModify = tab === "modify";
   const showAutopilot = tab === "autopilot";
   const showInsights = tab === "insights";
@@ -80,7 +83,7 @@ export default function DocumentPage() {
 
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* Main canvas — visible on its own tab and alongside the Autopilot panel */}
-        {(showDocument || showAutopilot || showModify || !doc) && (
+        {(showDocument || showEditor || showAutopilot || showModify || !doc) && (
           <main
             className="flex-1 overflow-auto p-4 sm:p-8"
             id="document-canvas"
@@ -125,6 +128,11 @@ export default function DocumentPage() {
         {showModify && doc && (
           <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
             <ModifyStudio doc={doc} docId={docId} />
+          </aside>
+        )}
+        {showEditor && doc && (
+          <aside className="w-full border-t border-slate-200 bg-white lg:w-96 lg:border-l lg:border-t-0">
+            <EditorSessionPanel docId={docId} sourceFormat={doc.meta.source_format} />
           </aside>
         )}
         {showInsights && (

@@ -129,3 +129,25 @@ cloud/IDP integrations (OAuth secrets, paid APIs) require infrastructure, creden
 legal standing that can't be stood up inside this repo. Their seams exist (e.g. `NoopScanner`,
 the `LLMClient` provider switch, the `BlobStore` abstraction) so they can be wired when that
 infrastructure is provisioned — rather than shipping a fake that claims compliance it doesn't have.
+
+## J. Replacement-grade hardening lane
+- ✅ Windows-safe web build: local `pnpm --filter @docos/web build` skips Next standalone
+  symlink creation on Windows, while Linux/Railway can keep standalone output through
+  `DOCOS_NEXT_STANDALONE=1`.
+- ✅ Read-only production smoke harness: `pnpm smoke:production` checks the Railway home page,
+  `/api/health`, and OpenAPI without mutating production data. New hardening routes can be
+  required with `DOCOS_REQUIRE_HARDENING_OPENAPI=1` after a fresh deploy.
+- ✅ Stress test lane: `pytest -m stress` covers primary uploads, malformed/oversized files,
+  patch/undo loops, editor sessions, destructive-action planning, and template variables.
+- ✅ Browser E2E lane: Playwright smoke covers the task grid and template workflow entry.
+- ✅ Embedded editor session APIs: `/documents/{id}/editor/session`,
+  `/documents/{id}/editor/session/{session_id}`, `/save`, and `/sync` create auditable
+  native-editor sessions. DOCX/XLSX/PPTX use an ONLYOFFICE-compatible provider only when
+  configured; otherwise the API returns an honest local-basic warning.
+- ✅ DocumentOpsAgent planning API: `/documents/{id}/ops-agent/plan` returns deterministic
+  classify/extract/validate/template-fill/approval/redact/export plans. Destructive work is
+  approval-gated and legal e-sign claims remain blocked until a regulated signing provider exists.
+- ✅ Local agent eval harness: `pnpm eval:document-ops` checks workflow correctness, approval
+  gates, action reasons, and legal-signing honesty.
+- 🟡 Native PDF editing: still labeled basic unless `PDF_EDITOR_PROVIDER=external` and
+  `PDF_EDITOR_URL` point at a licensed PDF editor provider.

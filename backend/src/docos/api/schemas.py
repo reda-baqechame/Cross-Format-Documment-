@@ -287,3 +287,51 @@ class AssetUploadResponse(BaseModel):
     blob_ref: str
     mime: str
     filename: str | None
+
+
+class EditorSessionRequest(BaseModel):
+    mode: str = Field(default="edit", max_length=40)
+    provider: str | None = Field(default=None, max_length=40)
+
+
+class EditorSessionResponse(BaseModel):
+    doc_id: str
+    session_id: str
+    provider: str
+    status: str
+    mode: str
+    source_format: str
+    editor_url: str
+    config: dict[str, Any] = Field(default_factory=dict)
+    capabilities: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    saved_version_id: str | None = None
+
+
+class EditorSessionSaveRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
+
+
+class EditorSessionSyncRequest(BaseModel):
+    client_revision: str | None = Field(default=None, max_length=120)
+
+
+class OpsAgentPlanRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=500)
+    allow_destructive: bool = False
+
+
+class OpsAgentAction(BaseModel):
+    tool: str
+    label: str
+    destructive: bool = False
+    requires_approval: bool = False
+    reason: str
+
+
+class OpsAgentPlanResponse(BaseModel):
+    doc_id: str
+    goal: str
+    classification: str
+    actions: list[OpsAgentAction]
+    warnings: list[str] = Field(default_factory=list)

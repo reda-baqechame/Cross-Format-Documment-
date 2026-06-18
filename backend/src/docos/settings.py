@@ -17,6 +17,8 @@ BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
 Scanner = Literal["noop", "clamav"]
 BlobEncryption = Literal["none", "aesgcm"]
+OfficeEditorProvider = Literal["local", "onlyoffice"]
+PdfEditorProvider = Literal["basic", "external"]
 
 
 class Settings(BaseSettings):
@@ -61,6 +63,13 @@ class Settings(BaseSettings):
     scanner: Scanner = "noop"
     clamav_host: str = "localhost"
     clamav_port: int = 3310
+
+    # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
+    # configure provider URLs to activate real embedded editors.
+    office_editor_provider: OfficeEditorProvider = "local"
+    onlyoffice_document_server_url: str | None = None
+    pdf_editor_provider: PdfEditorProvider = "basic"
+    pdf_editor_url: str | None = None
 
     # archive (OOXML/zip) safety limits — defense against zip bombs.
     zip_max_entries: int = 2000

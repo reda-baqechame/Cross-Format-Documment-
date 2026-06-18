@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import io
 
+from docos.db.models import Document, JobRecord
+
 
 def test_health_endpoint(client):
     resp = client.get("/health")
@@ -62,6 +64,17 @@ def test_upload_pdf(client, sample_pdf_bytes):
     assert any(n["type"] == "page" for n in model["nodes"].values())
     runs = [n for n in model["nodes"].values() if n["type"] == "run"]
     assert any("Hello PDF world" in n["text"] for n in runs)
+
+
+def test_malformed_magic_matched_file_is_rejected_before_blob_stage(client, db, tmp_path):
+    files = {"file": ("bad.pdf", b"%PDF-1.7\nnot really a pdf", "application/pdf")}
+    resp = client.post("/documents", files=files)
+    assert resp.status_code == 422, resp.text
+    assert db.query(Document).count() == 0
+    failed = db.query(JobRecord).filter(JobRecord.kind == "ingest").all()
+    assert failed and failed[-1].status == "failed"
+    blob_root = tmp_path / "blobs"
+    assert not blob_root.exists() or not any(blob_root.rglob("*"))
 
 
 def test_patch_endpoint_noop(client):

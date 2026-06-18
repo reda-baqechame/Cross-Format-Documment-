@@ -18,12 +18,14 @@ from docos.api import (
     routes_bulk_send,
     routes_comments,
     routes_documents,
+    routes_editor,
     routes_export,
     routes_forms,
     routes_health,
     routes_health_panel,
     routes_library,
     routes_notebook,
+    routes_ops_agent,
     routes_pages,
     routes_patches,
     routes_query,
@@ -72,9 +74,11 @@ def create_app() -> FastAPI:
     app.include_router(routes_pages.router)
     app.include_router(routes_library.router)
     app.include_router(routes_forms.router)
+    app.include_router(routes_editor.router)
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)
     app.include_router(routes_notebook.router)
+    app.include_router(routes_ops_agent.router)
     app.include_router(routes_approvals.router)
     app.include_router(routes_templates.router)
     app.include_router(routes_suggestions.router)

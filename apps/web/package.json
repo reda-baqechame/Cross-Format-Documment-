@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev -p 3100",
     "build": "next build && node ./scripts/assemble-standalone.mjs",
+    "build:standalone": "DOCOS_NEXT_STANDALONE=1 next build && node ./scripts/assemble-standalone.mjs",
     "start": "node .next/standalone/apps/web/server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@docos/shared-types": "workspace:*",
@@ -17,6 +19,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.41.2",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

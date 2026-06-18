@@ -1,0 +1,3 @@
+{"candidate_id":"C3","phase":"discovery","status":"reportable","evidence":"Malformed magic-matched upload was staged to blob storage before parser success."}
+{"candidate_id":"C3","phase":"validation","status":"fixed","evidence":"Regression test test_malformed_magic_matched_file_is_rejected_before_blob_stage proves 422 response, failed job record, and no staged blob."}
+{"candidate_id":"C3","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Storage growth and raw parser failure path closed by parse-before-stage ordering."}

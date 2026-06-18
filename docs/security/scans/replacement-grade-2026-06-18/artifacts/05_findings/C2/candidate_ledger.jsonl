@@ -1,0 +1,3 @@
+{"candidate_id":"C2","phase":"discovery","status":"reportable","evidence":"OOXML sniffing enumerated archive names and blessed Office MIME before zip-entry safety rejection."}
+{"candidate_id":"C2","phase":"validation","status":"fixed","evidence":"Regression test test_ooxml_sniffer_does_not_bless_over_entry_cap_archive proves over-entry archive is not classified as OOXML."}
+{"candidate_id":"C2","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Pre-rejection zip DoS path reduced by capped classifier plus existing gateway safety checks."}

@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cross-Format-Documment- Codex Security Scan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #fff;
+      --bg-elev: #fafafa;
+      --bg-muted: #f5f5f7;
+      --fg: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --code: #f3f4f6;
+      --shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f14;
+        --bg-elev: #0f141b;
+        --bg-muted: #121923;
+        --fg: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #243040;
+        --accent: #60a5fa;
+        --code: #111827;
+        --shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    body.sidebar-collapsed .layout { grid-template-columns: 44px minmax(0, 1fr); }
+
+    .sidebar {
+      min-height: 100vh;
+      border-right: 1px solid var(--border);
+      background: var(--bg-muted);
+    }
+
+    .toc-inner {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 10px 8px;
+    }
+
+    .nav-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin: 0 0 8px;
+      text-transform: uppercase;
+    }
+
+    .nav-toggle {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+    }
+
+    .nav-toggle:hover { box-shadow: var(--shadow); }
+    .nav-meta { color: var(--muted); font-size: 12px; margin: 0 0 12px; padding: 0 4px; }
+
+    body.sidebar-collapsed .toc-inner {
+      display: flex;
+      align-items: center;
+      padding: 8px 6px;
+    }
+
+    body.sidebar-collapsed .nav-title span,
+    body.sidebar-collapsed .nav-meta,
+    body.sidebar-collapsed .toc { display: none; }
+
+    main { max-width: 1040px; padding: 32px 44px 80px; }
+    h1, h2, h3 { line-height: 1.2; margin-top: 1.7em; }
+    h1:first-child { margin-top: 0; }
+    h2 { border-top: 1px solid var(--border); padding-top: 1em; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: var(--code); border-radius: 4px; padding: 0.1em 0.3em; }
+    pre { background: var(--code); border: 1px solid var(--border); border-radius: 8px; overflow: auto; padding: 16px; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 18px 0; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; vertical-align: top; }
+    th { text-align: left; background: var(--code); }
+
+    main h3[id^="0-"] + table,
+    main h3[id^="1-"] + table,
+    main h3[id^="2-"] + table,
+    main h3[id^="3-"] + table,
+    main h3[id^="4-"] + table,
+    main h3[id^="5-"] + table,
+    main h3[id^="6-"] + table,
+    main h3[id^="7-"] + table,
+    main h3[id^="8-"] + table,
+    main h3[id^="9-"] + table {
+      margin: 10px 0 24px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+    }
+
+    main h3[id^="0-"] + table th,
+    main h3[id^="1-"] + table th,
+    main h3[id^="2-"] + table th,
+    main h3[id^="3-"] + table th,
+    main h3[id^="4-"] + table th,
+    main h3[id^="5-"] + table th,
+    main h3[id^="6-"] + table th,
+    main h3[id^="7-"] + table th,
+    main h3[id^="8-"] + table th,
+    main h3[id^="9-"] + table th { display: none; }
+
+    main h3[id^="0-"] + table td:first-child,
+    main h3[id^="1-"] + table td:first-child,
+    main h3[id^="2-"] + table td:first-child,
+    main h3[id^="3-"] + table td:first-child,
+    main h3[id^="4-"] + table td:first-child,
+    main h3[id^="5-"] + table td:first-child,
+    main h3[id^="6-"] + table td:first-child,
+    main h3[id^="7-"] + table td:first-child,
+    main h3[id^="8-"] + table td:first-child,
+    main h3[id^="9-"] + table td:first-child {
+      width: 170px;
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    main h3[id^="0-"] + table td,
+    main h3[id^="1-"] + table td,
+    main h3[id^="2-"] + table td,
+    main h3[id^="3-"] + table td,
+    main h3[id^="4-"] + table td,
+    main h3[id^="5-"] + table td,
+    main h3[id^="6-"] + table td,
+    main h3[id^="7-"] + table td,
+    main h3[id^="8-"] + table td,
+    main h3[id^="9-"] + table td { border-left: 0; border-right: 0; }
+
+    .toc { list-style: none; padding: 0; margin: 0; }
+    .toc a {
+      display: block;
+      border-radius: 6px;
+      color: var(--fg);
+      font-size: 13px;
+      line-height: 1.3;
+      padding: 4px 6px;
+      position: relative;
+      transition: background 160ms ease, color 160ms ease, padding-left 160ms ease;
+    }
+
+    .toc a:hover { background: var(--bg-elev); text-decoration: none; }
+    .toc-item { list-style: none; margin: 1px 0; }
+    .toc-item.depth-1 > a { font-weight: 700; }
+    .toc-item.depth-2 { padding-left: 14px; }
+    .toc-item.depth-3 { padding-left: 28px; }
+
+    .toc-item.active > a {
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      font-weight: 700;
+      padding-left: 10px;
+    }
+
+    .toc-item.active > a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 4px;
+      bottom: 4px;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    @media (max-width: 900px) {
+      .layout { display: block; }
+      .sidebar { min-height: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+      .toc-inner { position: static; height: auto; max-height: 45vh; }
+      main { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <div class="toc-inner">
+        <div class="nav-title">
+          <span>Outline</span>
+          <button id="navToggle" class="nav-toggle" aria-pressed="false" aria-label="Collapse sidebar" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path id="navToggleIcon" d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="nav-meta">Cross-Format-Documment- Codex Security Scan</div>
+        <ul class="toc">
+          <li class="toc-item depth-1"><a href="#security-review-cross-format-document-os-replacement-grade-hardening">Security Review: Cross-Format Document OS replacement-grade hardening</a></li>
+<li class="toc-item depth-2"><a href="#scope">Scope</a></li>
+<li class="toc-item depth-3"><a href="#scan-summary">Scan Summary</a></li>
+<li class="toc-item depth-2"><a href="#threat-model">Threat Model</a></li>
+<li class="toc-item depth-2"><a href="#findings">Findings</a></li>
+<li class="toc-item depth-3"><a href="#no-findings">No Findings</a></li>
+<li class="toc-item depth-3"><a href="#confidence-scale">Confidence Scale</a></li>
+<li class="toc-item depth-2"><a href="#reviewed-surfaces">Reviewed Surfaces</a></li>
+<li class="toc-item depth-2"><a href="#verification">Verification</a></li>
+<li class="toc-item depth-2"><a href="#open-questions-and-follow-up">Open Questions And Follow Up</a></li>
+        </ul>
+      </div>
+    </aside>
+    <main>
+      <h1 id="security-review-cross-format-document-os-replacement-grade-hardening">Security Review: Cross-Format Document OS replacement-grade hardening</h1>
+
+<h2 id="scope">Scope</h2>
+
+<ul><li>Scan mode: scoped-path/security-surface scan.</li><li>In-scope code: upload/parsing/storage, patch/export/redaction, forms/templates,</li></ul>
+<p>  approvals/bulk-send, editor-session APIs, query/AI routes, and the DocumentOpsAgent planner.</p>
+<ul><li>Context: repository threat model generated during this scan and saved at</li></ul>
+<p>  <code>docs/security/threat_model.md</code>.</p>
+<ul><li>Artifacts: discovery report, coverage ledger, validation summary, attack-path report, and</li></ul>
+<p>  per-candidate ledgers under this scan directory.</p>
+<ul><li>Explicit limitation: this was not a dependency advisory scan or a fresh exhaustive frontend audit.</li></ul>
+
+<h3 id="scan-summary">Scan Summary</h3>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Reportable findings after fixes</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Candidates discovered</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Candidates fixed</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Validation mode</td>
+<td>Focused unit/integration/stress tests plus code tracing</td>
+</tr>
+<tr>
+<td>Coverage</td>
+<td>All scoped hardening rows closed as fixed or suppressed</td>
+</tr>
+</tbody></table>
+
+<h2 id="threat-model">Threat Model</h2>
+
+<p>This scan used the generated repository threat model in <code>docs/security/threat_model.md</code>.</p>
+
+<p>Important invariants from that threat model:</p>
+
+<ul><li>A caller can read or mutate only documents and templates owned by their signed anonymous session</li></ul>
+<p>  or future authenticated user.</p>
+<ul><li>Upload handling must bound memory, reject unsupported/deceptive file types, and reject zip bombs</li></ul>
+<p>  before parser execution.</p>
+<ul><li>Redaction must remove sensitive content from exported bytes, not merely hide it in the UI.</li><li>Patch operations must be validated against the canonical model and remain undoable/auditable.</li><li>Native editor sessions must not claim full Office or Acrobat fidelity unless a real provider is</li></ul>
+<p>  configured.</p>
+<ul><li>Integrity seals must not be marketed as legally binding signatures until a regulated provider is</li></ul>
+<p>  integrated.</p>
+<ul><li>AI or agent workflows may plan destructive actions, but execution must stay approval-gated.</li></ul>
+
+<h2 id="findings">Findings</h2>
+
+<h3 id="no-findings">No Findings</h3>
+
+<p>No findings remain reportable after validation and fixes.</p>
+
+<p>The scan found eight candidates and fixed all eight:</p>
+
+<table>
+<thead><tr>
+<th>Candidate</th>
+<th>Title</th>
+<th>Final Outcome</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>C1</td>
+<td>Upload rate-limit bypass by rotating anonymous sessions</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>OOXML sniffing before entry-count safety</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>Malformed accepted-format uploads staged before parser success</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>Redaction recovery for non-run field/image text</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C5</td>
+<td>CSV/XLSX formula injection</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C6</td>
+<td>Unsafe HTML/Markdown link schemes</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C7</td>
+<td>Active PDF links/actions preserved in basic write-back</td>
+<td>Fixed and tested</td>
+</tr>
+<tr>
+<td>C8</td>
+<td>Global template library IDOR</td>
+<td>Fixed and tested</td>
+</tr>
+</tbody></table>
+
+<h3 id="confidence-scale">Confidence Scale</h3>
+
+<table>
+<thead><tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>high</td>
+<td>Direct source/configuration/runtime evidence supports the result with no material blocker.</td>
+</tr>
+<tr>
+<td>medium</td>
+<td>Source evidence supports the result, but some deployment behavior would need more proof.</td>
+</tr>
+<tr>
+<td>low</td>
+<td>Weak or incomplete evidence; no final finding in this report uses this label.</td>
+</tr>
+</tbody></table>
+
+<h2 id="reviewed-surfaces">Reviewed Surfaces</h2>
+
+<table>
+<thead><tr>
+<th>Surface</th>
+<th>Risk Area</th>
+<th>Outcome</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Upload/session/rate limit</td>
+<td>DoS and quota bypass</td>
+<td>Fixed</td>
+<td>Session and client-address buckets now both apply.</td>
+</tr>
+<tr>
+<td>OOXML sniffing</td>
+<td>Zip bomb pre-validation</td>
+<td>Fixed</td>
+<td>Over-entry Office-like packages are no longer blessed by the sniffer.</td>
+</tr>
+<tr>
+<td>Upload parse/stage</td>
+<td>Storage growth and parser failures</td>
+<td>Fixed</td>
+<td>Parser success is required before blob staging.</td>
+</tr>
+<tr>
+<td>Export redaction</td>
+<td>Sensitive data recovery</td>
+<td>Fixed</td>
+<td>Field values and image alt text now participate in redaction and validation.</td>
+</tr>
+<tr>
+<td>Spreadsheet export</td>
+<td>Formula injection</td>
+<td>Fixed</td>
+<td>CSV/XLSX formula-leading text is neutralized.</td>
+</tr>
+<tr>
+<td>HTML/Markdown export</td>
+<td>Active unsafe link schemes</td>
+<td>Fixed</td>
+<td>Exported links are limited to safe schemes or relative references.</td>
+</tr>
+<tr>
+<td>PDF write-back</td>
+<td>Active PDF links/actions</td>
+<td>Fixed</td>
+<td>Basic PDF export scrubs links, JavaScript, embedded files, and response actions.</td>
+</tr>
+<tr>
+<td>Templates</td>
+<td>Cross-session IDOR</td>
+<td>Fixed</td>
+<td>Templates now have owner columns and owner-scoped routes.</td>
+</tr>
+<tr>
+<td>Forms</td>
+<td>Cross-document mutation</td>
+<td>No issue found</td>
+<td>Routes load owned document before mutation.</td>
+</tr>
+<tr>
+<td>Approvals/bulk send</td>
+<td>Unauthorized workflow side effects</td>
+<td>No issue found</td>
+<td>Source document ownership is enforced and packet copies are session-owned.</td>
+</tr>
+<tr>
+<td>Editor sessions</td>
+<td>Provider URL injection/SSRF</td>
+<td>Rejected</td>
+<td>Provider URLs are operator settings, not request-controlled.</td>
+</tr>
+<tr>
+<td>Ops/query/AI</td>
+<td>Destructive action safety</td>
+<td>No issue found</td>
+<td>Planner is read-only; destructive actions remain approval metadata only.</td>
+</tr>
+</tbody></table>
+
+<h2 id="verification">Verification</h2>
+
+<ul><li><code>python -m pytest backend/tests -q -m &quot;not stress&quot;</code>: 264 passed, 1 skipped, 6 deselected.</li><li><code>python -m pytest backend/tests/stress -q</code>: 6 passed.</li><li><code>python -m ruff check backend/src backend/tests evals</code>: all checks passed.</li><li>Alembic upgrade/check: head applies through <code>0007</code>, no drift.</li></ul>
+
+<h2 id="open-questions-and-follow-up">Open Questions And Follow Up</h2>
+
+<ul><li>When a native editor provider is connected, run a provider-callback security scan over</li></ul>
+<p>  <code>/documents/{id}/editor/session/{session_id}/sync</code> and <code>/save</code> with the provider&#x27;s real callback</p>
+<p>  authentication model.</p>
+<ul><li>Before marketing legal signing, scan the regulated signing-provider integration for identity,</li></ul>
+<p>  certificate, webhook, audit-log, and replay risks.</p>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('navToggle');
+    const icon = document.getElementById('navToggleIcon');
+    const collapsedKey = 'codex-security-report:sidebar-collapsed';
+
+    function setCollapsed(collapsed) {
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      if (toggle) {
+        toggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+        toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        toggle.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      }
+      if (icon) icon.setAttribute('d', collapsed ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6');
+      try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+    }
+
+    try { setCollapsed(localStorage.getItem(collapsedKey) === '1'); } catch {}
+    if (toggle) toggle.addEventListener('click', () => setCollapsed(!document.body.classList.contains('sidebar-collapsed')));
+
+    const tocLinks = Array.from(document.querySelectorAll('.toc a'));
+    const sections = tocLinks.map((link) => {
+      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      return [link, document.getElementById(id)];
+    }).filter((pair) => pair[1]);
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (!visible) return;
+      tocLinks.forEach((link) => link.parentElement.classList.remove('active'));
+      const active = tocLinks.find((link) => link.getAttribute('href') === '#' + visible.target.id);
+      if (active) active.parentElement.classList.add('active');
+    }, { rootMargin: '-10% 0px -75% 0px', threshold: [0, 1] });
+
+    sections.forEach(([, section]) => observer.observe(section));
+  </script>
+</body>
+</html>

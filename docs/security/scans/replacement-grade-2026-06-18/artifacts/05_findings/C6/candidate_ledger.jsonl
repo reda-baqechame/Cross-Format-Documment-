@@ -1,0 +1,3 @@
+{"candidate_id":"C6","phase":"discovery","status":"reportable","evidence":"HTML/Markdown exports emitted attacker-controlled link_href including unsafe schemes."}
+{"candidate_id":"C6","phase":"validation","status":"fixed","evidence":"Regression test test_html_and_markdown_drop_unsafe_link_schemes proves javascript scheme is not emitted."}
+{"candidate_id":"C6","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"User-click active-link export path closed by safe href filtering."}

@@ -67,6 +67,20 @@ def write_back_pdf(data: bytes, doc: CanonicalDocument) -> bytes:
     """Return the original PDF with redactions removed and edited text rewritten."""
     pdf = fitz.open(stream=data, filetype="pdf")
     try:
+        pdf.scrub(
+            attached_files=True,
+            clean_pages=False,
+            embedded_files=True,
+            hidden_text=False,
+            javascript=True,
+            metadata=False,
+            redactions=False,
+            remove_links=True,
+            reset_fields=False,
+            reset_responses=True,
+            thumbnails=False,
+            xml_metadata=False,
+        )
         original = _original_text_by_box(data)
         # Per page index: spans to remove (redaction) and spans to rewrite after.
         rewrites: list[tuple[int, fitz.Rect, str, float, tuple[float, float, float]]] = []

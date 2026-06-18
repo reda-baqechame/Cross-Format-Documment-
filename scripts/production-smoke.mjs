@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+// Read-only production smoke for the public Railway app. It never uploads files or
+// creates documents; mutating release tests belong in staging.
+
+const base = (process.env.DOCOS_PRODUCTION_URL || "https://docosweb-production.up.railway.app")
+  .replace(/\/$/, "");
+const requireHardeningOpenApi = process.env.DOCOS_REQUIRE_HARDENING_OPENAPI === "1";
+
+async function requireOk(path, check) {
+  const res = await fetch(`${base}${path}`, { redirect: "follow" });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`${path} returned ${res.status}: ${text.slice(0, 200)}`);
+  }
+  if (check) check(text, res);
+  console.log(`[production-smoke] ok ${path}`);
+}
+
+await requireOk("/", (text) => {
+  for (const needle of ["Every document tool", "Build a form"]) {
+    if (!text.includes(needle)) throw new Error(`home page missing "${needle}"`);
+  }
+  if (requireHardeningOpenApi && !text.includes("Invoice approval")) {
+    throw new Error('home page missing "Invoice approval"');
+  }
+});
+
+await requireOk("/api/health", (text) => {
+  const health = JSON.parse(text);
+  if (health.status !== "ok" || health.db !== "ok") {
+    throw new Error(`health not ok: ${text}`);
+  }
+});
+
+await requireOk("/api/openapi.json", (text) => {
+  const schema = JSON.parse(text);
+  const paths = schema.paths || {};
+  for (const path of [
+    "/documents/{doc_id}/editor/session",
+    "/documents/{doc_id}/ops-agent/plan",
+    "/documents/{doc_id}/fields/detect",
+  ]) {
+    if (!paths[path]) {
+      const message = `OpenAPI missing ${path}`;
+      if (requireHardeningOpenApi) throw new Error(message);
+      console.warn(`[production-smoke] warn ${message}`);
+    }
+  }
+});
+
+console.log(`[production-smoke] ${base} passed read-only smoke checks`);

@@ -56,6 +56,77 @@ export async function fetchHealth(docId: string): Promise<DocumentHealthResponse
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
 }
 
+export interface EditorSession {
+  doc_id: string;
+  session_id: string;
+  provider: string;
+  status: string;
+  mode: string;
+  source_format: string;
+  editor_url: string;
+  config: Record<string, unknown>;
+  capabilities: string[];
+  warnings: string[];
+  saved_version_id: string | null;
+}
+
+export async function createEditorSession(
+  docId: string,
+  body: { mode?: string; provider?: string | null } = {},
+): Promise<EditorSession> {
+  return json<EditorSession>(
+    await fetch(`${BASE}/documents/${docId}/editor/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function saveEditorSession(
+  docId: string,
+  sessionId: string,
+  note?: string,
+): Promise<EditorSession> {
+  return json<EditorSession>(
+    await fetch(`${BASE}/documents/${docId}/editor/session/${sessionId}/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    }),
+  );
+}
+
+export interface OpsAgentAction {
+  tool: string;
+  label: string;
+  destructive: boolean;
+  requires_approval: boolean;
+  reason: string;
+}
+
+export interface OpsAgentPlan {
+  doc_id: string;
+  goal: string;
+  classification: string;
+  actions: OpsAgentAction[];
+  warnings: string[];
+}
+
+export async function planDocumentOps(
+  docId: string,
+  goal: string,
+  allowDestructive = false,
+): Promise<OpsAgentPlan> {
+  return json<OpsAgentPlan>(
+    await fetch(`${BASE}/documents/${docId}/ops-agent/plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal, allow_destructive: allowDestructive }),
+    }),
+  );
+}
+
 export async function submitPatch(docId: string, body: PatchRequest): Promise<PatchResponse> {
   return json<PatchResponse>(
     await fetch(`${BASE}/documents/${docId}/patches`, {
@@ -1006,6 +1077,7 @@ export interface TemplateSummary {
   name: string;
   description: string | null;
   source_format: string;
+  variables: string[];
   created_at: string;
 }
 

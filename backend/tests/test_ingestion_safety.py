@@ -40,6 +40,17 @@ def test_plain_zip_without_ooxml_markers_is_not_trusted():
     assert sniff_mime("payload.docx", data) == "application/zip"
 
 
+def test_ooxml_sniffer_does_not_bless_over_entry_cap_archive():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", "<Types/>")
+        zf.writestr("word/document.xml", "<doc/>")
+        for i in range(2100):
+            zf.writestr(f"word/junk{i}.xml", "x")
+    assert sniff_ooxml(buf.getvalue()) is None
+    assert sniff_mime("payload.docx", buf.getvalue()) == "application/zip"
+
+
 def test_zip_bomb_rejected_by_entry_count():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:

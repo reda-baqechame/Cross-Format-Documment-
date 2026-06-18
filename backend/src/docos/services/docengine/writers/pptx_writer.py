@@ -16,7 +16,7 @@ from pptx.util import Inches, Pt
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text
+from docos.services.docengine.writers.redaction import is_redacted, node_text, run_text
 
 _BLANK_LAYOUT = 6  # the standard blank layout in the default template
 
@@ -73,7 +73,8 @@ def model_to_pptx(doc: CanonicalDocument) -> bytes:
                 elif child.type == "table":
                     body.extend(_table_lines(doc, child))
                 elif child.type == "image":
-                    body.append(f"[image: {getattr(child, 'alt_text', None) or 'image'}]")
+                    if not is_redacted(doc, child.id):
+                        body.append(f"[image: {node_text(doc, child) or 'image'}]")
             _add_slide(prs, title or f"Slide {page.page_number}", body)
     else:
         # Section a flat document into slides by heading.

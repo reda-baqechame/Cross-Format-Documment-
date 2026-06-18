@@ -63,6 +63,20 @@ def test_delete_and_missing_template(client):
     assert client.get("/templates").json()["templates"] == []
 
 
+def test_templates_are_session_scoped(make_client):
+    alice = make_client()
+    bob = make_client()
+    doc_id = _upload(alice)
+    template_id = alice.post(
+        f"/documents/{doc_id}/save-as-template", json={"name": "Private packet"}
+    ).json()["id"]
+
+    assert bob.get("/templates").json()["templates"] == []
+    assert bob.post(f"/templates/{template_id}/instantiate", json={}).status_code == 404
+    assert bob.delete(f"/templates/{template_id}").status_code == 404
+    assert any(t["id"] == template_id for t in alice.get("/templates").json()["templates"])
+
+
 def test_validation_errors(client):
     doc_id = _upload(client)
     blank = client.post(f"/documents/{doc_id}/save-as-template", json={"name": "  "})

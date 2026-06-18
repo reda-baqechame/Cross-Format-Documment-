@@ -7,8 +7,13 @@ the exported bytes — a node is redacted if it (or any ancestor) is marked reda
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
+
+_SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@")
+_SAFE_LINK_SCHEMES = {"http", "https", "mailto", "tel"}
 
 
 def is_redacted(doc: CanonicalDocument, node_id: str | None) -> bool:
@@ -32,3 +37,36 @@ def run_text(doc: CanonicalDocument, node: AnyNode) -> str:
     if is_redacted(doc, node.id):
         return ""
     return getattr(node, "text", "")
+
+
+def node_text(doc: CanonicalDocument, node: AnyNode) -> str:
+    """Exportable text for any text-bearing node, honoring redaction."""
+    if is_redacted(doc, node.id):
+        return ""
+    if node.type == "field":
+        return getattr(node, "value", None) or ""
+    if node.type == "image":
+        return getattr(node, "alt_text", None) or ""
+    return getattr(node, "text", "")
+
+
+def spreadsheet_text(value: str) -> str:
+    """Neutralize spreadsheet formulas in exported CSV/XLSX cells."""
+    if value and value[0] in _SPREADSHEET_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
+def safe_link_href(href: str | None) -> str | None:
+    """Return a link href only when its scheme is safe for exported files."""
+    if href is None:
+        return None
+    cleaned = href.strip()
+    if not cleaned:
+        return None
+    if cleaned.startswith(("#", "/", "./", "../")):
+        return cleaned
+    parsed = urlparse(cleaned)
+    if parsed.scheme.lower() in _SAFE_LINK_SCHEMES:
+        return cleaned
+    return None

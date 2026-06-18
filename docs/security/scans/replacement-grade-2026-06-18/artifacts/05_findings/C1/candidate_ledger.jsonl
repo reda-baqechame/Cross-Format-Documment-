@@ -1,0 +1,3 @@
+{"candidate_id":"C1","phase":"discovery","status":"reportable","evidence":"Upload limiter keyed only by session id; missing cookie minted a fresh session and bypassed per-session bucket."}
+{"candidate_id":"C1","phase":"validation","status":"fixed","evidence":"Regression test test_same_client_cannot_bypass_limit_by_rotating_session proves same client is blocked after rotating session."}
+{"candidate_id":"C1","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Remote upload DoS amplification path closed by session plus client-address buckets."}

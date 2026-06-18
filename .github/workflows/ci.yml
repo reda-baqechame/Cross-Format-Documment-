@@ -26,7 +26,12 @@ jobs:
         run: ruff check src tests
       - name: Pytest
         working-directory: backend
-        run: pytest -q
+        run: pytest -q -m "not stress"
+      - name: Stress suite
+        working-directory: backend
+        run: pytest -q -m stress
+      - name: DocumentOpsAgent eval
+        run: python evals/document_ops/run_local.py
       - name: Verify migrations apply cleanly with no drift
         working-directory: backend
         env:
@@ -54,3 +59,23 @@ jobs:
         run: pnpm --filter @docos/web lint
       - name: Build
         run: pnpm --filter @docos/web build
+      - name: Install Playwright browser
+        run: pnpm --filter @docos/web exec playwright install --with-deps chromium
+      - name: Browser E2E smoke
+        run: pnpm --filter @docos/web test:e2e
+
+  production-smoke:
+    name: Production read-only smoke
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Railway production smoke
+        run: pnpm smoke:production

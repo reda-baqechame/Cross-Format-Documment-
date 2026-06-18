@@ -1,0 +1,3 @@
+{"candidate_id":"C7","phase":"discovery","status":"reportable","evidence":"Basic PDF write-back reused original PDF bytes and preserved active link/action objects."}
+{"candidate_id":"C7","phase":"validation","status":"fixed","evidence":"Regression test test_pdf_writeback_strips_active_links_and_javascript proves links/javascript are removed and output validates."}
+{"candidate_id":"C7","phase":"attack_path","decision":"fixed_no_remaining_reportable_finding","evidence":"Trusted-PDF export active-content path closed by PyMuPDF scrub."}

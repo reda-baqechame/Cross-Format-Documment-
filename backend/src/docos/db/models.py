@@ -108,6 +108,8 @@ class Template(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_doc_id: Mapped[str | None] = mapped_column(String, nullable=True)
     source_format: Mapped[str] = mapped_column(String, default="txt")
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     model: Mapped[dict] = mapped_column(JSON)  # serialized CanonicalDocument snapshot
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
@@ -150,6 +152,29 @@ class BulkSendPacket(Base):
     packet_doc_id: Mapped[str] = mapped_column(String)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class EditorSession(Base):
+    """An embedded editor handoff session for native DOCX/XLSX/PPTX/PDF editing.
+
+    The row is deliberately provider-neutral: local/basic sessions work immediately,
+    while ONLYOFFICE or licensed PDF SDK sessions can attach provider config without
+    changing the public API.
+    """
+
+    __tablename__ = "editor_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    provider: Mapped[str] = mapped_column(String)
+    mode: Mapped[str] = mapped_column(String, default="edit")
+    status: Mapped[str] = mapped_column(String, default="created")
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    saved_version_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
 
 class JobRecord(Base):

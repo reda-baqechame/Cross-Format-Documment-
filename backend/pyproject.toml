@@ -48,6 +48,9 @@ packages = ["src/docos"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "stress: replacement-grade stress and regression coverage",
+]
 
 [tool.ruff]
 line-length = 100

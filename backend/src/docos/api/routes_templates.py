@@ -8,11 +8,12 @@ so every downstream capability (edit, export, sign, …) works on it unchanged.
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
@@ -38,6 +39,7 @@ class TemplateSummary(BaseModel):
     name: str
     description: str | None
     source_format: str
+    variables: list[str]
     created_at: str
 
 
@@ -51,14 +53,51 @@ class InstantiateResponse(BaseModel):
     template_id: str
 
 
+_VARIABLE = re.compile(r"\{\{\s*([A-Za-z][A-Za-z0-9 _.-]{1,60})\s*\}\}")
+
+
+def _variables(model: dict) -> list[str]:
+    found: set[str] = set()
+    nodes = model.get("nodes") if isinstance(model, dict) else None
+    if not isinstance(nodes, dict):
+        return []
+    for raw in nodes.values():
+        if not isinstance(raw, dict):
+            continue
+        if raw.get("type") == "field" and raw.get("field_name"):
+            found.add(str(raw["field_name"]).strip())
+        text = str(raw.get("text") or "")
+        for match in _VARIABLE.finditer(text):
+            found.add(match.group(1).strip())
+    return sorted(v for v in found if v)
+
+
 def _summary(t: Template) -> TemplateSummary:
     return TemplateSummary(
         id=t.id,
         name=t.name,
         description=t.description,
         source_format=t.source_format,
+        variables=_variables(t.model),
         created_at=t.created_at.isoformat(),
     )
+
+
+def _owns_template(template: Template, actor: Actor) -> bool:
+    if template.owner_session_id is not None and template.owner_session_id == actor.session_id:
+        return True
+    return (
+        template.owner_user_id is not None
+        and actor.user_id is not None
+        and template.owner_user_id == actor.user_id
+    )
+
+
+def _template_filters(actor: Actor):
+    clauses = [Template.owner_session_id == actor.session_id]
+    if actor.user_id is not None:
+        clauses.append(Template.owner_user_id == actor.user_id)
+    return or_(*clauses)
 
 
 @router.post("/documents/{doc_id}/save-as-template", response_model=TemplateSummary)
@@ -79,6 +118,8 @@ def save_as_template(
         description=(body.description or None),
         source_doc_id=doc_id,
         source_format=record.source_format,
+        owner_session_id=actor.session_id,
+        owner_user_id=actor.user_id,
         model=library.snapshot(doc),
     )
     session.add(template)
@@ -93,7 +134,9 @@ def save_as_template(
 def list_templates(
     session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
 ) -> TemplateListResponse:
-    rows = session.scalars(select(Template).order_by(Template.created_at.desc())).all()
+    rows = session.scalars(
+        select(Template).where(_template_filters(actor)).order_by(Template.created_at.desc())
+    ).all()
     return TemplateListResponse(templates=[_summary(t) for t in rows])
 
 
@@ -105,7 +148,7 @@ def instantiate_template(
     actor: Actor = Depends(get_actor),
 ) -> InstantiateResponse:
     template = session.get(Template, template_id)
-    if template is None:
+    if template is None or not _owns_template(template, actor):
         raise HTTPException(status_code=404, detail="template not found")
 
     doc = library.instantiate(template.model, title=body.title)
@@ -138,7 +181,7 @@ def delete_template(
     template_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
 ) -> None:
     template = session.get(Template, template_id)
-    if template is None:
+    if template is None or not _owns_template(template, actor):
         raise HTTPException(status_code=404, detail="template not found")
     session.delete(template)
     session.commit()

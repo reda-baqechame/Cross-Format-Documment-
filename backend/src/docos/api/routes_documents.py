@@ -116,8 +116,6 @@ async def upload_document(
         session.commit()
         raise HTTPException(status_code=422, detail="file failed malware scan")
 
-    blob_key = await gateway.stage(data, mime=result.mime)
-
     try:
         adapter = registry.resolve(result.mime)
         doc = adapter.parse(data)
@@ -139,6 +137,22 @@ async def upload_document(
             status_code=501,
             detail=f"format '{result.detected_format}' not yet supported (stubbed adapter)",
         ) from exc
+    except Exception as exc:  # noqa: BLE001 - hostile files may trigger parser-specific errors
+        logger.warning("document parse failed for %s: %s", file.filename, exc)
+        session.add(
+            JobRecord(
+                id=uuid.uuid4().hex,
+                kind="ingest",
+                document_id=None,
+                status="failed",
+                error="parse failed",
+                finished=True,
+            )
+        )
+        session.commit()
+        raise HTTPException(status_code=422, detail="file could not be parsed safely") from exc
+
+    blob_key = await gateway.stage(data, mime=result.mime)
 
     record = Document(
         id=doc.doc_id,

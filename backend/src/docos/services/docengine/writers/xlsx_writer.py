@@ -16,7 +16,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text
+from docos.services.docengine.writers.redaction import run_text, spreadsheet_text
 
 # openpyxl rejects sheet titles over 31 chars or containing []:*?/\
 _BAD_TITLE = set('[]:*?/\\')
@@ -43,7 +43,7 @@ def _write_table(ws: Worksheet, doc: CanonicalDocument, tnode: AnyNode) -> None:
     for ri, row in enumerate(rows, start=1):
         cells = [c for c in doc.children_of(row.id) if c.type == "table_cell"]
         for ci, cell in enumerate(cells, start=1):
-            text = _block_text(doc, cell)
+            text = spreadsheet_text(_block_text(doc, cell))
             ws.cell(row=ri, column=ci, value=text)
             fmt = cell.attrs.get("number_format")
             if fmt:
@@ -88,7 +88,7 @@ def model_to_xlsx(doc: CanonicalDocument) -> bytes:
     if loose_text:
         ws = wb.create_sheet(title=_safe_title("Text", used_titles))
         for i, line in enumerate(loose_text, start=1):
-            ws.cell(row=i, column=1, value=line)
+            ws.cell(row=i, column=1, value=spreadsheet_text(line))
         made_sheet = True
     if not made_sheet:
         wb.create_sheet(title="Sheet1")  # never emit a zero-sheet (invalid) workbook

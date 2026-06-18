@@ -25,6 +25,7 @@ _SIGNATURES: list[tuple[bytes, str]] = [
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+_SNIFF_MAX_ZIP_ENTRIES = 2000
 
 # OOXML package markers, checked against the *contents* of the zip — never the filename, so a
 # renamed or extension-spoofed file can't masquerade as a different (or trusted) type.
@@ -39,13 +40,23 @@ def sniff_ooxml(data: bytes) -> str | None:
     """Classify a zip as docx/xlsx/pptx by package contents, or ``None`` if it isn't OOXML."""
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            names = zf.namelist()
+            has_content_types = False
+            seen_prefixes: set[str] = set()
+            for index, info in enumerate(zf.infolist(), start=1):
+                if index > _SNIFF_MAX_ZIP_ENTRIES:
+                    return None
+                name = info.filename
+                if name == "[Content_Types].xml":
+                    has_content_types = True
+                for prefix, mime in _OOXML_MARKERS:
+                    if name.startswith(prefix):
+                        seen_prefixes.add(mime)
     except zipfile.BadZipFile:
         return None
-    if "[Content_Types].xml" not in names:
+    if not has_content_types:
         return None
-    for prefix, mime in _OOXML_MARKERS:
-        if any(name.startswith(prefix) for name in names):
+    for _prefix, mime in _OOXML_MARKERS:
+        if mime in seen_prefixes:
             return mime
     return None
 
