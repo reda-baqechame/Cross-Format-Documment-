@@ -17,7 +17,7 @@ async function requireOk(path, check) {
 }
 
 await requireOk("/", (text) => {
-  for (const needle of ["Every document tool", "Build a form"]) {
+  for (const needle of ["All document tools", "Build a form", "Contract packet"]) {
     if (!text.includes(needle)) throw new Error(`home page missing "${needle}"`);
   }
   if (requireHardeningOpenApi && !text.includes("Invoice approval")) {
