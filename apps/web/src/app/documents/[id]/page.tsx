@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import Link from "next/link";
+
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
-import { AskPanel } from "@/components/canvas/AskPanel";
-import { ComparePanel } from "@/components/canvas/ComparePanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import {
   DocumentMobileActions,
@@ -14,7 +14,6 @@ import {
   type WorkspaceTab,
 } from "@/components/canvas/DocumentWorkspaceHeader";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
-import { ExtractPanel } from "@/components/canvas/ExtractPanel";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { fetchHealth, fetchModel } from "@/lib/api";
 import { friendlyLoadError } from "@/lib/upload";
@@ -50,12 +49,8 @@ export default function DocumentPage() {
         onTabChange={setTab}
       />
 
-      <p className="hidden border-b border-slate-100 bg-brand-50/50 px-4 py-2 text-center text-xs text-slate-600 sm:block">
-        Double-click or long-press text to edit · AI bar for natural-language changes · Tools for
-        protect &amp; classify · Download to export
-      </p>
-      <p className="border-b border-slate-100 bg-brand-50/50 px-4 py-2 text-center text-xs text-slate-600 sm:hidden">
-        Long-press text to edit · Use tabs for Trust, Comments, and Approvals
+      <p className="border-b border-slate-100 bg-brand-50/50 px-4 py-2 text-center text-xs text-slate-600">
+        Double-click (or long-press) any text to edit it · Download to save your changes
       </p>
 
       <div className="flex flex-1 flex-col lg:flex-row">
@@ -79,9 +74,17 @@ export default function DocumentPage() {
             )}
             {doc && (
               <>
-                <AskPanel docId={docId} />
-                <ExtractPanel docId={docId} />
-                <ComparePanel docId={docId} />
+                {doc.meta.source_format !== "pdf" && (
+                  <div className="mx-auto mb-4 max-w-[816px] rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    This is a <strong>text view</strong> of your {doc.meta.source_format.toUpperCase()} file
+                    — useful for editing and reading, but it doesn’t preserve the original layout. To keep
+                    the exact look, use{" "}
+                    <Link href="/tasks/convert" className="font-medium underline">
+                      Convert
+                    </Link>{" "}
+                    or download from the menu above.
+                  </div>
+                )}
                 <DocumentCanvas doc={doc} docId={docId} />
               </>
             )}

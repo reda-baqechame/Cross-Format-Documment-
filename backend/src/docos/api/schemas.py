@@ -28,6 +28,10 @@ class HealthCheck(BaseModel):
     privacy_mode: str
     blob_backend: str
     db: str
+    # AI features (Ask/Summarize/Translate/natural-language edit) are real only when an LLM
+    # provider is configured; the UI uses this to show their true state instead of failing silently.
+    ai_enabled: bool = False
+    llm_provider: str = "noop"
 
 
 class UploadResponse(BaseModel):

@@ -15,6 +15,9 @@ def test_health_endpoint(client):
     body = resp.json()
     assert body["status"] == "ok"
     assert body["privacy_mode"] in {"offline", "enterprise", "cloud"}
+    # AI state is reported so the UI never shows a silently-failing AI feature.
+    assert body["ai_enabled"] is False  # default config is the offline noop provider
+    assert body["llm_provider"] == "noop"
 
 
 def test_upload_txt_then_fetch_model_and_health(client):

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
 
     # llm
     llm_provider: LLMProvider = "noop"
+    # Override the model per provider (e.g. a cheaper model for high-volume Q&A). Empty =
+    # the provider client's own default.
+    llm_model: str = ""
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
@@ -79,6 +82,15 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env in ("staging", "production")
+
+    @property
+    def ai_enabled(self) -> bool:
+        """True when a real LLM provider is configured (not the offline noop client)."""
+        if self.llm_provider == "openai":
+            return bool(self.openai_api_key)
+        if self.llm_provider == "anthropic":
+            return bool(self.anthropic_api_key)
+        return False
 
     @property
     def max_upload_bytes(self) -> int:

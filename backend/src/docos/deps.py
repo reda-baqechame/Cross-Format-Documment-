@@ -58,6 +58,8 @@ def get_llm_client() -> LLMClient:
     if s.llm_provider == "anthropic":
         from docos.services.semantic.llm.anthropic import AnthropicClient
 
+        if s.llm_model:
+            return AnthropicClient(s.anthropic_api_key, model=s.llm_model)
         return AnthropicClient(s.anthropic_api_key)
     return LocalNoopClient()
 

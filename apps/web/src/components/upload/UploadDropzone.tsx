@@ -117,7 +117,7 @@ export function UploadDropzone() {
                 ? `Uploading ${status.done + 1} of ${status.total}…`
                 : `Opening “${status.name}”…`}
             </p>
-            <p className="text-sm text-slate-500">Parsing into the canonical model.</p>
+            <p className="text-sm text-slate-500">Reading your document…</p>
           </>
         ) : (
           <>

@@ -19,6 +19,8 @@ export interface BackendHealth {
   privacy_mode: string;
   blob_backend: string;
   db: string;
+  ai_enabled: boolean;
+  llm_provider: string;
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -554,6 +556,42 @@ export const compressPdf = (docId: string) => pdfTool(docId, "compress");
 export const protectPdf = (docId: string, password: string) =>
   pdfTool(docId, "protect", { password });
 export const watermarkPdf = (docId: string, text: string) => pdfTool(docId, "watermark", { text });
+
+/** Parse a "1,3,5" or "2-4" page string into 0-based indices (UI is 1-based). */
+export function parsePageList(input: string): number[] {
+  const out: number[] = [];
+  for (const part of input.split(",")) {
+    const t = part.trim();
+    if (!t) continue;
+    const range = t.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (range) {
+      const lo = Number(range[1]);
+      const hi = Number(range[2]);
+      for (let p = lo; p <= hi; p++) out.push(p - 1);
+    } else if (/^\d+$/.test(t)) {
+      out.push(Number(t) - 1);
+    }
+  }
+  return out.filter((n) => n >= 0);
+}
+
+export const rotatePdf = (docId: string, pages: number[], degrees: number) =>
+  pdfTool(docId, "pages/rotate", { pages, degrees });
+export const deletePages = (docId: string, pages: number[]) =>
+  pdfTool(docId, "pages/delete", { pages });
+export const reorderPages = (docId: string, order: number[]) =>
+  pdfTool(docId, "pages/reorder", { order });
+/** Merge other documents into this one (all rendered to PDF first). */
+export const mergePdfs = (docId: string, docIds: string[]) =>
+  pdfTool(docId, "merge", { doc_ids: docIds });
+
+/** Split: extract the given (1-based) pages into a new PDF and download it. */
+export async function splitPdf(docId: string, pages: number[]): Promise<void> {
+  const q = pages.join(",");
+  const res = await fetch(`${BASE}/documents/${docId}/pages/extract?pages=${q}`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  triggerDownload(await res.blob(), `${docId}_pages.pdf`);
+}
 
 /** Generate a searchable PDF (invisible OCR layer for scans; selectable text otherwise). */
 export async function downloadSearchablePdf(docId: string, filename?: string): Promise<void> {
