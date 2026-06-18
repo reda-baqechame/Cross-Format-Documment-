@@ -22,6 +22,7 @@ from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.reader import Citation
+from docos.services.semantic.skills.autopilot import AutopilotReport
 
 
 class HealthCheck(BaseModel):
@@ -54,6 +55,11 @@ class DocumentHealthResponse(BaseModel):
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport
+
+
+class AutopilotResponse(BaseModel):
+    doc_id: str
+    autopilot: AutopilotReport
 
 
 class HistoryResponse(BaseModel):

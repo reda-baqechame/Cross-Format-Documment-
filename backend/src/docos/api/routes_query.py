@@ -15,6 +15,7 @@ from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     AskRequest,
     AskResponse,
+    AutopilotResponse,
     ClassifyResponse,
     DiffResponse,
     ExtractResponse,
@@ -28,6 +29,7 @@ from docos.services.provenance import diff
 from docos.services.semantic import classify as classify_service
 from docos.services.semantic import extract as extract_service
 from docos.services.semantic import reader
+from docos.services.semantic.skills import autopilot as autopilot_service
 
 router = APIRouter(prefix="/documents", tags=["query"])
 
@@ -96,6 +98,16 @@ def classify_document(
     """Detect the document type (invoice/contract/resume/…) with explainable signals."""
     _record, doc = _load_latest(session, doc_id, actor)
     return ClassifyResponse(doc_id=doc_id, classification=classify_service.classify(doc))
+
+
+@router.get("/{doc_id}/autopilot", response_model=AutopilotResponse)
+def autopilot(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> AutopilotResponse:
+    """Document Autopilot: detect the document's purpose, extract its key fields, run checks,
+    and recommend next actions — the typed-object view of the document. Deterministic/offline."""
+    _record, doc = _load_latest(session, doc_id, actor)
+    return AutopilotResponse(doc_id=doc_id, autopilot=autopilot_service.analyze(doc))
 
 
 @router.post("/{doc_id}/translate", response_model=TranslateResponse)

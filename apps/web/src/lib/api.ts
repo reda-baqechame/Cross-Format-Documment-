@@ -221,6 +221,47 @@ export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
 }
 
+// ── Document Autopilot ───────────────────────────────────────────────────────
+export interface AutopilotField {
+  name: string;
+  label: string;
+  value: string | null;
+  confidence: number;
+  node_id: string | null;
+  status: "found" | "low_confidence" | "missing";
+}
+export interface AutopilotFinding {
+  level: "pass" | "warn" | "fail";
+  code: string;
+  message: string;
+}
+export interface AutopilotAction {
+  id: string;
+  label: string;
+  kind: "export" | "redact" | "sign" | "navigate";
+  params: Record<string, string>;
+}
+export interface AutopilotReport {
+  category: string;
+  type: string;
+  type_id: string;
+  type_confidence: number;
+  skill_label: string;
+  title: string;
+  deep: boolean;
+  fields: AutopilotField[];
+  findings: AutopilotFinding[];
+  actions: AutopilotAction[];
+  needs_review: boolean;
+}
+
+export async function fetchAutopilot(docId: string): Promise<AutopilotReport> {
+  const res = await json<{ doc_id: string; autopilot: AutopilotReport }>(
+    await fetch(`${BASE}/documents/${docId}/autopilot`),
+  );
+  return res.autopilot;
+}
+
 /** Natural-language AI edit: routed through the LLM when a provider is configured. */
 export function instructEdit(docId: string, instruction: string): Promise<PatchResponse> {
   return submitPatch(docId, { instruction });

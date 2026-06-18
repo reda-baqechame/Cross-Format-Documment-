@@ -20,6 +20,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
+- ✅ **Document Skills + Autopilot** — recognizes the ~15-category document-purpose taxonomy,
+  extracts typed fields per purpose with confidence, runs checks (e.g. invoice totals), flags
+  what needs human review, and recommends next actions. Deep skills: invoice, contract, résumé;
+  generic fallback for every other recognized type. `GET /documents/{id}/autopilot` +
+  Autopilot workspace tab — `services/semantic/skills/`
 - ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
 - 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
 
