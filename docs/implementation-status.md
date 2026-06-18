@@ -20,10 +20,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🟡 Table extraction
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
-- ✅ Typed document intelligence (invoice/receipt/contract/résumé/**form**/**presentation**):
+- ✅ Typed document intelligence (invoice/receipt/contract/résumé/**forms + templates**/**presentation + visual docs**):
   per-kind fields **plus actionable checks** — invoice totals reconcile, contract clause gaps +
-  risky language, résumé ATS/contact gaps, form blank-field/signature gaps, pitch-deck
-  completeness (problem→solution→market→…→ask); redaction-aware, offline —
+  risky language, résumé ATS/contact gaps, subtype-specific form checks (application,
+  registration, contact, order, feedback, survey, consent, intake, booking, evaluation,
+  inspection, checklist, timesheet, expense, incident, request, approval) and visual-document
+  checks (pitch/sales/training/webinar decks, infographic, poster, flyer, brochure,
+  one-page summary, dashboard, flowchart, mind map, org chart, diagram, roadmap, timeline);
+  redaction-aware, offline —
   `services/semantic/intelligence/`, `GET /documents/{id}/intelligence`,
   `components/canvas/IntelligencePanel`. Home "Analyze & validate" tile + library type badges.
 - ✅ **Document Skills + Autopilot** — recognizes the ~15-category document-purpose taxonomy,

@@ -221,7 +221,7 @@ def test_presentation_pitch_deck_checklist():
     add_slide(5, "Thank you", "Q&A")
 
     insight = intelligence.analyze(d)
-    assert insight.doc_type == "presentation"
+    assert insight.doc_type in {"presentation", "pitch_deck"}
     assert _check(insight, "has_title_slide").passed is True
     assert _check(insight, "has_agenda_or_closing").passed is True
     # pitch language present -> deck checklist is scored
@@ -230,3 +230,51 @@ def test_presentation_pitch_deck_checklist():
     assert _check(insight, "deck_has_ask").passed is True  # "raising"
     # no business-model/pricing content -> that check fails
     assert _check(insight, "deck_has_model").passed is False
+
+
+def test_incident_form_requires_life_safety_details():
+    doc = _doc(
+        [
+            "Incident Form",
+            "Date of incident: __________",
+            "Location: Warehouse B",
+            "Reported by: __________",
+        ]
+    )
+    insight = intelligence.analyze(doc)
+    assert insight.doc_type == "incident_form"
+    assert _check(insight, "has_incident_date").passed is True
+    assert _check(insight, "has_location").passed is True
+    assert _check(insight, "has_description").passed is False
+
+
+def test_expense_form_checks_amount_receipt_and_approval():
+    doc = _doc(
+        [
+            "Expense Form",
+            "Employee: Jane Doe",
+            "Amount: $125.50",
+            "Receipt attached: yes",
+        ]
+    )
+    insight = intelligence.analyze(doc)
+    assert insight.doc_type == "expense_form"
+    assert _check(insight, "has_amount").passed is True
+    assert _check(insight, "has_receipt").passed is True
+    assert _check(insight, "has_approval").passed is False
+
+
+def test_roadmap_requires_milestones_and_timing():
+    doc = _doc(
+        [
+            "Product Roadmap",
+            "Phase 1: OCR improvements",
+            "Milestone: forms intelligence",
+            "Owner: product",
+        ]
+    )
+    insight = intelligence.analyze(doc)
+    assert insight.doc_type == "roadmap"
+    assert _check(insight, "has_milestones").passed is True
+    assert _check(insight, "has_timing").passed is False
+    assert _check(insight, "has_owner_or_status").passed is True

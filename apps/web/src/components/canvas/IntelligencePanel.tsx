@@ -12,6 +12,15 @@ const SEVERITY_STYLE: Record<InsightCheck["severity"], string> = {
   info: "bg-slate-50 text-slate-600 border-slate-200",
 };
 
+function friendlyDocType(type: string): string {
+  return type
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\bNda\b/g, "NDA")
+    .replace(/\bSop\b/g, "SOP")
+    .replace(/\bKpi\b/g, "KPI");
+}
+
 function CheckRow({ check }: { check: InsightCheck }) {
   const tone = check.passed
     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -66,7 +75,7 @@ export function IntelligencePanel({ docId }: { docId: string }) {
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-ink">Document intelligence</h2>
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-brand-700">
-          {insight.doc_type}
+          {friendlyDocType(insight.doc_type)}
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-600">{insight.summary}</p>

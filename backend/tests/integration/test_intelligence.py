@@ -16,9 +16,9 @@ def test_invoice_intelligence_endpoint(client):
         b"Tax: $20.00\n\n"
         b"Total Due: $220.00\n"
     )
-    doc_id = client.post(
-        "/documents", files={"file": ("inv.txt", body, "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("inv.txt", body, "text/plain")}).json()[
+        "doc_id"
+    ]
 
     res = client.get(f"/documents/{doc_id}/intelligence")
     assert res.status_code == 200
@@ -32,9 +32,9 @@ def test_invoice_intelligence_endpoint(client):
 
 def test_intelligence_is_redaction_aware(client):
     body = b"INVOICE\n\nBill To: Acme\n\nTotal Due: $500.00\n"
-    doc_id = client.post(
-        "/documents", files={"file": ("inv.txt", body, "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("inv.txt", body, "text/plain")}).json()[
+        "doc_id"
+    ]
 
     model = client.get(f"/documents/{doc_id}/model").json()["document"]
     total_node = next(
@@ -56,11 +56,11 @@ def test_presentation_intelligence_endpoint(client):
         b"Solution: our product\n\nMarket: TAM is large\n\nTeam: ex-Google\n\n"
         b"The ask: raising a seed round\n\nThank you\n"
     )
-    doc_id = client.post(
-        "/documents", files={"file": ("deck.txt", body, "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("deck.txt", body, "text/plain")}).json()[
+        "doc_id"
+    ]
 
     insight = client.get(f"/documents/{doc_id}/intelligence").json()["insight"]
-    assert insight["doc_type"] == "presentation"
+    assert insight["doc_type"] in {"presentation", "pitch_deck"}
     assert _check(insight, "has_agenda_or_closing")["passed"] is True
     assert _check(insight, "deck_has_team")["passed"] is True

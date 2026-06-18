@@ -375,6 +375,163 @@ def analyze_resume(
     )
 
 
+_FORM_TYPE_LABELS: dict[str, str] = {
+    "application_form": "Application form",
+    "registration_form": "Registration form",
+    "contact_form": "Contact form",
+    "order_form": "Order form",
+    "feedback_form": "Feedback form",
+    "survey": "Survey",
+    "questionnaire": "Questionnaire",
+    "consent_form": "Consent form",
+    "intake_form": "Intake form",
+    "booking_form": "Booking form",
+    "evaluation_form": "Evaluation form",
+    "inspection_form": "Inspection form",
+    "checklist": "Checklist",
+    "timesheet": "Timesheet",
+    "expense_form": "Expense form",
+    "incident_form": "Incident form",
+    "request_form": "Request form",
+    "approval_form": "Approval form",
+    "form": "Form",
+}
+
+_FORM_CHECKS: dict[str, tuple[tuple[str, str, str, tuple[str, ...]], ...]] = {
+    "application_form": (
+        ("has_applicant_identity", "Applicant identity", "error", ("applicant", "name")),
+        ("has_contact", "Contact information", "warn", ("email", "phone", "address")),
+        (
+            "has_signature",
+            "Signature / declaration",
+            "warn",
+            ("signature", "i certify", "i declare"),
+        ),
+    ),
+    "registration_form": (
+        ("has_participant", "Participant name", "error", ("participant", "attendee", "name")),
+        ("has_event_or_program", "Event or program", "warn", ("event", "program", "course")),
+        ("has_contact", "Contact information", "warn", ("email", "phone")),
+    ),
+    "contact_form": (
+        ("has_name", "Name field", "error", ("name",)),
+        ("has_reply_channel", "Reply email or phone", "error", ("email", "phone")),
+        ("has_message", "Message/question field", "warn", ("message", "question", "comments")),
+    ),
+    "order_form": (
+        ("has_item", "Item or service", "error", ("item", "product", "service", "description")),
+        ("has_quantity", "Quantity", "error", ("quantity", "qty")),
+        (
+            "has_total_or_price",
+            "Price or total",
+            "warn",
+            ("price", "amount", "total", "unit price"),
+        ),
+    ),
+    "feedback_form": (
+        ("has_rating", "Rating scale", "warn", ("rating", "score", "satisfied", "strongly agree")),
+        ("has_comments", "Comments field", "info", ("comments", "feedback", "suggestions")),
+    ),
+    "survey": (
+        ("has_questions", "Questions", "error", ("?", "question", "please rate")),
+        ("has_response_scale", "Response scale", "warn", ("strongly agree", "rating", "yes", "no")),
+    ),
+    "questionnaire": (
+        ("has_questions", "Questions", "error", ("?", "question")),
+        ("has_respondent", "Respondent identity", "info", ("respondent", "name")),
+    ),
+    "consent_form": (
+        (
+            "has_consent_language",
+            "Consent language",
+            "error",
+            ("i consent", "i agree", "i authorize"),
+        ),
+        (
+            "has_rights_or_scope",
+            "Scope/rights explained",
+            "warn",
+            ("purpose", "risks", "rights", "withdraw"),
+        ),
+        ("has_signature", "Signature line", "error", ("signature", "signed")),
+    ),
+    "intake_form": (
+        ("has_contact", "Contact information", "error", ("email", "phone", "address")),
+        ("has_reason", "Reason for intake", "warn", ("reason", "concern", "symptoms", "needs")),
+        ("has_emergency_contact", "Emergency contact", "info", ("emergency contact",)),
+    ),
+    "booking_form": (
+        ("has_date_time", "Date/time", "error", ("date", "time", "preferred")),
+        ("has_contact", "Contact information", "warn", ("email", "phone")),
+        ("has_service_or_resource", "Service/resource", "warn", ("service", "room", "appointment")),
+    ),
+    "evaluation_form": (
+        ("has_criteria", "Evaluation criteria", "error", ("criteria", "score", "rating")),
+        ("has_evaluator", "Evaluator", "info", ("evaluator", "reviewer")),
+    ),
+    "inspection_form": (
+        ("has_inspector", "Inspector", "error", ("inspector", "inspected by")),
+        ("has_condition", "Condition/findings", "error", ("condition", "finding", "defect")),
+        ("has_pass_fail", "Pass/fail or corrective action", "warn", ("pass", "fail", "corrective")),
+    ),
+    "checklist": (
+        ("has_items", "Checklist items", "error", ("[ ]", "☐", "todo", "task", "item")),
+        ("has_completion_state", "Completion state", "warn", ("done", "complete", "completed")),
+    ),
+    "timesheet": (
+        ("has_employee", "Employee", "error", ("employee", "name")),
+        ("has_period", "Work period", "error", ("week ending", "date", "period")),
+        ("has_hours", "Hours", "error", ("hours", "total hours", "regular", "overtime")),
+        ("has_approval", "Manager approval", "warn", ("approved by", "manager", "signature")),
+    ),
+    "expense_form": (
+        ("has_amount", "Amount", "error", ("amount", "total", "$")),
+        ("has_date", "Expense date", "warn", ("date",)),
+        ("has_receipt", "Receipt/proof", "warn", ("receipt", "attached")),
+        ("has_approval", "Approval", "info", ("approved by", "manager", "approver")),
+    ),
+    "incident_form": (
+        (
+            "has_incident_date",
+            "Incident date/time",
+            "error",
+            ("date of incident", "time", "occurred"),
+        ),
+        ("has_location", "Location", "error", ("location", "site", "where")),
+        ("has_description", "Description", "error", ("description", "what happened", "details")),
+        ("has_reporter", "Reporter", "warn", ("reported by", "reporter", "name")),
+    ),
+    "request_form": (
+        ("has_requester", "Requester", "error", ("requested by", "requester", "name")),
+        ("has_request_type", "Request type", "error", ("request type", "request", "reason")),
+        ("has_due_date", "Needed-by date", "info", ("needed by", "due date", "date")),
+    ),
+    "approval_form": (
+        ("has_approver", "Approver", "error", ("approver", "approved by")),
+        ("has_decision", "Decision", "error", ("approved", "rejected", "decision")),
+        ("has_signature", "Signature", "warn", ("signature", "signed")),
+    ),
+}
+
+
+def _specific_checks(
+    text: str, doc_type: str, specs: dict[str, tuple[tuple[str, str, str, tuple[str, ...]], ...]]
+) -> list[InsightCheck]:
+    checks: list[InsightCheck] = []
+    for cid, label, severity, terms in specs.get(doc_type, ()):
+        passed = has_any(text, *terms)
+        checks.append(
+            InsightCheck(
+                id=cid,
+                label=label,
+                severity=severity,
+                passed=passed,
+                detail="" if passed else f"No {label.lower()} detected.",
+            )
+        )
+    return checks
+
+
 def analyze_form(
     doc: CanonicalDocument, classification: Classification, extraction: Extraction
 ) -> DocumentInsight:
@@ -403,6 +560,7 @@ def analyze_form(
 
     total_blanks = len(empty) + len(blanks)
     has_fields = bool(nodes or blanks)
+    doc_type = classification.label if classification.label in _FORM_TYPE_LABELS else "form"
     checks: list[InsightCheck] = [
         InsightCheck(
             id="has_fields",
@@ -442,13 +600,16 @@ def analyze_form(
             or any(getattr(n, "field_kind", "") == "date" for n in nodes),
         ),
     ]
+    checks.extend(_specific_checks(text, doc_type, _FORM_CHECKS))
+
+    completed = f"{len(filled)}/{len(filled) + total_blanks}"
     summary = (
-        f"Form: {len(filled)}/{len(filled) + total_blanks} fields completed"
+        f"{_FORM_TYPE_LABELS[doc_type]}: {completed} fields completed"
         if has_fields
         else "No fillable fields detected."
     )
     return DocumentInsight(
-        doc_type="form",
+        doc_type=doc_type,
         confidence=classification.confidence,
         fields=fields,
         checks=checks,
@@ -467,6 +628,116 @@ _DECK_SECTIONS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("ask", "The ask", ("ask", "raising", "investment", "funding", "use of funds")),
 )
 
+_PRESENTATION_TYPE_LABELS: dict[str, str] = {
+    "pitch_deck": "Pitch deck",
+    "sales_presentation": "Sales presentation",
+    "training_presentation": "Training presentation",
+    "webinar_slides": "Webinar slides",
+    "infographic": "Infographic",
+    "poster": "Poster",
+    "flyer": "Flyer",
+    "brochure": "Brochure",
+    "one_page_summary": "One-page summary",
+    "dashboard": "Dashboard",
+    "flowchart": "Flowchart",
+    "mind_map": "Mind map",
+    "org_chart": "Organizational chart",
+    "diagram": "Diagram",
+    "roadmap": "Roadmap",
+    "timeline": "Timeline",
+    "slide_deck": "Slide deck",
+    "presentation": "Presentation",
+}
+
+_PRESENTATION_CHECKS: dict[str, tuple[tuple[str, str, str, tuple[str, ...]], ...]] = {
+    "sales_presentation": (
+        ("has_customer_pain", "Customer pain", "warn", ("pain", "problem", "challenge")),
+        ("has_value", "Benefits/value", "warn", ("benefit", "value", "roi", "save")),
+        ("has_proof", "Proof/case study", "info", ("case study", "testimonial", "results")),
+        (
+            "has_call_to_action",
+            "Call to action",
+            "warn",
+            ("next steps", "contact", "call to action"),
+        ),
+    ),
+    "training_presentation": (
+        (
+            "has_learning_objectives",
+            "Learning objectives",
+            "error",
+            ("learning objectives", "objectives"),
+        ),
+        ("has_exercises", "Exercise or practice", "warn", ("exercise", "practice", "activity")),
+        (
+            "has_assessment",
+            "Quiz/assessment",
+            "info",
+            ("quiz", "assessment", "check your knowledge"),
+        ),
+    ),
+    "webinar_slides": (
+        ("has_speaker", "Speaker/host", "warn", ("speaker", "host", "presenter")),
+        ("has_agenda", "Agenda", "warn", ("agenda",)),
+        ("has_cta", "Follow-up call to action", "warn", ("register", "contact", "next steps")),
+    ),
+    "infographic": (
+        ("has_key_stat", "Key statistic", "error", ("%", "statistic", "data", "metric")),
+        ("has_source", "Data source", "warn", ("source", "survey", "report")),
+        ("has_takeaway", "Clear takeaway", "warn", ("takeaway", "key point", "summary")),
+    ),
+    "poster": (
+        ("has_event_or_offer", "Event/offer", "error", ("event", "offer", "presented by")),
+        ("has_date_or_place", "Date/location", "warn", ("date", "location", "venue", "where")),
+        ("has_contact_or_cta", "Contact/call to action", "warn", ("contact", "register", "visit")),
+    ),
+    "flyer": (
+        ("has_offer", "Offer", "error", ("offer", "save", "discount", "service")),
+        ("has_contact_or_cta", "Contact/call to action", "warn", ("contact", "call", "visit")),
+    ),
+    "brochure": (
+        ("has_benefits", "Benefits/features", "warn", ("features", "benefits", "services")),
+        ("has_about_or_trust", "About/trust proof", "info", ("about us", "trusted", "years")),
+        ("has_contact", "Contact information", "warn", ("contact", "phone", "email")),
+    ),
+    "one_page_summary": (
+        ("has_overview", "Overview", "error", ("overview", "summary")),
+        ("has_key_points", "Key points", "warn", ("key points", "highlights", "findings")),
+        ("has_next_steps", "Next steps", "info", ("next steps", "recommendation")),
+    ),
+    "dashboard": (
+        ("has_kpis", "KPIs/metrics", "error", ("kpi", "metric", "%", "score")),
+        ("has_trend_or_status", "Trend/status", "warn", ("trend", "status", "up", "down")),
+        ("has_date_range", "Date range", "info", ("week", "month", "quarter", "year")),
+    ),
+    "flowchart": (
+        ("has_start_end", "Start/end points", "warn", ("start", "end")),
+        ("has_decision", "Decision step", "warn", ("decision", "yes", "no")),
+        ("has_process", "Process steps", "error", ("step", "process", "then")),
+    ),
+    "mind_map": (
+        ("has_central_topic", "Central topic", "warn", ("topic", "central", "main idea")),
+        ("has_branches", "Branches", "warn", ("branch", "idea", "theme")),
+    ),
+    "org_chart": (
+        ("has_roles", "Roles/names", "error", ("ceo", "manager", "director", "lead")),
+        ("has_reporting", "Reporting lines", "warn", ("reports to", "department", "team")),
+    ),
+    "diagram": (
+        ("has_labels", "Labels/components", "warn", ("component", "label", "module")),
+        ("has_legend", "Legend or explanation", "info", ("legend", "key", "explains")),
+    ),
+    "roadmap": (
+        ("has_milestones", "Milestones", "error", ("milestone", "phase", "release")),
+        ("has_timing", "Timing", "warn", ("q1", "q2", "q3", "q4", "quarter", "month")),
+        ("has_owner_or_status", "Owner/status", "info", ("owner", "status", "progress")),
+    ),
+    "timeline": (
+        ("has_dates", "Dates", "error", ("date", "202", "jan", "feb", "mar", "q1")),
+        ("has_events", "Events/milestones", "warn", ("event", "milestone", "phase")),
+    ),
+}
+
 
 def analyze_presentation(
     doc: CanonicalDocument, classification: Classification, extraction: Extraction
@@ -476,8 +747,31 @@ def analyze_presentation(
     pages = nodes_of_type(doc, "page")
     heading_nodes = nodes_of_type(doc, "heading")
     titles = [t for t in (node_text(doc, h) for h in heading_nodes) if t]
+    if not titles:
+        titles = [text.strip()[:120] for _id, text in visible_lines(doc)[:1] if text.strip()]
     text = visible_text(doc).lower()
-    slide_count = len(pages) or len(heading_nodes) or 1
+    doc_type = (
+        classification.label
+        if classification.label in _PRESENTATION_TYPE_LABELS
+        else "presentation"
+    )
+    section_markers = sum(
+        1
+        for term in (
+            "agenda",
+            "problem",
+            "solution",
+            "market",
+            "team",
+            "next steps",
+            "thank you",
+            "milestone",
+            "phase",
+            "kpi",
+        )
+        if term in text
+    )
+    slide_count = len(pages) or len(heading_nodes) or max(1, section_markers)
 
     fields: list[InsightField] = []
     if titles:
@@ -514,7 +808,7 @@ def analyze_presentation(
     ]
 
     # If it reads like a pitch, score the investor-deck narrative arc.
-    looks_like_pitch = has_any(
+    looks_like_pitch = doc_type == "pitch_deck" or has_any(
         text, "pitch", "investor", "raising", "seed", "series a", "valuation", "tam"
     )
     if looks_like_pitch:
@@ -529,13 +823,14 @@ def analyze_presentation(
                     detail="" if present else f"No {label.lower()} content detected.",
                 )
             )
+    checks.extend(_specific_checks(text, doc_type, _PRESENTATION_CHECKS))
 
     return DocumentInsight(
-        doc_type="presentation",
+        doc_type=doc_type,
         confidence=classification.confidence,
         fields=fields,
         checks=checks,
-        summary=score_summary("presentation", checks),
+        summary=score_summary(_PRESENTATION_TYPE_LABELS[doc_type].lower(), checks),
     )
 
 
@@ -549,8 +844,7 @@ def analyze_generic(
         for f in extraction.fields[:8]
     ]
     counts = {
-        etype: len(entities_of(extraction, etype))
-        for etype in ("date", "money", "email", "phone")
+        etype: len(entities_of(extraction, etype)) for etype in ("date", "money", "email", "phone")
     }
     checks = [
         InsightCheck(
@@ -577,9 +871,9 @@ _REGISTRY: dict[str, Analyzer] = {
     "receipt": analyze_receipt,
     "contract": analyze_contract,
     "resume": analyze_resume,
-    "form": analyze_form,
-    "presentation": analyze_presentation,
 }
+_REGISTRY.update({label: analyze_form for label in _FORM_TYPE_LABELS})
+_REGISTRY.update({label: analyze_presentation for label in _PRESENTATION_TYPE_LABELS})
 
 
 def analyze(doc: CanonicalDocument) -> DocumentInsight:

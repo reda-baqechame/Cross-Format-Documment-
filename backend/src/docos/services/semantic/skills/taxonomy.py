@@ -145,7 +145,7 @@ DOC_TYPES: tuple[DocType, ...] = (
     DocType(
         "pitch_deck",
         "Pitch deck",
-        "sales",
+        "presentation",
         ("the ask", "market size", "traction", "our solution", "problem"),
     ),
     # ── hr ───────────────────────────────────────────────────────────────────
@@ -397,12 +397,100 @@ DOC_TYPES: tuple[DocType, ...] = (
         ("please fill", "please complete", "applicant", "checkbox", "date of birth"),
     ),
     DocType(
+        "application_form",
+        "Application form",
+        "forms",
+        ("application form", "applicant", "date of birth", "please complete"),
+    ),
+    DocType(
+        "registration_form",
+        "Registration form",
+        "forms",
+        ("registration form", "register", "attendee", "participant"),
+    ),
+    DocType("contact_form", "Contact form", "forms", ("contact form", "name", "email", "phone")),
+    DocType(
+        "order_form", "Order form", "forms", ("order form", "quantity", "unit price", "ship to")
+    ),
+    DocType("feedback_form", "Feedback form", "forms", ("feedback form", "feedback", "rating")),
+    DocType(
         "consent_form", "Consent form", "forms", ("consent", "i agree", "i authorize", "i consent")
     ),
     DocType(
         "survey", "Survey", "forms", ("survey", "questionnaire", "please rate", "strongly agree")
     ),
+    DocType(
+        "questionnaire", "Questionnaire", "forms", ("questionnaire", "questions", "respondent")
+    ),
+    DocType(
+        "intake_form",
+        "Intake form",
+        "forms",
+        ("intake form", "patient", "client information", "emergency contact"),
+    ),
+    DocType(
+        "booking_form",
+        "Booking form",
+        "forms",
+        ("booking form", "reservation", "appointment", "preferred date"),
+    ),
+    DocType("evaluation_form", "Evaluation form", "forms", ("evaluation form", "score", "rating")),
+    DocType(
+        "inspection_form", "Inspection form", "forms", ("inspection", "inspector", "condition")
+    ),
+    DocType("checklist", "Checklist", "forms", ("checklist", "completed", "done")),
+    DocType("timesheet", "Timesheet", "forms", ("timesheet", "hours", "employee", "week ending")),
+    DocType(
+        "expense_form", "Expense form", "forms", ("expense", "reimbursement", "receipt attached")
+    ),
+    DocType(
+        "incident_form", "Incident form", "forms", ("incident", "date of incident", "location")
+    ),
+    DocType("request_form", "Request form", "forms", ("request form", "requested by", "reason")),
+    DocType("approval_form", "Approval form", "forms", ("approval", "approver", "approved by")),
     # ── presentation ─────────────────────────────────────────────────────────
+    DocType(
+        "sales_presentation",
+        "Sales presentation",
+        "presentation",
+        ("sales presentation", "customer pain", "benefits", "pricing", "case study"),
+    ),
+    DocType(
+        "training_presentation",
+        "Training presentation",
+        "presentation",
+        ("training", "learning objectives", "module", "quiz", "exercise"),
+    ),
+    DocType("webinar_slides", "Webinar slides", "presentation", ("webinar", "speaker", "q&a")),
+    DocType(
+        "infographic",
+        "Infographic",
+        "presentation",
+        ("infographic", "key statistic", "data source"),
+    ),
+    DocType("poster", "Poster", "presentation", ("poster", "event", "date", "location")),
+    DocType("flyer", "Flyer", "presentation", ("flyer", "offer", "contact", "call to action")),
+    DocType(
+        "brochure", "Brochure", "presentation", ("brochure", "features", "benefits", "contact")
+    ),
+    DocType(
+        "one_page_summary",
+        "One-page summary",
+        "presentation",
+        ("one-page summary", "overview", "key points", "next steps"),
+    ),
+    DocType("dashboard", "Dashboard", "presentation", ("dashboard", "kpi", "metric", "trend")),
+    DocType("flowchart", "Flowchart", "presentation", ("flowchart", "decision", "process")),
+    DocType("mind_map", "Mind map", "presentation", ("mind map", "topic", "branch")),
+    DocType(
+        "org_chart",
+        "Organizational chart",
+        "presentation",
+        ("org chart", "reports to", "department"),
+    ),
+    DocType("diagram", "Diagram", "presentation", ("diagram", "legend", "component")),
+    DocType("roadmap", "Roadmap", "presentation", ("roadmap", "milestone", "quarter")),
+    DocType("timeline", "Timeline", "presentation", ("timeline", "milestone", "date")),
     DocType(
         "slide_deck",
         "Slide deck",

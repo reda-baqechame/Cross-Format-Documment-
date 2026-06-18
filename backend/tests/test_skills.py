@@ -97,6 +97,27 @@ def test_generic_fallback_for_recognized_but_undeep_type():
     assert report.actions
 
 
+def test_autopilot_recognizes_pasted_form_and_visual_subtypes():
+    incident = analyze(
+        _doc(
+            "Incident Form\n"
+            "Date of incident: 2026-06-18\n"
+            "Location: Warehouse B\n"
+            "Reported by: Jane\n"
+        )
+    )
+    assert incident.category == "Forms"
+    assert incident.type_id == "incident_form"
+    assert incident.type == "Incident form"
+
+    dashboard = analyze(
+        _doc("Operations Dashboard\nKPI: cycle time\nMetric: 82%\nTrend: up this quarter\n")
+    )
+    assert dashboard.category == "Presentation"
+    assert dashboard.type_id == "dashboard"
+    assert dashboard.type == "Dashboard"
+
+
 def test_unrecognized_document_is_still_usable():
     report = analyze(_doc("zzzz qqqq wwww\n\nnothing matches here\n"))
     assert report.deep is False
