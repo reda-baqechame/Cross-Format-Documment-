@@ -53,7 +53,7 @@ export interface OptionField {
 }
 
 export type TaskResult =
-  | { kind: "downloaded" }
+  | { kind: "downloaded"; validation?: { status: "pass" | "warn" | "fail"; summary: string } }
   | { kind: "navigate"; href: string }
   | { kind: "text"; title: string; body: string; citations?: string[] }
   | { kind: "list"; title: string; items: string[] };
@@ -234,9 +234,11 @@ export const TASKS: TaskDef[] = [
     cta: "Convert",
     run: async ({ docIds, options }) => {
       const target = options.target ?? "pdf";
-      if (target === "pdf") await downloadSearchablePdf(docIds[0]);
-      else await downloadExport(docIds[0], target as ExportFormat);
-      return { kind: "downloaded" };
+      const validation =
+        target === "pdf"
+          ? await downloadSearchablePdf(docIds[0])
+          : await downloadExport(docIds[0], target as ExportFormat);
+      return { kind: "downloaded", validation: validation ?? undefined };
     },
   },
 

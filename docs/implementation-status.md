@@ -39,6 +39,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ XLSX / PPTX / PNG export from any source format — `writers/{xlsx,pptx,image}_writer.py`
 - ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
 - ✅ Compress (PDF) — `pageops.compress_pdf`
+- ✅ **Output validation engine** — every export/convert/page-op returns a proof report
+  (output opens, page count preserved, **redactions provably unrecoverable**, text retained,
+  seal-invalidation flagged). `GET /documents/{id}/export/report` + `X-DocOS-Validation`
+  header on downloads — `services/provenance/validation.py`
 
 ## E. Sign & agree
 - ✅ Integrity seal (HMAC; detects post-seal changes — **not** a legally-binding e-signature) ·

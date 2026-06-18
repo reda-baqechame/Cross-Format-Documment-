@@ -3,6 +3,11 @@
 ``/export`` serialises the latest canonical model to a downloadable file (TXT today,
 plus a universal DOCX writer so any opened document — including PDFs — can download as
 Word). ``/preview`` rasterises a PDF page to PNG for the canvas backdrop.
+
+Every produced file is run through the validation engine
+(:mod:`docos.services.provenance.validation`): downloads carry an ``X-DocOS-Validation``
+header and ``/export/report`` returns the full proof report (output opens, pages preserved,
+redactions unrecoverable, seal status) — proof, not just bytes.
 """
 
 from __future__ import annotations
@@ -15,8 +20,10 @@ from sqlalchemy.orm import Session
 
 from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
+from docos.api.schemas import ValidationReportResponse
 from docos.api.session import Actor, get_actor
 from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
+from docos.model.document import CanonicalDocument
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.docengine.writers.image_writer import model_to_png
@@ -28,6 +35,8 @@ from docos.services.docengine.writers.markup import (
 from docos.services.docengine.writers.pptx_writer import model_to_pptx
 from docos.services.docengine.writers.searchable_pdf import model_to_searchable_pdf
 from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
+from docos.services.provenance import validation
+from docos.settings import get_settings
 from docos.storage.blob import BlobStore
 
 router = APIRouter(prefix="/documents", tags=["export"])
@@ -41,8 +50,7 @@ _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 # Function-based writers that serialise the canonical model directly (no adapter needed).
-# Text writers return str; binary writers (xlsx/pptx/png) return bytes — both are fine
-# as a Response body.
+# All return bytes.
 _DIRECT_WRITERS = {
     "md": (model_to_markdown, "text/markdown", "md"),
     "html": (model_to_html, "text/html", "html"),
@@ -58,6 +66,54 @@ def _safe_filename(name: str | None, fallback: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", base)[:80]
 
 
+def _signature_valid(doc: CanonicalDocument) -> bool | None:
+    """Whether the document's integrity seal still matches its content (None if unsigned)."""
+    if not doc.signature.signed:
+        return None
+    from docos.services.provenance import signing
+
+    return signing.verify(doc, secret=get_settings().signing_secret)
+
+
+def _validation_headers(report: validation.ValidationReport) -> dict[str, str]:
+    return {
+        "X-DocOS-Validation": validation.status(report),
+        "X-DocOS-Validation-Summary": report.summary,
+    }
+
+
+async def _render_export(
+    doc: CanonicalDocument,
+    record,
+    fmt: str,
+    registry: AdapterRegistry,
+    blob_store: BlobStore,
+) -> tuple[bytes, str, str]:
+    """Produce the export bytes for ``fmt`` → ``(data, mime, ext)``. Shared by download + report."""
+    if fmt == "pdf":
+        if record.source_format != "pdf":
+            raise HTTPException(
+                status_code=400, detail="PDF export is only available for PDF documents — use DOCX"
+            )
+        from docos.services.docengine.writers.pdf_writer import write_back_pdf
+
+        original = await blob_store.get(record.blob_key)
+        return write_back_pdf(original, doc), "application/pdf", "pdf"
+
+    if fmt in _DIRECT_WRITERS:
+        writer, mime, ext = _DIRECT_WRITERS[fmt]
+        return writer(doc), mime, ext
+
+    if fmt in _FORMATS:
+        format_id, mime, ext = _FORMATS[fmt]
+        try:
+            return registry.resolve_by_format(format_id).export(doc, target_mime=mime), mime, ext
+        except NotImplementedError as exc:
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
+
+    raise HTTPException(status_code=400, detail=f"unsupported export format: {fmt}")
+
+
 @router.get("/{doc_id}/export")
 async def export_document(
     doc_id: str,
@@ -67,59 +123,37 @@ async def export_document(
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
 ) -> Response:
-    if format == "pdf":
-        return await _export_pdf(doc_id, session, blob_store, actor)
+    record, doc = _load_latest(session, doc_id, actor)
+    data, mime, ext = await _render_export(doc, record, format, registry, blob_store)
+    report = validation.validate_export(doc, format, data, signature_valid=_signature_valid(doc))
 
-    if format in _DIRECT_WRITERS:
-        record, doc = _load_latest(session, doc_id, actor)
-        writer, mime, ext = _DIRECT_WRITERS[format]
-        data = writer(doc)
-    elif format in _FORMATS:
-        record, doc = _load_latest(session, doc_id, actor)
-        format_id, mime, ext = _FORMATS[format]
-        try:
-            data = registry.resolve_by_format(format_id).export(doc, target_mime=mime)
-        except NotImplementedError as exc:
-            raise HTTPException(status_code=501, detail=str(exc)) from exc
-    else:
-        raise HTTPException(status_code=400, detail=f"unsupported export format: {format}")
-
-    provenance = get_provenance(session)
-    provenance.record_event(doc_id, "document.exported", actor="api", detail={"format": format})
+    get_provenance(session).record_event(
+        doc_id, "document.exported", actor=actor.session_id, detail={"format": format}
+    )
     session.commit()
 
     filename = f"{_safe_filename(record.title, doc_id)}.{ext}"
-    return Response(
-        content=data,
-        media_type=mime,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        **_validation_headers(report),
+    }
+    return Response(content=data, media_type=mime, headers=headers)
 
 
-async def _export_pdf(
-    doc_id: str, session: Session, blob_store: BlobStore, actor: Actor
-) -> Response:
-    """PDF write-back: re-emit the original PDF with edits applied and redactions burned in."""
+@router.get("/{doc_id}/export/report", response_model=ValidationReportResponse)
+async def export_report(
+    doc_id: str,
+    format: str = Query("docx"),
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    registry: AdapterRegistry = Depends(get_registry),
+    blob_store: BlobStore = Depends(blob_store_dep),
+) -> ValidationReportResponse:
+    """Render the export in-memory and return the validation report (no file download)."""
     record, doc = _load_latest(session, doc_id, actor)
-    if record.source_format != "pdf":
-        raise HTTPException(
-            status_code=400, detail="PDF export is only available for PDF documents — use DOCX"
-        )
-    from docos.services.docengine.writers.pdf_writer import write_back_pdf
-
-    original = await blob_store.get(record.blob_key)
-    data = write_back_pdf(original, doc)
-
-    get_provenance(session).record_event(
-        doc_id, "document.exported", actor="api", detail={"format": "pdf"}
-    )
-    session.commit()
-    filename = f"{_safe_filename(record.title, doc_id)}.pdf"
-    return Response(
-        content=data,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    data, _mime, _ext = await _render_export(doc, record, format, registry, blob_store)
+    report = validation.validate_export(doc, format, data, signature_valid=_signature_valid(doc))
+    return ValidationReportResponse(doc_id=doc_id, validation=report)
 
 
 @router.get("/{doc_id}/searchable-pdf")
@@ -148,17 +182,20 @@ async def searchable_pdf(
                 continue
 
     data = model_to_searchable_pdf(doc, page_images)
+    report = validation.validate_export(
+        doc, "searchable-pdf", data, signature_valid=_signature_valid(doc)
+    )
 
     get_provenance(session).record_event(
-        doc_id, "document.exported", actor="api", detail={"format": "searchable-pdf"}
+        doc_id, "document.exported", actor=actor.session_id, detail={"format": "searchable-pdf"}
     )
     session.commit()
     filename = f"{_safe_filename(record.title, doc_id)}_searchable.pdf"
-    return Response(
-        content=data,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        **_validation_headers(report),
+    }
+    return Response(content=data, media_type="application/pdf", headers=headers)
 
 
 @router.get("/{doc_id}/preview")

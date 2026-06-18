@@ -25,7 +25,7 @@ export function DownloadMenu({ docId, sourceFormat }: { docId: string; sourceFor
   const [error, setError] = useState<string | null>(null);
   const ref = useDismissOnOutside(open, () => setOpen(false));
 
-  async function run(label: ExportFormat | "searchable", fn: () => Promise<void>) {
+  async function run(label: ExportFormat | "searchable", fn: () => Promise<unknown>) {
     setOpen(false);
     setBusy(label);
     setError(null);
