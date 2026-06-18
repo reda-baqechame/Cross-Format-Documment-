@@ -68,15 +68,20 @@ trap cleanup INT TERM EXIT
 
 while true; do
   if ! kill -0 "$api_pid" 2>/dev/null; then
-    echo "[railway] API process exited — surfacing its status"
-    wait "$api_pid" || true
+    set +e
+    wait "$api_pid"
+    status=$?
+    echo "[railway] FATAL: API process exited with status ${status} (137=OOM-killed)."
     exit 1
   fi
 
   if ! kill -0 "$web_pid" 2>/dev/null; then
-    echo "[railway] web process exited"
-    wait "$web_pid" || exit "$?"
-    exit 0
+    set +e
+    wait "$web_pid"
+    status=$?
+    echo "[railway] FATAL: web process exited with status ${status} (137=OOM-killed)."
+    # Always non-zero so Railway's restart policy retries instead of leaving us down.
+    exit 1
   fi
 
   sleep 5
