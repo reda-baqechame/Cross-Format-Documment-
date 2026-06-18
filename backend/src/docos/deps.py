@@ -29,14 +29,21 @@ from docos.storage.s3 import S3BlobStore
 @lru_cache
 def get_blob_store() -> BlobStore:
     s = get_settings()
+    base: BlobStore
     if s.blob_backend == "s3":
-        return S3BlobStore(
+        base = S3BlobStore(
             bucket=s.s3_bucket,
             endpoint_url=s.s3_endpoint_url,
             access_key=s.s3_access_key,
             secret_key=s.s3_secret_key,
         )
-    return LocalBlobStore(s.local_blob_dir)
+    else:
+        base = LocalBlobStore(s.local_blob_dir)
+    if s.blob_encryption == "aesgcm":
+        from docos.storage.encrypted import EncryptingBlobStore, derive_key
+
+        return EncryptingBlobStore(base, derive_key(s.blob_encryption_key or s.signing_secret))
+    return base
 
 
 def blob_store_dep() -> BlobStore:

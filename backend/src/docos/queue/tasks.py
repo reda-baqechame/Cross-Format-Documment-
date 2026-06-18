@@ -22,6 +22,22 @@ def ingest_document(blob_key: str, mime: str) -> dict:
     return {"status": "queued", "blob_key": blob_key, "mime": mime}
 
 
+@celery_app.task(name="docos.sweep_blob_tombstones")
+def sweep_blob_tombstones() -> dict:
+    """Retry blob deletions that failed during document delete (verified deletion).
+
+    Schedule periodically so a storage hiccup never leaves user bytes behind.
+    """
+    import asyncio
+
+    from docos.db.base import session_scope
+    from docos.deps import get_blob_store
+    from docos.services.provenance.deletion import sweep_tombstones
+
+    with session_scope() as session:
+        return asyncio.run(sweep_tombstones(session, get_blob_store()))
+
+
 @celery_app.task(name="docos.run_ocr")
 def run_ocr(doc_id: str) -> dict:
     raise NotImplementedError("run_ocr — invoke the OCR & structure service")

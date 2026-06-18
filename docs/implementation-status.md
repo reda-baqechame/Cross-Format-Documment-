@@ -79,7 +79,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Upload hardening — streamed size cap (413), per-session upload rate limit (429),
   ingest `JobRecord` seam — `api/ratelimit.py`, `routes_documents.py`
 - ✅ Verifiable deletion — failed blob deletes recorded as `BlobTombstone` + audited (not
-  swallowed) for retry — `routes_documents.py`
+  swallowed); sweeper retries until resolved — `routes_documents.py`,
+  `services/provenance/deletion.py`
+- ✅ Encryption-at-rest — opt-in AES-256-GCM blob wrapper (offline default plaintext;
+  transparent to callers, legacy-plaintext safe) — `storage/encrypted.py`
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
 - ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
 - ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`

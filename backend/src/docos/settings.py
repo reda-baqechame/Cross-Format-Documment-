@@ -16,6 +16,7 @@ PrivacyMode = Literal["offline", "enterprise", "cloud"]
 BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
 Scanner = Literal["noop", "clamav"]
+BlobEncryption = Literal["none", "aesgcm"]
 
 
 class Settings(BaseSettings):
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     # storage
     blob_backend: BlobBackend = "local"
     local_blob_dir: str = "./data/blobs"
+    # application-level encryption-at-rest. ``none`` (offline default) stores plaintext;
+    # ``aesgcm`` wraps the backend with AES-256-GCM keyed by BLOB_ENCRYPTION_KEY (or, if
+    # unset, derived from SIGNING_SECRET).
+    blob_encryption: BlobEncryption = "none"
+    blob_encryption_key: str | None = None
     s3_endpoint_url: str | None = None
     s3_bucket: str = "docos"
     s3_access_key: str | None = None
