@@ -15,8 +15,8 @@ from docos.main import create_app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    """TestClient backed by an in-process SQLite db (no Postgres needed)."""
+def _sessionmaker(tmp_path, monkeypatch):
+    """One in-process SQLite db (no Postgres needed), shared by every client in a test."""
     monkeypatch.setenv("LOCAL_BLOB_DIR", str(tmp_path / "blobs"))
     monkeypatch.setenv(
         "ALLOWED_MIME_TYPES",
@@ -27,20 +27,52 @@ def client(tmp_path, monkeypatch):
         "application/rtf,image/png,image/jpeg,image/tiff",
     )
 
-    engine = create_engine(f"sqlite:///{tmp_path/'test.db'}", future=True)
+    from docos.api import ratelimit
+
+    ratelimit.reset()
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", future=True)
     Base.metadata.create_all(engine)
-    TestSession = sessionmaker(bind=engine, expire_on_commit=False)
+    return sessionmaker(bind=engine, expire_on_commit=False)
+
+
+@pytest.fixture
+def make_client(_sessionmaker):
+    """Factory for TestClients sharing one db.
+
+    Each call returns a *fresh* client with its own cookie jar — i.e. a distinct anonymous
+    session — so tests can prove that two sessions can't see each other's documents.
+    """
 
     def _session():
-        s = TestSession()
+        s = _sessionmaker()
         try:
             yield s
         finally:
             s.close()
 
-    app = create_app()
-    app.dependency_overrides[db_session] = _session
-    return TestClient(app)
+    def _make() -> TestClient:
+        app = create_app()
+        app.dependency_overrides[db_session] = _session
+        return TestClient(app)
+
+    return _make
+
+
+@pytest.fixture
+def client(make_client):
+    """A single TestClient (one anonymous session)."""
+    return make_client()
+
+
+@pytest.fixture
+def db(_sessionmaker):
+    """A raw session for asserting persisted state (jobs, tombstones, ownership)."""
+    s = _sessionmaker()
+    try:
+        yield s
+    finally:
+        s.close()
 
 
 @pytest.fixture

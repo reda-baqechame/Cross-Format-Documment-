@@ -24,6 +24,7 @@ dependencies = [
     "pytesseract>=0.3.10",
     "pikepdf>=8.0",
     "httpx>=0.27",
+    "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]

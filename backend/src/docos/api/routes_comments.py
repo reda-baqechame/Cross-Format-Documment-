@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from docos.api._apply import apply_and_commit
 from docos.api.routes_documents import _load_latest
+from docos.api.session import Actor, get_actor
 from docos.deps import db_session
 from docos.services.collab import comments
 
@@ -52,16 +53,21 @@ def _require_comment(doc, comment_id: str) -> None:
 
 
 @router.get("/{doc_id}/comments", response_model=CommentsResponse)
-def list_comments(doc_id: str, session: Session = Depends(db_session)) -> CommentsResponse:
-    _record, doc = _load_latest(session, doc_id)
+def list_comments(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> CommentsResponse:
+    _record, doc = _load_latest(session, doc_id, actor)
     return CommentsResponse(doc_id=doc_id, threads=comments.list_threads(doc))
 
 
 @router.post("/{doc_id}/comments", response_model=CommentCreatedResponse)
 def add_comment(
-    doc_id: str, body: AddCommentRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: AddCommentRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> CommentCreatedResponse:
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     text = body.text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="comment text is required")
@@ -79,9 +85,13 @@ def add_comment(
 
 @router.post("/{doc_id}/comments/{comment_id}/replies", response_model=CommentCreatedResponse)
 def reply(
-    doc_id: str, comment_id: str, body: ReplyRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    comment_id: str,
+    body: ReplyRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> CommentCreatedResponse:
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     _require_comment(doc, comment_id)
     text = body.text.strip()
     if not text:
@@ -102,8 +112,9 @@ def resolve(
     comment_id: str,
     body: ResolveRequest,
     session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> CommentsResponse:
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     _require_comment(doc, comment_id)
     patch = comments.resolve_patch(doc, comment_id, body.resolved)
     _, updated = apply_and_commit(
@@ -114,9 +125,12 @@ def resolve(
 
 @router.delete("/{doc_id}/comments/{comment_id}", response_model=CommentsResponse)
 def delete_comment(
-    doc_id: str, comment_id: str, session: Session = Depends(db_session)
+    doc_id: str,
+    comment_id: str,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> CommentsResponse:
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     _require_comment(doc, comment_id)
     patch = comments.delete_patch(doc, comment_id)
     _, updated = apply_and_commit(

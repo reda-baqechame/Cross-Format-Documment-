@@ -130,14 +130,14 @@ export function HealthPanel({ health, docId }: { health: DocumentHealth; docId: 
         </button>
         <button
           onClick={() => {
-            const signer = window.prompt("Sign as (your name):")?.trim();
+            const signer = window.prompt("Seal as (your name):")?.trim();
             if (signer) sign.mutate(signer);
           }}
           disabled={sign.isPending || health.signed}
-          title={health.signed ? "Already signed" : "Apply a tamper-evident signature"}
+          title={health.signed ? "Already sealed" : "Add an integrity seal (detects later changes)"}
           className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
         >
-          {health.signed ? "Signed ✓" : sign.isPending ? "Signing…" : "Sign document"}
+          {health.signed ? "Sealed ✓" : sign.isPending ? "Sealing…" : "Add integrity seal"}
         </button>
       </div>
 

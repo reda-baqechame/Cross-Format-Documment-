@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import FieldInfo, FieldsResponse, FillFieldRequest, PatchResponse
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document
 from docos.deps import db_session, get_orchestrator, get_provenance
 from docos.model.ids import new_patch_id
@@ -23,8 +24,10 @@ router = APIRouter(prefix="/documents", tags=["forms"])
 
 
 @router.get("/{doc_id}/fields", response_model=FieldsResponse)
-def list_fields(doc_id: str, session: Session = Depends(db_session)) -> FieldsResponse:
-    _record, doc = _load_latest(session, doc_id)
+def list_fields(
+    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+) -> FieldsResponse:
+    _record, doc = _load_latest(session, doc_id, actor)
     fields = [
         FieldInfo(
             node_id=n.id,
@@ -40,9 +43,12 @@ def list_fields(doc_id: str, session: Session = Depends(db_session)) -> FieldsRe
 
 @router.post("/{doc_id}/fields", response_model=PatchResponse)
 def fill_field(
-    doc_id: str, body: FillFieldRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: FillFieldRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> PatchResponse:
-    record, doc = _load_latest(session, doc_id)
+    record, doc = _load_latest(session, doc_id, actor)
     node = doc.nodes.get(body.node_id)
     if node is None or node.type != "field":
         raise HTTPException(status_code=404, detail="field not found")

@@ -114,14 +114,52 @@ export function exportUrl(docId: string, format: ExportFormat): string {
   return `${BASE}/documents/${docId}/export?format=${format}`;
 }
 
-/** Fetch export bytes and trigger a download — surfaces HTTP errors instead of saving JSON. */
+/** The proof a download carries in its headers (output opens, redactions removed, …). */
+export interface ValidationInfo {
+  status: "pass" | "warn" | "fail";
+  summary: string;
+}
+
+function readValidation(res: Response): ValidationInfo | null {
+  const status = res.headers.get("X-DocOS-Validation");
+  if (status !== "pass" && status !== "warn" && status !== "fail") return null;
+  return { status, summary: res.headers.get("X-DocOS-Validation-Summary") ?? "" };
+}
+
+export interface ValidationFinding {
+  level: "pass" | "warn" | "fail";
+  code: string;
+  message: string;
+}
+export interface ValidationReport {
+  ok: boolean;
+  operation: string;
+  output_format: string;
+  summary: string;
+  findings: ValidationFinding[];
+  checked_at: string;
+}
+
+/** The full validation report for an export, without downloading the file. */
+export async function exportReport(
+  docId: string,
+  format: ExportFormat,
+): Promise<ValidationReport> {
+  const res = await json<{ doc_id: string; validation: ValidationReport }>(
+    await fetch(`${BASE}/documents/${docId}/export/report?format=${format}`),
+  );
+  return res.validation;
+}
+
+/** Fetch export bytes and trigger a download — returns the validation proof from the headers. */
 export async function downloadExport(
   docId: string,
   format: ExportFormat,
   filename?: string,
-): Promise<void> {
+): Promise<ValidationInfo | null> {
   const res = await fetch(exportUrl(docId, format));
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const validation = readValidation(res);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -131,6 +169,7 @@ export async function downloadExport(
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  return validation;
 }
 
 export interface VersionRef {
@@ -180,6 +219,47 @@ export async function fetchExtract(docId: string): Promise<{
 
 export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
+}
+
+// ── Document Autopilot ───────────────────────────────────────────────────────
+export interface AutopilotField {
+  name: string;
+  label: string;
+  value: string | null;
+  confidence: number;
+  node_id: string | null;
+  status: "found" | "low_confidence" | "missing";
+}
+export interface AutopilotFinding {
+  level: "pass" | "warn" | "fail";
+  code: string;
+  message: string;
+}
+export interface AutopilotAction {
+  id: string;
+  label: string;
+  kind: "export" | "redact" | "sign" | "navigate";
+  params: Record<string, string>;
+}
+export interface AutopilotReport {
+  category: string;
+  type: string;
+  type_id: string;
+  type_confidence: number;
+  skill_label: string;
+  title: string;
+  deep: boolean;
+  fields: AutopilotField[];
+  findings: AutopilotFinding[];
+  actions: AutopilotAction[];
+  needs_review: boolean;
+}
+
+export async function fetchAutopilot(docId: string): Promise<AutopilotReport> {
+  const res = await json<{ doc_id: string; autopilot: AutopilotReport }>(
+    await fetch(`${BASE}/documents/${docId}/autopilot`),
+  );
+  return res.autopilot;
 }
 
 /** Natural-language AI edit: routed through the LLM when a provider is configured. */
@@ -594,10 +674,15 @@ export async function splitPdf(docId: string, pages: number[]): Promise<void> {
 }
 
 /** Generate a searchable PDF (invisible OCR layer for scans; selectable text otherwise). */
-export async function downloadSearchablePdf(docId: string, filename?: string): Promise<void> {
+export async function downloadSearchablePdf(
+  docId: string,
+  filename?: string,
+): Promise<ValidationInfo | null> {
   const res = await fetch(`${BASE}/documents/${docId}/searchable-pdf`);
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const validation = readValidation(res);
   triggerDownload(await res.blob(), filename ?? `${docId}_searchable.pdf`);
+  return validation;
 }
 
 // ── Templates & styles library ────────────────────────────────────────────────

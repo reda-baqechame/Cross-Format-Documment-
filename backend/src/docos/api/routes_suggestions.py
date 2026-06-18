@@ -17,8 +17,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import PatchOpDTO
+from docos.api.session import Actor, get_actor
 from docos.db.models import Document, SuggestedEdit
 from docos.deps import db_session, get_orchestrator, get_provenance
 from docos.model.ids import new_patch_id
@@ -69,16 +71,18 @@ def _view(s: SuggestedEdit) -> SuggestionView:
     )
 
 
-def _require_doc(session: Session, doc_id: str) -> None:
-    if session.get(Document, doc_id) is None:
-        raise HTTPException(status_code=404, detail="document not found")
+def _require_doc(session: Session, doc_id: str, actor: Actor) -> None:
+    get_owned_document(session, doc_id, actor)
 
 
 @router.get("/{doc_id}/suggestions", response_model=SuggestionListResponse)
 def list_suggestions(
-    doc_id: str, status: str | None = None, session: Session = Depends(db_session)
+    doc_id: str,
+    status: str | None = None,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> SuggestionListResponse:
-    _require_doc(session, doc_id)
+    _require_doc(session, doc_id, actor)
     stmt = select(SuggestedEdit).where(SuggestedEdit.document_id == doc_id)
     if status:
         stmt = stmt.where(SuggestedEdit.status == status)
@@ -88,9 +92,12 @@ def list_suggestions(
 
 @router.post("/{doc_id}/suggestions", response_model=SuggestionView)
 def create_suggestion(
-    doc_id: str, body: SuggestRequest, session: Session = Depends(db_session)
+    doc_id: str,
+    body: SuggestRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
 ) -> SuggestionView:
-    _record, doc = _load_latest(session, doc_id)
+    _record, doc = _load_latest(session, doc_id, actor)
     if not body.ops:
         raise HTTPException(status_code=422, detail="at least one op is required")
     for op in body.ops:
@@ -124,24 +131,22 @@ def create_suggestion(
     return _view(suggestion)
 
 
-def _load_pending(session: Session, doc_id: str, sid: str) -> SuggestedEdit:
-    _require_doc(session, doc_id)
+def _load_pending(session: Session, doc_id: str, sid: str, actor: Actor) -> SuggestedEdit:
+    _require_doc(session, doc_id, actor)
     suggestion = session.get(SuggestedEdit, sid)
     if suggestion is None or suggestion.document_id != doc_id:
         raise HTTPException(status_code=404, detail="suggestion not found")
     if suggestion.status != "pending":
-        raise HTTPException(
-            status_code=409, detail=f"suggestion already {suggestion.status}"
-        )
+        raise HTTPException(status_code=409, detail=f"suggestion already {suggestion.status}")
     return suggestion
 
 
 @router.post("/{doc_id}/suggestions/{sid}/accept", response_model=SuggestionView)
 def accept_suggestion(
-    doc_id: str, sid: str, session: Session = Depends(db_session)
+    doc_id: str, sid: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
 ) -> SuggestionView:
-    suggestion = _load_pending(session, doc_id, sid)
-    _record, doc = _load_latest(session, doc_id)
+    suggestion = _load_pending(session, doc_id, sid, actor)
+    _record, doc = _load_latest(session, doc_id, actor)
 
     patch = ReversiblePatch.model_validate(suggestion.patch)
     # Re-validate targets against the *current* model — the document may have moved on.
@@ -175,9 +180,9 @@ def accept_suggestion(
 
 @router.post("/{doc_id}/suggestions/{sid}/reject", response_model=SuggestionView)
 def reject_suggestion(
-    doc_id: str, sid: str, session: Session = Depends(db_session)
+    doc_id: str, sid: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
 ) -> SuggestionView:
-    suggestion = _load_pending(session, doc_id, sid)
+    suggestion = _load_pending(session, doc_id, sid, actor)
     suggestion.status = "rejected"
     suggestion.decided_at = datetime.now(UTC)
     get_provenance(session).record_event(
