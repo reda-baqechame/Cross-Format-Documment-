@@ -13,7 +13,7 @@ import {
   redactSensitive,
   signDocument,
 } from "@/lib/api";
-import { friendlyLoadError } from "@/lib/upload";
+import { friendlyApiError, friendlyLoadError } from "@/lib/upload";
 
 /**
  * Document Autopilot — the "what should happen next" surface. It turns the open document into a
@@ -130,7 +130,7 @@ export function AutopilotPanel({ docId }: { docId: string }) {
 
           {run.isError && (
             <p role="alert" className="text-xs text-red-600">
-              {run.error instanceof Error ? run.error.message : String(run.error)}
+              {friendlyApiError(run.error, "That action couldn't be completed.")}
             </p>
           )}
         </>

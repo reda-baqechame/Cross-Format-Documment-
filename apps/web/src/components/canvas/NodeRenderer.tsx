@@ -11,6 +11,52 @@ import { useWorkspace } from "@/lib/store";
 // (PDF points) line up with the rasterised page image.
 const PDF_SCALE = 1.5;
 
+/** A page/image preview that degrades to a labelled placeholder instead of a broken-image
+ * icon when the backend preview can't be produced (e.g. transient error, page out of range). */
+function PreviewImage({
+  src,
+  alt,
+  width,
+  height,
+  className,
+  onClick,
+}: {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  className?: string;
+  onClick?: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        onClick={onClick}
+        style={width && height ? { width, height } : undefined}
+        className={[
+          "flex items-center justify-center bg-slate-50 text-center text-xs text-slate-500",
+          className ?? "",
+        ].join(" ")}
+      >
+        <span className="px-3">Preview unavailable — the document text is still editable below.</span>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      onClick={onClick}
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
+}
+
 function isRedacted(doc: CanonicalDocument, nodeId: string | null): boolean {
   const ids = doc.redaction?.redacted_node_ids;
   if (!ids || ids.length === 0) return false;
@@ -288,8 +334,7 @@ function PageView({
         if (e.target === e.currentTarget) select(node.id);
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <PreviewImage
         src={previewUrl(docId, (node.page_number ?? 1) - 1)}
         alt={`Page ${node.page_number ?? 1}`}
         width={w}
@@ -341,8 +386,7 @@ function ImageNode({
   const selected = useWorkspace((s) => s.selectedNodeId === node.id);
   if (doc.meta.source_format === "image" && node.blob_ref === "original") {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <PreviewImage
         src={previewUrl(docId, 0)}
         alt={node.alt_text ?? "Uploaded image"}
         onClick={() => select(node.id)}
