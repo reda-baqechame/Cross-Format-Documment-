@@ -39,13 +39,16 @@ async function json<T>(res: Response): Promise<T> {
   const body = await res.text();
   if (!res.ok) {
     const detail = errorDetail(body);
-    // 501 = a capability that isn't wired in this deployment (e.g. translation
-    // without an LLM key, an export format with no writer). Present it as an
+    const fallback = body.slice(0, 300);
+    // Keep the leading "NNN: " status prefix on every thrown error: upload.ts
+    // (and similar callers) extract the HTTP status with /^(\d{3}):/ to map
+    // 413/415/422/501 to friendly messages. 501 = a capability that isn't wired
+    // in this deployment (e.g. translation without an LLM key); present it as an
     // intentional limitation, not a crash.
     if (res.status === 501) {
-      throw new Error(detail ?? "This feature isn't available in this deployment.");
+      throw new Error(`501: ${detail ?? "This feature isn't available in this deployment."}`);
     }
-    throw new Error(detail ?? `${res.status}: ${body.slice(0, 300)}`);
+    throw new Error(`${res.status}: ${detail ?? fallback}`);
   }
   if (!contentType.includes("application/json")) {
     throw new Error(
