@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Bot,
@@ -20,12 +21,19 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { useState } from "react";
 
 import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
+import { FindReplaceModal } from "@/components/canvas/FindReplaceModal";
 import { FormatToolbar } from "@/components/canvas/FormatToolbar";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
+import { redoDocument, undoDocument } from "@/lib/api";
 import type { CanonicalDocument } from "@docos/shared-types";
+
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 200;
+const ZOOM_STEP = 10;
 
 type WorkspaceTab =
   | "document"
@@ -56,15 +64,42 @@ export function DocumentWorkspaceHeader({
   doc,
   activeTab,
   onTabChange,
+  zoom,
+  onZoomChange,
 }: {
   docId: string;
   doc?: CanonicalDocument;
   activeTab: WorkspaceTab;
   onTabChange: (tab: WorkspaceTab) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }) {
   const title = doc?.meta.title ?? `Document ${docId.slice(0, 8)}...`;
   const format = doc?.meta.source_format?.toUpperCase() ?? "DOCUMENT";
   const normalizedTab = activeTab === "modify" || activeTab === "editor" ? "document" : activeTab;
+
+  const queryClient = useQueryClient();
+  const [findOpen, setFindOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["model", docId] });
+    void queryClient.invalidateQueries({ queryKey: ["health", docId] });
+    setNotice(null);
+  };
+  const undo = useMutation({
+    mutationFn: () => undoDocument(docId),
+    onSuccess: refresh,
+    onError: () => setNotice("Nothing to undo"),
+  });
+  const redo = useMutation({
+    mutationFn: () => redoDocument(docId),
+    onSuccess: refresh,
+    onError: () => setNotice("Nothing to redo"),
+  });
+
+  const setZoom = (next: number) =>
+    onZoomChange(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next)));
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
@@ -123,20 +158,68 @@ export function DocumentWorkspaceHeader({
 
       <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-100 px-3 py-2 sm:px-5">
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" className="icon-btn" aria-label="Undo">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Undo"
+            title="Undo"
+            disabled={undo.isPending}
+            onClick={() => undo.mutate()}
+          >
             <Undo2 className="h-4 w-4" />
           </button>
-          <button type="button" className="icon-btn" aria-label="Redo">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Redo"
+            title="Redo"
+            disabled={redo.isPending}
+            onClick={() => redo.mutate()}
+          >
             <Redo2 className="h-4 w-4" />
           </button>
-          <button type="button" className="icon-btn" aria-label="Zoom out">
+          {notice && (
+            <span role="status" className="px-1 text-xs text-slate-400">
+              {notice}
+            </span>
+          )}
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Zoom out"
+            title="Zoom out"
+            disabled={zoom <= ZOOM_MIN}
+            onClick={() => setZoom(zoom - ZOOM_STEP)}
+          >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <span className="px-2 text-xs font-medium text-slate-500">100%</span>
-          <button type="button" className="icon-btn" aria-label="Zoom in">
+          <button
+            type="button"
+            onClick={() => onZoomChange(100)}
+            className="px-2 text-xs font-medium text-slate-500 hover:text-slate-900"
+            title="Reset zoom"
+            aria-label="Reset zoom to 100%"
+          >
+            {zoom}%
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Zoom in"
+            title="Zoom in"
+            disabled={zoom >= ZOOM_MAX}
+            onClick={() => setZoom(zoom + ZOOM_STEP)}
+          >
             <ZoomIn className="h-4 w-4" />
           </button>
-          <button type="button" className="icon-btn" aria-label="Search document">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Find and replace"
+            title="Find & replace"
+            disabled={!doc}
+            onClick={() => setFindOpen(true)}
+          >
             <Search className="h-4 w-4" />
           </button>
         </div>
@@ -169,6 +252,10 @@ export function DocumentWorkspaceHeader({
           </button>
         </div>
       </div>
+
+      {findOpen && doc && (
+        <FindReplaceModal doc={doc} docId={docId} onClose={() => setFindOpen(false)} />
+      )}
     </header>
   );
 }

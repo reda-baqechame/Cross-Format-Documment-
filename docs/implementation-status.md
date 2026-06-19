@@ -44,8 +44,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
-- ✅ Reversible patch history + undo · ✅ add/move/remove/update/set-text plus duplicate,
-  table, image, link, list, and page patch ops
+- ✅ Reversible patch history + undo/**redo** · ✅ add/move/remove/update/set-text plus duplicate,
+  table, image, link, list, and page patch ops — `POST /documents/{id}/undo` · `/redo`
+- ✅ **Find & replace** across the document (deterministic, redaction-aware, reversible/audited)
+  + in-document find with next/prev highlight — `services/docengine/find_replace.py`,
+  `POST /documents/{id}/replace`, `components/canvas/FindReplaceModal`
+- ✅ **Document zoom** (canvas scale control in the workspace toolbar)
 - ✅ Rich formatting (bold/italic/underline/size/color) — toolbar over `update_node` — `components/canvas/FormatToolbar`
 - ✅ Block structure editing UI (move up/down, delete) over add/move/remove_node — `components/canvas/NodeRenderer` (BlockWrap)
 - ✅ Modify Studio (insert, duplicate, delete, page/slide strip, text, table, image, link, list,

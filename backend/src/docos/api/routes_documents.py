@@ -303,6 +303,36 @@ def undo(
     )
 
 
+@router.post("/{doc_id}/redo", response_model=DocumentModelResponse)
+def redo(
+    doc_id: str,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> DocumentModelResponse:
+    """Re-apply the most recently undone edit (version-DAG redo — mirror of undo)."""
+    record = get_owned_document(session, doc_id, actor)
+    if record.current_version_id is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    # The newest version whose parent is the current one is the edit we last undid.
+    child = session.execute(
+        select(DocumentVersion)
+        .where(
+            DocumentVersion.document_id == doc_id,
+            DocumentVersion.parent_id == record.current_version_id,
+        )
+        .order_by(DocumentVersion.created_at.desc())
+    ).scalars().first()
+    if child is None:
+        raise HTTPException(status_code=409, detail="nothing to redo")
+
+    record.current_version_id = child.id
+    get_provenance(session).record_event(
+        doc_id, "version.reapplied", actor=actor.session_id, detail={"to": child.id}
+    )
+    session.commit()
+    return DocumentModelResponse(document=from_dict(child.model), version_id=child.id)
+
+
 @router.delete("/{doc_id}", status_code=204)
 async def delete_document(
     doc_id: str,

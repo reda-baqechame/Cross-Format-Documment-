@@ -60,6 +60,7 @@ export default function DocumentPage() {
       ? (initialTab as WorkspaceTab)
       : "document",
   );
+  const [zoom, setZoom] = useState(100);
 
   const model = useQuery({
     queryKey: ["model", docId],
@@ -77,7 +78,14 @@ export default function DocumentPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-chrome pb-20 sm:pb-0">
-      <DocumentWorkspaceHeader docId={docId} doc={doc} activeTab={tab} onTabChange={setTab} />
+      <DocumentWorkspaceHeader
+        docId={docId}
+        doc={doc}
+        activeTab={tab}
+        onTabChange={setTab}
+        zoom={zoom}
+        onZoomChange={setZoom}
+      />
 
       <div className="flex min-h-0 flex-1">
         {doc && <PageRail doc={doc} />}
@@ -122,7 +130,14 @@ export default function DocumentPage() {
                     </p>
                   </div>
                 )}
-                <DocumentCanvas doc={doc} docId={docId} />
+                <div
+                  style={{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: "top center",
+                  }}
+                >
+                  <DocumentCanvas doc={doc} docId={docId} />
+                </div>
               </>
             )}
           </main>
