@@ -1,31 +1,28 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { Logo } from "@/components/ui/Logo";
+
 export function AppShell({
   children,
-  subtitle = "Open, edit, convert, and protect any document",
+  subtitle = "Open, edit, convert & protect any document",
 }: {
   children: ReactNode;
   subtitle?: string;
 }) {
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-lg font-bold text-white shadow-sm"
-              aria-hidden
-            >
-              D
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight text-ink sm:text-base">
-                Cross-Format Document OS
-              </p>
-              <p className="truncate text-xs text-slate-500">{subtitle}</p>
-            </div>
+      <header className="sticky top-0 z-40 border-b border-line/80 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="flex min-w-0 items-center gap-3 rounded-lg">
+            <Logo subtitle={subtitle} />
           </Link>
+          <a
+            href="https://code.claude.com/docs/en/claude-code-on-the-web"
+            className="hidden text-sm font-medium text-slate-500 transition-colors hover:text-slate-800 sm:block"
+          >
+            Docs
+          </a>
         </div>
       </header>
       {children}

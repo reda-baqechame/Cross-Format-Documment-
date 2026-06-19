@@ -3,10 +3,8 @@ import { expect, test } from "@playwright/test";
 test("home page exposes business document command-center workflows", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "Open any document. Do anything. Trust the output." }),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Command or upload" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Trust the output/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start here" })).toBeVisible();
 
   for (const name of [
     "Contract packet",

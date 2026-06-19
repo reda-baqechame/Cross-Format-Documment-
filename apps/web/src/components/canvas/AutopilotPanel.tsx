@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   type AutopilotAction,
@@ -13,7 +14,15 @@ import {
   redactSensitive,
   signDocument,
 } from "@/lib/api";
-import { friendlyLoadError } from "@/lib/upload";
+import { PromptModal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
+import { friendlyApiError, friendlyLoadError } from "@/lib/upload";
+
+const ACTION_SUCCESS: Record<string, string> = {
+  export: "Export downloaded.",
+  redact: "Sensitive content redacted.",
+  sign: "Integrity seal applied.",
+};
 
 /**
  * Document Autopilot — the "what should happen next" surface. It turns the open document into a
@@ -23,6 +32,8 @@ import { friendlyLoadError } from "@/lib/upload";
 export function AutopilotPanel({ docId }: { docId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const [signOpen, setSignOpen] = useState(false);
 
   const autopilot = useQuery({
     queryKey: ["autopilot", docId],
@@ -36,20 +47,33 @@ export function AutopilotPanel({ docId }: { docId: string }) {
         return downloadExport(docId, (action.params.format ?? "docx") as ExportFormat);
       }
       if (action.kind === "redact") return redactSensitive(docId);
-      if (action.kind === "sign") {
-        const signer = window.prompt("Seal as (your name):")?.trim();
-        if (!signer) return null;
-        return signDocument(docId, signer);
-      }
       if (action.kind === "navigate" && action.params.href) router.push(action.params.href);
       return null;
     },
-    onSuccess: () => {
+    onSuccess: (_data, action) => {
+      if (ACTION_SUCCESS[action.kind]) toast.success(ACTION_SUCCESS[action.kind]);
       queryClient.invalidateQueries({ queryKey: ["model", docId] });
       queryClient.invalidateQueries({ queryKey: ["health", docId] });
       queryClient.invalidateQueries({ queryKey: ["autopilot", docId] });
     },
+    onError: (err) => toast.error(friendlyApiError(err, "That action couldn't be completed.")),
   });
+
+  const sign = useMutation({
+    mutationFn: (signer: string) => signDocument(docId, signer),
+    onSuccess: () => {
+      toast.success(ACTION_SUCCESS.sign);
+      queryClient.invalidateQueries({ queryKey: ["model", docId] });
+      queryClient.invalidateQueries({ queryKey: ["health", docId] });
+      queryClient.invalidateQueries({ queryKey: ["autopilot", docId] });
+    },
+    onError: (err) => toast.error(friendlyApiError(err, "Couldn't seal the document.")),
+  });
+
+  const onAction = (action: AutopilotAction) => {
+    if (action.kind === "sign") setSignOpen(true);
+    else run.mutate(action);
+  };
 
   return (
     <aside className="flex w-full shrink-0 flex-col gap-4 border-l border-slate-200 bg-white p-5 lg:w-96">
@@ -118,23 +142,27 @@ export function AutopilotPanel({ docId }: { docId: string }) {
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => run.mutate(a)}
-                  disabled={run.isPending}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:opacity-40"
+                  onClick={() => onAction(a)}
+                  disabled={run.isPending || sign.isPending}
+                  className="rounded-xl border border-line px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:border-brand-200 hover:bg-brand-50/40 disabled:opacity-40"
                 >
                   {a.label}
                 </button>
               ))}
             </div>
           )}
-
-          {run.isError && (
-            <p role="alert" className="text-xs text-red-600">
-              {run.error instanceof Error ? run.error.message : String(run.error)}
-            </p>
-          )}
         </>
       )}
+
+      <PromptModal
+        open={signOpen}
+        title="Apply integrity seal"
+        label="Seal as (your name)"
+        placeholder="e.g. Jordan Lee"
+        confirmLabel="Seal document"
+        onConfirm={(signer) => sign.mutate(signer)}
+        onClose={() => setSignOpen(false)}
+      />
     </aside>
   );
 }
