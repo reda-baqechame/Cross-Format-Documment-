@@ -122,6 +122,25 @@ class PatchResponse(BaseModel):
     intent: str | None
 
 
+class FindReplaceRequest(BaseModel):
+    """Replace every occurrence of ``find`` with ``replace`` across the document."""
+
+    find: str
+    replace: str = ""
+    match_case: bool = False
+    whole_word: bool = False
+
+
+class FindReplaceResponse(BaseModel):
+    """Result of a replace-all: how much changed and the new version it produced."""
+
+    doc_id: str
+    applied: bool
+    occurrences: int  # total matches replaced
+    nodes_changed: int  # distinct run nodes whose text changed
+    new_version_id: str | None
+
+
 class SensitiveScanResponse(BaseModel):
     """Detected PII/secrets and how many distinct nodes a redaction would touch."""
 

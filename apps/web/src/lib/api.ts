@@ -756,6 +756,42 @@ export async function undoDocument(docId: string): Promise<DocumentModelResponse
   );
 }
 
+export async function redoDocument(docId: string): Promise<DocumentModelResponse> {
+  return json<DocumentModelResponse>(
+    await fetch(`${BASE}/documents/${docId}/redo`, { method: "POST" }),
+  );
+}
+
+// Find & replace across the whole document (one reversible, audited edit). Types mirror
+// the backend FindReplace* schemas until `make codegen` folds them into @docos/shared-types.
+export interface FindReplaceRequest {
+  find: string;
+  replace?: string;
+  match_case?: boolean;
+  whole_word?: boolean;
+}
+
+export interface FindReplaceResult {
+  doc_id: string;
+  applied: boolean;
+  occurrences: number;
+  nodes_changed: number;
+  new_version_id: string | null;
+}
+
+export async function replaceText(
+  docId: string,
+  body: FindReplaceRequest,
+): Promise<FindReplaceResult> {
+  return json<FindReplaceResult>(
+    await fetch(`${BASE}/documents/${docId}/replace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 export async function deleteDocument(docId: string): Promise<void> {
   const res = await fetch(`${BASE}/documents/${docId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);

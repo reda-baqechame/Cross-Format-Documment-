@@ -14,8 +14,11 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from docos.api._apply import apply_and_commit
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
+    FindReplaceRequest,
+    FindReplaceResponse,
     PatchRequest,
     PatchResponse,
     SensitiveScanResponse,
@@ -27,6 +30,7 @@ from docos.db.models import Document
 from docos.deps import db_session, get_orchestrator, get_provenance, get_settings
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
+from docos.services.docengine.find_replace import plan_find_replace
 from docos.services.provenance import accessibility, sensitive, signing
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
@@ -116,6 +120,58 @@ async def create_patch(
         applied=applied,
         new_version_id=new_version_id,
         intent=patch.intent,
+    )
+
+
+@router.post("/{doc_id}/replace", response_model=FindReplaceResponse)
+async def find_replace(
+    doc_id: str,
+    body: FindReplaceRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> FindReplaceResponse:
+    """Replace every occurrence of ``find`` with ``replace`` as one reversible, audited edit.
+
+    Deterministic and offline: planned over the canonical model (redacted runs are
+    skipped) and applied as a batch of ``set_text`` ops through the standard
+    apply → commit → audit path, so a replace-all is versioned and undoable.
+    """
+    _record, doc = _load_latest(session, doc_id, actor)
+
+    replacements, occurrences = plan_find_replace(
+        doc,
+        body.find,
+        body.replace,
+        match_case=body.match_case,
+        whole_word=body.whole_word,
+    )
+
+    patch = ReversiblePatch(
+        id=new_patch_id(),
+        patches=[
+            Patch(op="set_text", target_id=r.node_id, payload={"text": r.after})
+            for r in replacements
+        ],
+        inverse=[],
+        intent=f"replace {body.find!r}",
+        created_at=datetime.now(UTC),
+    )
+
+    new_version_id, _updated = apply_and_commit(
+        session,
+        doc_id,
+        doc,
+        patch,
+        event="text.replaced",
+        detail={"occurrences": occurrences, "nodes_changed": len(replacements)},
+    )
+
+    return FindReplaceResponse(
+        doc_id=doc_id,
+        applied=new_version_id is not None,
+        occurrences=occurrences,
+        nodes_changed=len(replacements),
+        new_version_id=new_version_id,
     )
 
 

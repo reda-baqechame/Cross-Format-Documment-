@@ -191,6 +191,7 @@ function RunSpan({
 
   return (
     <span
+      id={`node-${node.id}`}
       onClick={() => select(node.id)}
       onDoubleClick={() => canEdit && setEditing(node.id)}
       onTouchStart={startLongPress}
