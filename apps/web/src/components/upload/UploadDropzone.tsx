@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { FileUp, Loader2, TriangleAlert } from "lucide-react";
+import { FileUp, Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -28,6 +28,28 @@ export function UploadDropzone() {
   const [dragActive, setDragActive] = useState(false);
 
   const busy = status.kind === "uploading";
+
+  function trySample() {
+    if (busy) return;
+    const sample = `MUTUAL SERVICES AGREEMENT
+
+This Agreement is made on June 1, 2026 between Northwind Traders, Inc. ("Client")
+and Acme Consulting LLC ("Provider").
+
+1. Services. Provider will deliver advisory services described in Exhibit A.
+
+2. Fees. Client agrees to pay Provider $12,500 per month, due net 30.
+   Contact: billing@northwind.example  ·  +1 (415) 555-0147
+
+3. Term. This Agreement begins on June 1, 2026 and continues for 12 months.
+
+4. Confidentiality. Each party will protect the other's confidential information.
+
+Signature: ______________________    Date: ____________
+`;
+    const file = new File([sample], "sample-services-agreement.txt", { type: "text/plain" });
+    void handleFiles([file]);
+  }
 
   async function handleFiles(files: File[]) {
     if (files.length === 0) return;
@@ -151,6 +173,17 @@ export function UploadDropzone() {
           }}
         />
       </div>
+
+      {status.kind !== "uploading" && (
+        <button
+          type="button"
+          onClick={trySample}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition-colors hover:text-brand-800"
+        >
+          <Sparkles className="h-4 w-4" aria-hidden />
+          No file handy? Try a sample document
+        </button>
+      )}
 
       {status.kind === "error" && (
         <p

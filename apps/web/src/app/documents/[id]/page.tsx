@@ -58,7 +58,7 @@ export default function DocumentPage() {
   const [tab, setTab] = useState<WorkspaceTab>(
     initialTab && (TABS as string[]).includes(initialTab)
       ? (initialTab as WorkspaceTab)
-      : "autopilot",
+      : "document",
   );
 
   const model = useQuery({
