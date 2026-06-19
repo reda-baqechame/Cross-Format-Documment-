@@ -59,11 +59,12 @@ def get_registry() -> AdapterRegistry:
 @lru_cache
 def get_llm_client() -> LLMClient:
     s = get_settings()
-    if s.llm_provider == "openai":
+    provider = s.effective_llm_provider
+    if provider == "openai":
         from docos.services.semantic.llm.openai import OpenAIClient
 
         return OpenAIClient(s.openai_api_key)
-    if s.llm_provider == "anthropic":
+    if provider == "anthropic":
         from docos.services.semantic.llm.anthropic import AnthropicClient
 
         if s.llm_model:

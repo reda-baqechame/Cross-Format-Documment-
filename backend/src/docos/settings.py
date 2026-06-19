@@ -121,11 +121,29 @@ class Settings(BaseSettings):
         return self.app_env in ("staging", "production")
 
     @property
+    def effective_llm_provider(self) -> LLMProvider:
+        """The provider actually used at runtime.
+
+        If ``LLM_PROVIDER`` is left at the offline ``noop`` default but an API key is
+        present, auto-enable that provider. This means a deploy only needs the key set
+        (e.g. ``ANTHROPIC_API_KEY`` on Railway) to turn on AI features — no second
+        variable to remember. An explicit non-noop ``llm_provider`` always wins.
+        """
+        if self.llm_provider != "noop":
+            return self.llm_provider
+        if self.anthropic_api_key:
+            return "anthropic"
+        if self.openai_api_key:
+            return "openai"
+        return "noop"
+
+    @property
     def ai_enabled(self) -> bool:
         """True when a real LLM provider is configured (not the offline noop client)."""
-        if self.llm_provider == "openai":
+        provider = self.effective_llm_provider
+        if provider == "openai":
             return bool(self.openai_api_key)
-        if self.llm_provider == "anthropic":
+        if provider == "anthropic":
             return bool(self.anthropic_api_key)
         return False
 

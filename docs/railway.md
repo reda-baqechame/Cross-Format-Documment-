@@ -17,7 +17,9 @@ Deploy **one service** from the repo root. The root [`Dockerfile`](../Dockerfile
 
 > ⚠️ **Do NOT set a Custom Start Command in the Railway dashboard.** A leftover `pnpm --filter @docos/web start` overrides the Dockerfile and crashes the container with `The executable 'pnpm' could not be found` (the runtime image has no pnpm). `railway.json` now forces the correct start command, so leave the dashboard field empty. If one was set previously, clear it once: **Settings → Deploy → Custom Start Command → Remove**.
 
-Only variable worth setting for real use: an LLM key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`). For data that survives redeploys, mount a Railway **volume** at `/app/data` (SQLite DB + local blobs live there).
+**Turn on AI features:** set **`ANTHROPIC_API_KEY`** (recommended) or `OPENAI_API_KEY` in the service's **Variables**, then redeploy. That single key is enough — the app auto-selects the provider, so you do **not** also need to set `LLM_PROVIDER`. Without a key the app runs fully offline and AI-driven actions (natural-language "modify document", autopilot, Q&A, translation) are no-ops, which is the usual reason "I can open the app but can't change anything." Optionally pin a cheaper model with `LLM_MODEL=claude-sonnet-4-6` (default is `claude-opus-4-8`).
+
+For data that survives redeploys, mount a Railway **volume** at `/app/data` (SQLite DB + local blobs live there).
 
 ---
 

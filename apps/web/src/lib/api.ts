@@ -23,11 +23,29 @@ export interface BackendHealth {
   llm_provider: string;
 }
 
+/** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */
+function errorDetail(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { detail?: unknown };
+    if (typeof parsed.detail === "string") return parsed.detail;
+  } catch {
+    /* not JSON — fall through */
+  }
+  return null;
+}
+
 async function json<T>(res: Response): Promise<T> {
   const contentType = res.headers.get("content-type") ?? "";
   const body = await res.text();
   if (!res.ok) {
-    throw new Error(`${res.status}: ${body.slice(0, 300)}`);
+    const detail = errorDetail(body);
+    // 501 = a capability that isn't wired in this deployment (e.g. translation
+    // without an LLM key, an export format with no writer). Present it as an
+    // intentional limitation, not a crash.
+    if (res.status === 501) {
+      throw new Error(detail ?? "This feature isn't available in this deployment.");
+    }
+    throw new Error(detail ?? `${res.status}: ${body.slice(0, 300)}`);
   }
   if (!contentType.includes("application/json")) {
     throw new Error(

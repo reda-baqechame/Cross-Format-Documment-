@@ -28,5 +28,5 @@ def health(
         blob_backend=settings.blob_backend,
         db=db_status,
         ai_enabled=settings.ai_enabled,
-        llm_provider=settings.llm_provider,
+        llm_provider=settings.effective_llm_provider,
     )
