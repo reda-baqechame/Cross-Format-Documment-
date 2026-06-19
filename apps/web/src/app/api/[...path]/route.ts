@@ -98,8 +98,24 @@ async function handler(req: Request, ctx: { params: { path?: string[] } }): Prom
 
   const responseHeaders = new Headers();
   upstream.headers.forEach((value, key) => {
+    // `Set-Cookie` is handled separately below — Headers.forEach folds multiple
+    // cookies into one comma-joined string, which corrupts them.
+    if (key.toLowerCase() === "set-cookie") return;
     if (!STRIP_RESPONSE.has(key.toLowerCase())) responseHeaders.set(key, value);
   });
+
+  // Forward each Set-Cookie individually so the anonymous-session cookie (`docos_sid`)
+  // reaches the browser intact. Without this the backend re-mints a session on every
+  // request and the document owner never matches → 404 on every edit (you can open the
+  // app but "can't modify anything"). `getSetCookie` is the WHATWG/undici API that
+  // preserves separate cookie headers.
+  const setCookies =
+    typeof upstream.headers.getSetCookie === "function"
+      ? upstream.headers.getSetCookie()
+      : [];
+  for (const cookie of setCookies) {
+    responseHeaders.append("set-cookie", cookie);
+  }
 
   return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
 }

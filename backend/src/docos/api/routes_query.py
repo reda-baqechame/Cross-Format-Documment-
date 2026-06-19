@@ -44,7 +44,7 @@ async def ask_document(
 ) -> AskResponse:
     """Answer a question from the document's own text, citing the nodes used."""
     _record, doc = _load_latest(session, doc_id, actor)
-    use_llm = get_settings().llm_provider != "noop"
+    use_llm = get_settings().effective_llm_provider != "noop"
     result = await reader.answer(doc, body.question, get_llm_client(), use_llm=use_llm)
     return AskResponse(
         doc_id=doc_id,
@@ -60,7 +60,7 @@ async def summarize_document(
 ) -> SummaryResponse:
     """Summarize the document, citing the nodes the summary draws from."""
     _record, doc = _load_latest(session, doc_id, actor)
-    use_llm = get_settings().llm_provider != "noop"
+    use_llm = get_settings().effective_llm_provider != "noop"
     result = await reader.summarize(doc, get_llm_client(), use_llm=use_llm)
     return SummaryResponse(
         doc_id=doc_id,
@@ -129,9 +129,10 @@ async def translate_document(
     actor: Actor = Depends(get_actor),
 ) -> TranslateResponse:
     """Translate the document text. Requires a configured LLM provider."""
-    if get_settings().llm_provider == "noop":
+    if get_settings().effective_llm_provider == "noop":
         raise HTTPException(
-            status_code=501, detail="translation requires LLM_PROVIDER=openai or anthropic"
+            status_code=501,
+            detail="translation requires an LLM provider — set ANTHROPIC_API_KEY or OPENAI_API_KEY",
         )
     _record, doc = _load_latest(session, doc_id, actor)
     text = await reader.translate(doc, body.target_language, get_llm_client())

@@ -91,7 +91,7 @@ def create_app() -> FastAPI:
         settings.app_env,
         settings.privacy_mode,
         settings.blob_backend,
-        settings.llm_provider,
+        settings.effective_llm_provider,
     )
     return app
 
