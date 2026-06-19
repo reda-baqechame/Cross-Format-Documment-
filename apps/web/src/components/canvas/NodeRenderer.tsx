@@ -256,6 +256,12 @@ function RunSpan({
         selected ? "bg-yellow-100" : "",
         canEdit ? "cursor-text" : "cursor-default",
       ].join(" ")}
+      style={{
+        // Color and size are first-class run fields — render them so the format
+        // toolbar's changes are visible on the canvas, not just stored in the model.
+        color: node.color ?? undefined,
+        fontSize: typeof node.size === "number" ? `${node.size}px` : undefined,
+      }}
       title={canEdit ? "Double-click or long-press to edit" : undefined}
     >
       {node.text}
