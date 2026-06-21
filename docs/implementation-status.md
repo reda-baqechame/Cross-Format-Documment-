@@ -68,7 +68,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ DOCX / TXT / PDF (write-back) export
 - ✅ Markdown / HTML / CSV export — `writers/markup.py`
 - ✅ XLSX / PPTX / PNG export from any source format — `writers/{xlsx,pptx,image}_writer.py`
+  (XLSX now descends into page nodes; DOCX/PPTX embed real image bytes when persisted)
+- ✅ Image persistence — adapters extract image bytes at parse, the upload route writes them to
+  blob storage, and DOCX/PPTX exporters embed them instead of `[image: …]` placeholders
 - ✅ Page ops: merge / split / reorder / rotate / delete — `services/docengine/pageops.py`
+  (in-place ops — rotate / delete / reorder / watermark / compress — now **persist a new version**;
+  split / merge / protect remain download-only by design)
 - ✅ Compress (PDF) — `pageops.compress_pdf`
 - ✅ **Output validation engine** — every export/convert/page-op returns a proof report
   (output opens, page count preserved, **redactions provably unrecoverable**, text retained,
@@ -135,6 +140,13 @@ the `LLMClient` provider switch, the `BlobStore` abstraction) so they can be wir
 infrastructure is provisioned — rather than shipping a fake that claims compliance it doesn't have.
 
 ## J. Replacement-grade hardening lane
+- ✅ Liveness/readiness probes: `/live` (process up) + `/ready` (DB tables exist + blob storage
+  writable → 503 otherwise; Railway healthcheck points here so a broken/volumeless deploy fails
+  fast). `/health` stays a 200 status summary the UI reads — `api/routes_health.py`.
+- ✅ Provider/storage truthing in `/health` (AI provider, Office/PDF native-editor state, storage,
+  SQLite vs Postgres) surfaced by the home page **System status** panel — `components/system/SystemStatusPanel.tsx`.
+- ✅ Both Docker images install the Anthropic **and** OpenAI provider extras so a configured
+  `OPENAI_API_KEY` can't crash on a missing SDK at runtime.
 - ✅ Windows-safe web build: local `pnpm --filter @docos/web build` skips Next standalone
   symlink creation on Windows, while Linux/Railway can keep standalone output through
   `DOCOS_NEXT_STANDALONE=1`.

@@ -16,6 +16,7 @@ import { DocumentList } from "@/components/documents/DocumentList";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
+import { SystemStatusPanel } from "@/components/system/SystemStatusPanel";
 import { TaskGrid } from "@/components/tasks/TaskGrid";
 import { TemplateGallery } from "@/components/templates/TemplateGallery";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
@@ -48,7 +49,7 @@ const TRUST_ITEMS = [
 
 export default function HomePage() {
   return (
-    <AppShell subtitle="Open, edit & trust any document">
+    <AppShell subtitle="Open, edit, convert & protect common document formats">
       <BackendStatus />
 
       <main className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-8">
@@ -58,13 +59,14 @@ export default function HomePage() {
               <ShieldCheck className="h-3.5 w-3.5" /> Private to your session
             </span>
             <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-              Open any document.
+              Open common formats.
               <br />
-              <span className="text-brand-600">Edit it. Trust the output.</span>
+              <span className="text-brand-600">Edit with proof.</span>
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
-              Drop in a PDF, Word file, spreadsheet, deck, or scan — then edit, redact, fill forms,
-              convert, and sign, with proof the output is exactly what you approved.
+              Drop in a PDF, Word file, spreadsheet, deck, or scan — extract structured content,
+              apply audited edits, redact, fill forms, and export validated copies. Native layout
+              fidelity varies by format.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a href="#upload" className="btn-primary">
@@ -100,6 +102,7 @@ export default function HomePage() {
             <div className="mt-4">
               <UploadDropzone />
             </div>
+            <SystemStatusPanel className="mt-5 border-t border-line pt-4" />
           </div>
         </section>
 
