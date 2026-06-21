@@ -13,11 +13,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install production dependencies (no dev/test extras; include the Anthropic provider
-# so AI editing works when LLM_PROVIDER=anthropic). Copy metadata first for caching.
+# Install production dependencies (no dev/test extras; include both the Anthropic and OpenAI
+# providers so AI editing works whichever LLM_PROVIDER / API key is configured at runtime —
+# the runtime auto-selects a provider from the present API key and lazily imports its SDK).
+# Copy metadata first for caching.
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --upgrade pip && pip install ".[anthropic]"
+RUN pip install --upgrade pip && pip install ".[anthropic,openai]"
 
 # Application code + migrations + entrypoint.
 COPY . .

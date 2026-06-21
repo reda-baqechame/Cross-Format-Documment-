@@ -11,15 +11,25 @@ Deploy **one service** from the repo root. The root [`Dockerfile`](../Dockerfile
 ```json
 {
   "build":  { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
-  "deploy": { "startCommand": "/app/railway-single-service-start.sh", "healthcheckPath": "/api/health" }
+  "deploy": { "startCommand": "/app/railway-single-service-start.sh", "healthcheckPath": "/api/ready" }
 }
 ```
+
+**Health endpoints.** The container exposes three:
+
+| Path | Meaning |
+|------|---------|
+| `/api/live` | Process is up. Never fails while the app can answer — use for liveness only. |
+| `/api/ready` | **Deep readiness** — passes only when the DB tables exist, migrations are applied, and blob storage is writable. Railway's healthcheck points here so a broken deploy (e.g. no volume) is **not** marked healthy. |
+| `/api/health` | Human-readable status summary (provider, storage, DB) the web UI reads. Always returns 200. |
+
+Because the healthcheck is `/api/ready`, a deploy with no working persistent storage **fails fast** instead of silently losing documents after the next restart.
 
 > ⚠️ **Do NOT set a Custom Start Command in the Railway dashboard.** A leftover `pnpm --filter @docos/web start` overrides the Dockerfile and crashes the container with `The executable 'pnpm' could not be found` (the runtime image has no pnpm). `railway.json` now forces the correct start command, so leave the dashboard field empty. If one was set previously, clear it once: **Settings → Deploy → Custom Start Command → Remove**.
 
 **Turn on AI features:** set **`ANTHROPIC_API_KEY`** (recommended) or `OPENAI_API_KEY` in the service's **Variables**, then redeploy. That single key is enough — the app auto-selects the provider, so you do **not** also need to set `LLM_PROVIDER`. Without a key the app runs fully offline and AI-driven actions (natural-language "modify document", autopilot, Q&A, translation) are no-ops, which is the usual reason "I can open the app but can't change anything." If you use Anthropic, you can optionally pin a cheaper model with `LLM_MODEL=claude-sonnet-4-6` (default is `claude-opus-4-8`); `LLM_MODEL` is ignored for OpenAI deployments.
 
-For data that survives redeploys, mount a Railway **volume** at `/app/data` (SQLite DB + local blobs live there).
+> 🛑 **Required for persistence:** mount a Railway **volume** at `/app/data`. The default single-service deploy keeps the SQLite DB at `/app/data/docos.db` and uploaded blobs under `/app/data/blobs`; Railway containers are otherwise ephemeral, so **without the volume every document, version, and upload is lost on the next redeploy or restart** (and, now that the healthcheck is `/api/ready`, the deploy will fail rather than come up broken). For higher-scale production, switch to Postgres + S3-compatible object storage (see the two-service section below) instead of SQLite + local disk.
 
 ---
 
@@ -33,7 +43,7 @@ Deploy **two Railway services** from this repo. The browser only talks to **Web*
 |---------|--------|
 | Root directory | `backend` |
 | Dockerfile | `backend/Dockerfile` |
-| Health check path | `/health` |
+| Health check path | `/ready` (deep readiness; `/live` for liveness only) |
 
 **Required variables**
 

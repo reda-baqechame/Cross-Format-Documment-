@@ -148,6 +148,23 @@ class Settings(BaseSettings):
         return False
 
     @property
+    def office_editor_configured(self) -> bool:
+        """True when a real embedded Office editor (OnlyOffice) is wired up."""
+        return self.office_editor_provider == "onlyoffice" and bool(
+            self.onlyoffice_document_server_url
+        )
+
+    @property
+    def pdf_editor_configured(self) -> bool:
+        """True when a real external PDF editor/SDK is wired up."""
+        return self.pdf_editor_provider == "external" and bool(self.pdf_editor_url)
+
+    @property
+    def database_kind(self) -> str:
+        """``sqlite`` or ``postgres`` — surfaced so the UI can flag ephemeral SQLite."""
+        return "sqlite" if self.database_url.startswith("sqlite") else "postgres"
+
+    @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
 
