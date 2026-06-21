@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, PrivateAttr, TypeAdapter
 
 from docos.model.nodes import AnyNode
 
@@ -73,6 +73,11 @@ class CanonicalDocument(BaseModel):
     accessibility: AccessibilityState = Field(default_factory=AccessibilityState)
     signature: SignatureState = Field(default_factory=SignatureState)
     content_hash: str | None = None  # canonical hash for versioning
+
+    # Transient (never serialized) image bytes extracted during ``parse`` but not yet written to
+    # blob storage — ``parse`` is sync while ``BlobStore.put`` is async, so adapters stash bytes
+    # here keyed by ``ImageNode.blob_ref`` and the async upload route drains + persists them.
+    _pending_assets: dict[str, bytes] = PrivateAttr(default_factory=dict)
 
     # ── graph helpers ────────────────────────────────────────────────────────
     def add_node(self, node: AnyNode) -> AnyNode:

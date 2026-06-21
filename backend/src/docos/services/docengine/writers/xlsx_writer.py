@@ -26,6 +26,22 @@ def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
     return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run")
 
 
+def _content_nodes(doc: CanonicalDocument) -> list[AnyNode]:
+    """Top-level content blocks, descending through ``page`` containers.
+
+    PDF and PPTX adapters nest their content under ``page`` nodes; iterating only the root's
+    direct children would miss all of it and produce an empty workbook. This flattens one page
+    level (mirroring the DOCX writer) so paged documents export their actual content.
+    """
+    out: list[AnyNode] = []
+    for node in doc.children_of(doc.root_id):
+        if node.type == "page":
+            out.extend(doc.children_of(node.id))
+        else:
+            out.append(node)
+    return out
+
+
 def _safe_title(name: str, used: set[str]) -> str:
     cleaned = "".join(" " if ch in _BAD_TITLE else ch for ch in name).strip() or "Sheet"
     cleaned = cleaned[:31]
@@ -61,7 +77,7 @@ def model_to_xlsx(doc: CanonicalDocument) -> bytes:
     loose_text: list[str] = []
     made_sheet = False
 
-    for node in doc.children_of(doc.root_id):
+    for node in _content_nodes(doc):
         kind = node.type
         if kind == "heading":
             pending_heading = _block_text(doc, node) or None

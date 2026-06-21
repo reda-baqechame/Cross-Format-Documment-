@@ -35,9 +35,14 @@ def _table_lines(doc: CanonicalDocument, tnode: AnyNode) -> list[str]:
     return lines
 
 
-def _add_slide(prs: Presentation, title: str, body_lines: list[str]) -> None:
+def _add_slide(
+    prs: Presentation, title: str, body_lines: list[str], image_bytes: list[bytes] | None = None
+) -> None:
+    image_bytes = image_bytes or []
     slide = prs.slides.add_slide(prs.slide_layouts[_BLANK_LAYOUT])
-    box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9), Inches(6.5))
+    # Narrow the text column when there are images so the pictures get the right half of the slide.
+    text_width = Inches(5.5) if image_bytes else Inches(9)
+    box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), text_width, Inches(6.5))
     tf = box.text_frame
     tf.word_wrap = True
     first = tf.paragraphs[0]
@@ -49,8 +54,20 @@ def _add_slide(prs: Presentation, title: str, body_lines: list[str]) -> None:
         p.text = line
         p.font.size = Pt(16)
 
+    # Stack embedded pictures down the right column (best-effort; skip any that won't load).
+    top = Inches(0.5)
+    for data in image_bytes:
+        try:
+            slide.shapes.add_picture(io.BytesIO(data), Inches(6.2), top, height=Inches(1.8))
+            top += Inches(2.0)
+        except Exception:  # noqa: BLE001 - unreadable/unsupported image is simply omitted
+            continue
 
-def model_to_pptx(doc: CanonicalDocument) -> bytes:
+
+def model_to_pptx(doc: CanonicalDocument, images: dict[str, bytes] | None = None) -> bytes:
+    """Serialise ``doc`` to PPTX. ``images`` maps ``ImageNode.blob_ref`` → bytes; available image
+    bytes are embedded as picture shapes, and images without bytes fall back to a text note."""
+    images = images or {}
     prs = Presentation()
     top = doc.children_of(doc.root_id)
     pages = [n for n in top if n.type == "page"]
@@ -59,6 +76,7 @@ def model_to_pptx(doc: CanonicalDocument) -> bytes:
         for page in pages:
             title = ""
             body: list[str] = []
+            slide_images: list[bytes] = []
             for child in doc.children_of(page.id):
                 if child.type == "heading" and not title:
                     title = _block_text(doc, child)
@@ -73,9 +91,14 @@ def model_to_pptx(doc: CanonicalDocument) -> bytes:
                 elif child.type == "table":
                     body.extend(_table_lines(doc, child))
                 elif child.type == "image":
-                    if not is_redacted(doc, child.id):
+                    if is_redacted(doc, child.id):
+                        continue
+                    data = images.get(getattr(child, "blob_ref", "") or "")
+                    if data:
+                        slide_images.append(data)
+                    else:
                         body.append(f"[image: {node_text(doc, child) or 'image'}]")
-            _add_slide(prs, title or f"Slide {page.page_number}", body)
+            _add_slide(prs, title or f"Slide {page.page_number}", body, slide_images)
     else:
         # Section a flat document into slides by heading.
         title = doc.meta.title or "Slide 1"

@@ -124,18 +124,22 @@ class PdfAdapter(FormatAdapter):
 
     def _add_image(self, doc: CanonicalDocument, page: PageNode, block: dict, order: int) -> None:
         img_bytes = block.get("image") or b""
-        # Content-addressed key; byte persistence + OCR is handled by the blob/OCR
-        # layer (parse is sync, blob.put is async — we do not inline bytes here).
+        # Content-addressed key. parse is sync but blob.put is async, so we stash the bytes on the
+        # document (transient) keyed by blob_ref; the async upload route drains _pending_assets,
+        # writes them to blob storage, and flips persisted → True.
         digest = hashlib.sha256(img_bytes).hexdigest()[:16] if img_bytes else "empty"
+        blob_ref = f"images/{digest}"
         node = ImageNode(
             id=new_node_id("img"),
             parent_id=page.id,
             reading_order=order,
-            blob_ref=f"images/{digest}",
+            blob_ref=blob_ref,
             mime=f"image/{block.get('ext', 'png')}",
             bbox=_bbox(block.get("bbox")),
             attrs={"persisted": False, "width": block.get("width"), "height": block.get("height")},
         )
+        if img_bytes:
+            doc._pending_assets[blob_ref] = img_bytes
         page.children.append(node.id)
         doc.add_node(node)
 

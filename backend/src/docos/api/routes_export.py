@@ -26,6 +26,7 @@ from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.model.document import CanonicalDocument
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.registry import AdapterRegistry
+from docos.services.docengine.writers.docx_writer import model_to_docx
 from docos.services.docengine.writers.image_writer import model_to_png
 from docos.services.docengine.writers.markup import (
     model_to_csv,
@@ -33,6 +34,7 @@ from docos.services.docengine.writers.markup import (
     model_to_markdown,
 )
 from docos.services.docengine.writers.pptx_writer import model_to_pptx
+from docos.services.docengine.writers.redaction import is_redacted
 from docos.services.docengine.writers.searchable_pdf import model_to_searchable_pdf
 from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
 from docos.services.provenance import validation
@@ -50,13 +52,12 @@ _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 # Function-based writers that serialise the canonical model directly (no adapter needed).
-# All return bytes.
+# All return bytes. docx/pptx are handled separately because they can embed image bytes.
 _DIRECT_WRITERS = {
     "md": (model_to_markdown, "text/markdown", "md"),
     "html": (model_to_html, "text/html", "html"),
     "csv": (model_to_csv, "text/csv", "csv"),
     "xlsx": (model_to_xlsx, _XLSX_MIME, "xlsx"),
-    "pptx": (model_to_pptx, _PPTX_MIME, "pptx"),
     "png": (model_to_png, "image/png", "png"),
 }
 
@@ -82,6 +83,22 @@ def _validation_headers(report: validation.ValidationReport) -> dict[str, str]:
     }
 
 
+async def _load_image_bytes(doc: CanonicalDocument, blob_store: BlobStore) -> dict[str, bytes]:
+    """Fetch persisted, non-redacted image bytes keyed by ``blob_ref`` for embedding in exports."""
+    out: dict[str, bytes] = {}
+    for node in doc.nodes.values():
+        if node.type != "image" or not node.attrs.get("persisted"):
+            continue
+        ref = getattr(node, "blob_ref", None)
+        if not ref or ref in out or is_redacted(doc, node.id):
+            continue
+        try:
+            out[ref] = await blob_store.get(ref)
+        except Exception:  # noqa: BLE001 - a missing blob just falls back to a placeholder
+            continue
+    return out
+
+
 async def _render_export(
     doc: CanonicalDocument,
     record,
@@ -99,6 +116,14 @@ async def _render_export(
 
         original = await blob_store.get(record.blob_key)
         return write_back_pdf(original, doc), "application/pdf", "pdf"
+
+    # DOCX and PPTX can embed real image bytes — load them once and pass to the writer.
+    if fmt == "docx":
+        images = await _load_image_bytes(doc, blob_store)
+        return model_to_docx(doc, images), _DOCX_MIME, "docx"
+    if fmt == "pptx":
+        images = await _load_image_bytes(doc, blob_store)
+        return model_to_pptx(doc, images), _PPTX_MIME, "pptx"
 
     if fmt in _DIRECT_WRITERS:
         writer, mime, ext = _DIRECT_WRITERS[fmt]

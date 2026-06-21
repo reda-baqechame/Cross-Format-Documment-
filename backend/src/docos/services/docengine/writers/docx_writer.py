@@ -11,14 +11,20 @@ from __future__ import annotations
 import io
 
 from docx import Document as DocxDocument
-from docx.shared import Pt
+from docx.shared import Inches, Pt
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
 from docos.services.docengine.writers.redaction import is_redacted, node_text, run_text
 
+# Cap embedded images to the printable width so a large picture never overflows the page.
+_MAX_IMAGE_WIDTH = Inches(6)
 
-def model_to_docx(doc: CanonicalDocument) -> bytes:
+
+def model_to_docx(doc: CanonicalDocument, images: dict[str, bytes] | None = None) -> bytes:
+    """Serialise ``doc`` to DOCX. ``images`` maps ``ImageNode.blob_ref`` → bytes; when an image's
+    bytes are present they are embedded, otherwise a ``[image: …]`` placeholder is written."""
+    images = images or {}
     out = DocxDocument()
     if doc.meta.title:
         out.core_properties.title = doc.meta.title
@@ -29,19 +35,21 @@ def model_to_docx(doc: CanonicalDocument) -> bytes:
             if pages_seen:
                 out.add_page_break()
             pages_seen += 1
-        _write_block(out, doc, node)
+        _write_block(out, doc, node, images)
 
     buf = io.BytesIO()
     out.save(buf)
     return buf.getvalue()
 
 
-def _write_block(out: DocxDocument, doc: CanonicalDocument, node: AnyNode) -> None:
+def _write_block(
+    out: DocxDocument, doc: CanonicalDocument, node: AnyNode, images: dict[str, bytes]
+) -> None:
     kind = node.type
 
     if kind in ("root", "page"):
         for child in doc.children_of(node.id):
-            _write_block(out, doc, child)
+            _write_block(out, doc, child, images)
 
     elif kind == "heading":
         level = min(max(int(getattr(node, "level", 1) or 1), 0), 9)
@@ -66,7 +74,7 @@ def _write_block(out: DocxDocument, doc: CanonicalDocument, node: AnyNode) -> No
 
     elif kind == "image":
         if not is_redacted(doc, node.id):
-            out.add_paragraph(f"[image: {node_text(doc, node) or 'image'}]")
+            _write_image(out, doc, node, images)
 
     elif kind == "field":
         if not is_redacted(doc, node.id):
@@ -74,6 +82,20 @@ def _write_block(out: DocxDocument, doc: CanonicalDocument, node: AnyNode) -> No
             out.add_paragraph(f"{name}: {node_text(doc, node)}")
 
     # comment / annotation / metadata_block / run are not emitted as standalone blocks.
+
+
+def _write_image(
+    out: DocxDocument, doc: CanonicalDocument, node: AnyNode, images: dict[str, bytes]
+) -> None:
+    """Embed the real image bytes when available, else fall back to a text placeholder."""
+    data = images.get(getattr(node, "blob_ref", "") or "")
+    if data:
+        try:
+            out.add_picture(io.BytesIO(data), width=_MAX_IMAGE_WIDTH)
+            return
+        except Exception:  # noqa: BLE001 - unreadable/unsupported image → placeholder
+            pass
+    out.add_paragraph(f"[image: {node_text(doc, node) or 'image'}]")
 
 
 def _add_runs(para, doc: CanonicalDocument, block: AnyNode) -> None:
