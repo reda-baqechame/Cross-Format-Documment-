@@ -32,15 +32,50 @@ def _page_texts(content: bytes) -> list[str]:
         doc.close()
 
 
+def _rotations(content: bytes) -> list[int]:
+    doc = fitz.open(stream=content, filetype="pdf")
+    try:
+        return [p.rotation for p in doc]
+    finally:
+        doc.close()
+
+
+def test_rotate_blank_pages_rotates_all(client):
+    """No page list means 'all pages' (matches the UI's 'blank = all' hint)."""
+    doc_id = _upload_pdf(client, ["A", "B", "C"])
+    out = client.post(f"/documents/{doc_id}/pages/rotate", json={"pages": [], "degrees": 90})
+    assert out.status_code == 200
+    assert _rotations(out.content) == [90, 90, 90]
+
+
 def test_delete_and_reorder_endpoints(client):
     doc_id = _upload_pdf(client, ["A", "B", "C"])
 
+    # delete persists a new current version, so it mutates the stored document …
     out = client.post(f"/documents/{doc_id}/pages/delete", json={"pages": [1]})
     assert out.status_code == 200
     assert _page_texts(out.content) == ["A", "C"]
 
-    out = client.post(f"/documents/{doc_id}/pages/reorder", json={"order": [2, 1, 0]})
-    assert _page_texts(out.content) == ["C", "B", "A"]
+    # … and the next op operates on the now-2-page document (indices compound, not reset).
+    out = client.post(f"/documents/{doc_id}/pages/reorder", json={"order": [1, 0]})
+    assert out.status_code == 200
+    assert _page_texts(out.content) == ["C", "A"]
+
+
+def test_page_ops_persist_new_version(client):
+    """In-place page ops update the stored document, not just the downloaded copy."""
+    doc_id = _upload_pdf(client, ["A", "B", "C"])
+    versions_before = len(client.get(f"/documents/{doc_id}/history").json()["versions"])
+
+    out = client.post(f"/documents/{doc_id}/pages/delete", json={"pages": [1]})
+    assert out.status_code == 200
+
+    # The model now reflects two pages, and a new version was committed.
+    model = client.get(f"/documents/{doc_id}/model").json()
+    nodes = model["document"]["nodes"].values()
+    assert sum(1 for n in nodes if n["type"] == "page") == 2
+    versions_after = len(client.get(f"/documents/{doc_id}/history").json()["versions"])
+    assert versions_after == versions_before + 1
 
 
 def test_extract_endpoint(client):

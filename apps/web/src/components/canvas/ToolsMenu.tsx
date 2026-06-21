@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { classifyDocument, compressPdf, protectPdf, saveAsTemplate, watermarkPdf } from "@/lib/api";
@@ -41,12 +42,15 @@ export function ToolsMenu({ docId, sourceFormat }: { docId: string; sourceFormat
   const ref = useDismissOnOutside(open, () => setOpen(false));
   const isPdf = sourceFormat === "pdf";
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const run = async (fn: () => Promise<unknown>, success?: string) => {
+  const run = async (fn: () => Promise<unknown>, success?: string, mutates = false) => {
     setOpen(false);
     setBusy(true);
     try {
       await fn();
+      // Compress/watermark persist a new version server-side — refresh the canvas to match.
+      if (mutates) void queryClient.invalidateQueries({ queryKey: ["model", docId] });
       if (success) toast.success(success);
     } catch (e) {
       toast.error(friendlyApiError(e, "That tool failed."));
@@ -57,7 +61,7 @@ export function ToolsMenu({ docId, sourceFormat }: { docId: string; sourceFormat
 
   const onPromptConfirm = (value: string) => {
     if (prompt === "password") void run(() => protectPdf(docId, value), "PDF password protection applied.");
-    if (prompt === "watermark") void run(() => watermarkPdf(docId, value), "Watermark added.");
+    if (prompt === "watermark") void run(() => watermarkPdf(docId, value), "Watermark added.", true);
     if (prompt === "template")
       void run(
         () => saveAsTemplate(docId, value),
@@ -98,7 +102,7 @@ export function ToolsMenu({ docId, sourceFormat }: { docId: string; sourceFormat
             label="Compress PDF"
             disabled={!isPdf}
             hint={!isPdf ? "PDF only" : undefined}
-            onClick={() => run(() => compressPdf(docId), "PDF compressed.")}
+            onClick={() => run(() => compressPdf(docId), "PDF compressed.", true)}
           />
           <MenuItem
             label="Password-protect PDF"
