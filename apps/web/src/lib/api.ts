@@ -80,6 +80,34 @@ export async function fetchHealth(docId: string): Promise<DocumentHealthResponse
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
 }
 
+// Send-Ready Check / Document X-Ray. Defined inline (like BackendHealth) so the surface
+// doesn't depend on a codegen run; the backend shapes live in services/provenance/readiness.py.
+export interface ReadinessCheck {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+  count: number;
+  fixable: boolean;
+  fix_action: "redact_pii" | "sanitize_metadata" | "apply_redactions" | null;
+}
+
+export interface ReadinessReport {
+  verdict: "ready" | "needs_fixes" | "blocked";
+  summary: string;
+  checks: ReadinessCheck[];
+}
+
+export interface ReadinessResponse {
+  doc_id: string;
+  report: ReadinessReport;
+}
+
+/** One verdict on whether a document is safe + complete to send (read-only). */
+export async function fetchReadiness(docId: string): Promise<ReadinessResponse> {
+  return json<ReadinessResponse>(await fetch(`${BASE}/documents/${docId}/readiness`));
+}
+
 export interface EditorSession {
   doc_id: string;
   session_id: string;

@@ -97,6 +97,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
+- ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
+  PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
+  cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
+  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` ·
+  🟡 `POST /clean` one-shot verified copy (next)
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
