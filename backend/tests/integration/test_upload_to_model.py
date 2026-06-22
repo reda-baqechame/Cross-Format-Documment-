@@ -77,11 +77,10 @@ def test_malformed_magic_matched_file_is_rejected_before_blob_stage(client, db, 
     assert not blob_root.exists() or not any(blob_root.rglob("*"))
 
 
-def test_patch_endpoint_noop(client):
+def test_patch_endpoint_nl_requires_ai(client):
+    # Offline (noop provider), a natural-language instruction returns a clear 501 instead of a
+    # silent 200 no-op, so the UI never looks like it "did nothing".
     files = {"file": ("note.txt", b"editable text", "text/plain")}
     doc_id = client.post("/documents", files=files).json()["doc_id"]
     resp = client.post(f"/documents/{doc_id}/patches", json={"instruction": "make it formal"})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["applied"] is False  # noop client generates no ops
-    assert body["intent"] == "make it formal"
+    assert resp.status_code == 501

@@ -42,6 +42,26 @@ def test_undo_reverts_to_previous_version(client):
     assert run_text() == "before edit"
 
 
+def test_natural_language_edit_without_ai_returns_501(client):
+    """Offline (noop provider), a natural-language instruction is a clear 501, not a no-op."""
+    doc_id = _upload(client, b"before edit")
+    resp = client.post(f"/documents/{doc_id}/patches", json={"instruction": "make it formal"})
+    assert resp.status_code == 501
+    assert "AI provider" in resp.json()["detail"]
+
+
+def test_explicit_ops_still_apply_offline(client):
+    """Deterministic ops do not require AI and must keep working offline."""
+    doc_id = _upload(client, b"before edit")
+    run_id = _first_run_id(client, doc_id)
+    resp = client.post(
+        f"/documents/{doc_id}/patches",
+        json={"ops": [{"op": "set_text", "target_id": run_id, "payload": {"text": "after"}}]},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["applied"] is True
+
+
 def test_undo_with_no_history_is_409(client):
     doc_id = _upload(client)
     resp = client.post(f"/documents/{doc_id}/undo")

@@ -86,6 +86,17 @@ async def create_patch(
             created_at=datetime.now(UTC),
         )
     else:
+        # Natural-language editing only works with a real LLM provider. Without one, interpret()
+        # returns an empty patch and the request would otherwise look like a successful no-op —
+        # so fail loudly with 501 instead of silently changing nothing.
+        if not get_settings().ai_enabled:
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Natural-language editing needs an AI provider — set ANTHROPIC_API_KEY or "
+                    "OPENAI_API_KEY. You can still apply explicit edit operations offline."
+                ),
+            )
         patch = await orchestrator.interpret(doc, body.instruction or "")
 
     applied = bool(patch.patches)
