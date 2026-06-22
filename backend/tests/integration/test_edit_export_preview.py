@@ -70,8 +70,23 @@ def test_export_txt_and_docx(client):
 
 def test_unknown_export_format_is_400(client):
     doc_id = _upload_txt(client)
-    resp = client.get(f"/documents/{doc_id}/export", params={"format": "rtf"})
+    resp = client.get(f"/documents/{doc_id}/export", params={"format": "xyz"})
     assert resp.status_code == 400
+
+
+def test_rtf_export_round_trips(client):
+    doc_id = _upload_txt(client)
+    resp = client.get(f"/documents/{doc_id}/export", params={"format": "rtf"})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/rtf")
+    assert resp.content[:5] == b"{\\rtf"
+    # The RTF re-parses back to the same text via the adapter.
+    from docos.services.docengine.adapters.rtf import RtfAdapter
+
+    texts = " ".join(
+        n.text for n in RtfAdapter().parse(resp.content).nodes.values() if n.type == "run"
+    )
+    assert "editable text" in texts
 
 
 def test_pdf_origin_exports_as_docx(client, sample_pdf_bytes):

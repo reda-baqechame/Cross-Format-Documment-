@@ -183,6 +183,86 @@ def _html_block(body: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
             body.append(f"<p><strong>{name}:</strong> {value}</p>")
 
 
+# ── RTF ─────────────────────────────────────────────────────────────────────────
+def _rtf_escape(text: str) -> str:
+    """Escape RTF control chars and emit non-ASCII as portable ``\\uN?`` unicode escapes."""
+    out: list[str] = []
+    for ch in text:
+        if ch in ("\\", "{", "}"):
+            out.append("\\" + ch)
+        elif ch == "\n":
+            out.append("\\par ")
+        elif ch == "\t":
+            out.append("\\tab ")
+        elif ord(ch) < 128:
+            out.append(ch)
+        else:
+            code = ord(ch)
+            code = code if code <= 32767 else code - 65536  # RTF \u takes a signed 16-bit int
+            out.append(f"\\u{code}?")
+    return "".join(out)
+
+
+def _rtf_runs(doc: CanonicalDocument, block: AnyNode) -> str:
+    parts: list[str] = []
+    for r in _runs(doc, block):
+        text = run_text(doc, r)
+        if not text:
+            continue
+        esc = _rtf_escape(text)
+        if getattr(r, "bold", False):
+            esc = "{\\b " + esc + "}"
+        if getattr(r, "italic", False):
+            esc = "{\\i " + esc + "}"
+        parts.append(esc)
+    return "".join(parts)
+
+
+def _rtf_block(parts: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
+    kind = node.type
+    if kind in ("root", "page"):
+        for child in doc.children_of(node.id):
+            _rtf_block(parts, doc, child)
+    elif kind == "heading":
+        inner = _rtf_runs(doc, node)
+        if inner:
+            parts.append("{\\b\\fs32 " + inner + "}\\par")
+    elif kind == "paragraph":
+        inner = _rtf_runs(doc, node)
+        if inner:
+            parts.append(inner + "\\par")
+    elif kind == "list":
+        ordered = bool(getattr(node, "ordered", False))
+        i = 0
+        for item in doc.children_of(node.id):
+            if item.type != "list_item":
+                continue
+            i += 1
+            marker = f"{i}. " if ordered else "\\bullet  "
+            parts.append(marker + _rtf_runs(doc, item) + "\\par")
+    elif kind == "table":
+        for row in _table_rows(doc, node):
+            parts.append("\\tab ".join(_rtf_escape(cell) for cell in row) + "\\par")
+    elif kind == "image":
+        if not is_redacted(doc, node.id):
+            parts.append(_rtf_escape(f"[image: {node_text(doc, node) or 'image'}]") + "\\par")
+    elif kind == "field":
+        if not is_redacted(doc, node.id):
+            name = _rtf_escape(getattr(node, "field_name", "field"))
+            parts.append("{\\b " + name + ":} " + _rtf_escape(node_text(doc, node)) + "\\par")
+
+
+def model_to_rtf(doc: CanonicalDocument) -> bytes:
+    """Rebuild a real ``.rtf`` from the node graph — paragraphs, bold/italic runs, headings,
+    lists, tables (tab-separated), with redaction honored via ``run_text``."""
+    parts: list[str] = []
+    for node in doc.children_of(doc.root_id):
+        _rtf_block(parts, doc, node)
+    rtf = "{\\rtf1\\ansi\\deff0\n" + "\n".join(parts) + "\n}"
+    # Non-ASCII is already \uN?-escaped, so ASCII encoding is lossless here.
+    return rtf.encode("ascii", errors="replace")
+
+
 # ── CSV ─────────────────────────────────────────────────────────────────────────
 def model_to_csv(doc: CanonicalDocument) -> bytes:
     """Tables become CSV rows; if the document has no tables, each paragraph is a row."""

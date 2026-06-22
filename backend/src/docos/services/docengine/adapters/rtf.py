@@ -1,8 +1,9 @@
 """RTF adapter (striprtf).
 
-Strips RTF control words to plain text, then builds the same paragraph/run structure
-as the TXT adapter (one paragraph per non-empty line). Formatting beyond text isn't
-recovered, but the content flows through the canonical model and exports cleanly.
+Strips RTF control words to plain text on import, then builds the same paragraph/run
+structure as the TXT adapter (one paragraph per non-empty line). Inbound formatting beyond
+text isn't recovered, but the content flows through the canonical model and round-trips:
+:meth:`export` rebuilds a real ``.rtf`` from the model via ``writers.markup.model_to_rtf``.
 """
 
 from __future__ import annotations
@@ -58,4 +59,6 @@ class RtfAdapter(FormatAdapter):
         raise NotImplementedError("RtfAdapter.render_preview — text renders in the canvas")
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
-        raise NotImplementedError("RtfAdapter.export — download as DOCX/TXT from the model")
+        from docos.services.docengine.writers.markup import model_to_rtf
+
+        return model_to_rtf(doc)

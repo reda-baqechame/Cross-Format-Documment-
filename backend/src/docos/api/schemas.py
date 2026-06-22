@@ -35,6 +35,21 @@ class HealthCheck(BaseModel):
     # provider is configured; the UI uses this to show their true state instead of failing silently.
     ai_enabled: bool = False
     llm_provider: str = "noop"
+    # Native-editor + storage/db truthing so the UI can show what is actually wired up rather
+    # than implying universal native fidelity. ``office_editor`` / ``pdf_editor`` are False until
+    # an external provider (OnlyOffice / PDF SDK) is configured; until then editing is structural.
+    office_editor: bool = False
+    pdf_editor: bool = False
+    database: str = "sqlite"
+
+
+class ReadyCheck(BaseModel):
+    """Deep readiness probe — unlike ``/health`` this fails (503) when the app cannot actually
+    serve document operations: required tables missing, blob storage unwritable, or migrations
+    not applied. Railway points its healthcheck here so a broken deploy never reports healthy."""
+
+    ok: bool
+    checks: dict[str, str]
 
 
 class UploadResponse(BaseModel):
@@ -173,7 +188,8 @@ class PagesRequest(BaseModel):
 
 
 class RotateRequest(BaseModel):
-    pages: list[int] = Field(min_length=1)
+    # An empty list means "all pages" — the route expands it (matches the UI's "blank = all").
+    pages: list[int] = Field(default_factory=list)
     degrees: int = 90
 
 

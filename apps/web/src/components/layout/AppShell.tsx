@@ -5,7 +5,7 @@ import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({
   children,
-  subtitle = "Open, edit, convert & protect any document",
+  subtitle = "Open, edit, convert & protect common document formats",
 }: {
   children: ReactNode;
   subtitle?: string;
@@ -18,7 +18,9 @@ export function AppShell({
             <Logo subtitle={subtitle} />
           </Link>
           <a
-            href="https://code.claude.com/docs/en/claude-code-on-the-web"
+            href="https://github.com/reda-baqechame/cross-format-documment-/tree/HEAD/docs"
+            target="_blank"
+            rel="noreferrer"
             className="hidden text-sm font-medium text-slate-500 transition-colors hover:text-slate-800 sm:block"
           >
             Docs

@@ -21,6 +21,9 @@ export interface BackendHealth {
   db: string;
   ai_enabled: boolean;
   llm_provider: string;
+  office_editor: boolean;
+  pdf_editor: boolean;
+  database: string;
 }
 
 /** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */
@@ -558,6 +561,7 @@ export type ExportFormat =
   | "md"
   | "html"
   | "csv"
+  | "rtf"
   | "xlsx"
   | "pptx"
   | "png";
@@ -1183,7 +1187,8 @@ export const reorderPages = (docId: string, order: number[]) =>
 export const mergePdfs = (docId: string, docIds: string[]) =>
   pdfTool(docId, "merge", { doc_ids: docIds });
 
-/** Split: extract the given (1-based) pages into a new PDF and download it. */
+/** Split: extract the given 0-based page indices (as produced by parsePageList) into a new PDF
+ *  and download it. The backend's /pages/extract expects 0-based indices. */
 export async function splitPdf(docId: string, pages: number[]): Promise<void> {
   const q = pages.join(",");
   const res = await fetch(`${BASE}/documents/${docId}/pages/extract?pages=${q}`);

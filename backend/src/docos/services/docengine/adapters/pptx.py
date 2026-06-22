@@ -93,13 +93,27 @@ class PptxAdapter(FormatAdapter):
 
     def _add_image(self, doc: CanonicalDocument, page: PageNode, shape) -> None:
         alt = (getattr(shape, "name", None) or "image").strip()
+        blob_ref = f"pptx/{page.page_number}/{shape.shape_id}"
+        # Pull the picture bytes so the upload route can persist them (parse is sync; persistence
+        # is async). Guard against malformed pictures so a bad shape never fails the whole parse.
+        img_bytes = b""
+        mime: str | None = None
+        try:
+            image = shape.image
+            img_bytes = image.blob or b""
+            mime = image.content_type or None
+        except Exception:  # noqa: BLE001 - a picture without retrievable bytes degrades gracefully
+            img_bytes = b""
         node = ImageNode(
             id=new_node_id("img"),
             parent_id=page.id,
-            blob_ref=f"pptx/{page.page_number}/{shape.shape_id}",
+            blob_ref=blob_ref,
+            mime=mime,
             alt_text=alt or None,
             attrs={"persisted": False},
         )
+        if img_bytes:
+            doc._pending_assets[blob_ref] = img_bytes
         page.children.append(node.id)
         doc.add_node(node)
 

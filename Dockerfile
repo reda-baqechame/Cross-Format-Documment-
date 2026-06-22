@@ -46,7 +46,7 @@ RUN python3 -m venv /opt/venv
 COPY backend/pyproject.toml backend/README.md ./backend/
 COPY backend/src ./backend/src
 WORKDIR /app/backend
-RUN pip install --upgrade pip && pip install ".[anthropic]"
+RUN pip install --upgrade pip && pip install ".[anthropic,openai]"
 
 WORKDIR /app
 COPY backend ./backend

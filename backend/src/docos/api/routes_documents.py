@@ -62,6 +62,29 @@ def _load_latest(session: Session, doc_id: str, actor: Actor) -> tuple[Document,
     return record, from_dict(version.model)
 
 
+async def _persist_pending_assets(doc: CanonicalDocument, blob_store: BlobStore) -> None:
+    """Write image bytes extracted during ``parse`` to blob storage and mark their nodes persisted.
+
+    Adapters can't ``await`` inside the sync ``parse``, so they stash extracted image bytes on the
+    document (``_pending_assets``); we drain them here. Best-effort: a storage failure leaves the
+    image as an unpersisted placeholder rather than failing the whole upload.
+    """
+    pending = getattr(doc, "_pending_assets", {})
+    if not pending:
+        return
+    stored: set[str] = set()
+    for ref, data in pending.items():
+        try:
+            await blob_store.put(ref, data)
+            stored.add(ref)
+        except Exception:  # noqa: BLE001 - image persistence is best-effort
+            logger.warning("failed to persist image asset %s", ref)
+    for node in doc.nodes.values():
+        if node.type == "image" and node.blob_ref in stored:
+            node.attrs["persisted"] = True
+    pending.clear()
+
+
 async def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
     """Read the upload in chunks, aborting as soon as it exceeds ``max_bytes``.
 
@@ -88,6 +111,7 @@ async def upload_document(
     session: Session = Depends(db_session),
     gateway: IngestionGateway = Depends(get_ingestion_gateway),
     registry: AdapterRegistry = Depends(get_registry),
+    blob_store: BlobStore = Depends(blob_store_dep),
     actor: Actor = Depends(get_actor),
     _rate: None = Depends(enforce_upload_rate),
 ) -> UploadResponse:
@@ -153,6 +177,8 @@ async def upload_document(
         raise HTTPException(status_code=422, detail="file could not be parsed safely") from exc
 
     blob_key = await gateway.stage(data, mime=result.mime)
+    # Persist any images the adapter extracted so exporters can embed real bytes (not placeholders).
+    await _persist_pending_assets(doc, blob_store)
 
     record = Document(
         id=doc.doc_id,

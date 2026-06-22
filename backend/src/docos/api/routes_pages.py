@@ -10,6 +10,7 @@ require a PDF-origin document.
 from __future__ import annotations
 
 import re
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -26,9 +27,10 @@ from docos.api.schemas import (
 )
 from docos.api.session import Actor, get_actor
 from docos.db.models import Document
-from docos.deps import blob_store_dep, db_session, get_provenance
+from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.model.document import CanonicalDocument
 from docos.services.docengine import pageops
+from docos.services.docengine.registry import AdapterRegistry
 from docos.services.docengine.writers.pdf_writer import write_back_pdf
 from docos.services.provenance import validation
 from docos.settings import get_settings
@@ -73,6 +75,35 @@ def _audit(session: Session, doc_id: str, op: str, detail: dict) -> None:
     session.commit()
 
 
+async def _persist_pdf(
+    session: Session,
+    record: Document,
+    out: bytes,
+    *,
+    blob_store: BlobStore,
+    registry: AdapterRegistry,
+    op: str,
+    detail: dict,
+) -> None:
+    """Burn an in-place page-op result back into the document as a new current version.
+
+    ``out`` already has edits + redactions applied (``write_back_pdf``), so re-parsing it yields a
+    faithful, redaction-true canonical model. Storing it as the new blob + version makes the op a
+    real mutation of the document — when the user reopens it, the change is there — instead of a
+    download-only side effect. The audit event is recorded as part of the same commit.
+    """
+    new_key = f"uploads/{uuid.uuid4().hex}"
+    await blob_store.put(new_key, out)
+    new_doc = registry.resolve("application/pdf").parse(out)
+    new_doc.doc_id = record.id  # keep document identity / version lineage stable
+    record.blob_key = new_key
+    provenance = get_provenance(session)
+    version_id = provenance.commit_version(new_doc)
+    record.current_version_id = version_id
+    provenance.record_event(record.id, f"pages.{op}", actor="api", detail=detail)
+    session.commit()
+
+
 @router.post("/{doc_id}/pages/rotate")
 async def rotate(
     doc_id: str,
@@ -80,14 +111,25 @@ async def rotate(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
+    # No pages given means "all pages" (matches the UI's "blank = all" hint).
+    pages = body.pages or list(range(pageops.page_count(pdf)))
     try:
-        out = pageops.rotate_pages(pdf, body.pages, body.degrees)
+        out = pageops.rotate_pages(pdf, pages, body.degrees)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _audit(session, doc_id, "rotated", {"pages": body.pages, "degrees": body.degrees})
+    await _persist_pdf(
+        session,
+        record,
+        out,
+        blob_store=blob_store,
+        registry=registry,
+        op="rotated",
+        detail={"pages": pages, "degrees": body.degrees},
+    )
     report = validation.validate_pageop(
         doc, "rotate", out, expected_pages=pageops.page_count(pdf), signature_valid=_sig_valid(doc)
     )
@@ -101,15 +143,24 @@ async def delete(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
+    input_n = pageops.page_count(pdf)
     try:
         out = pageops.delete_pages(pdf, body.pages)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _audit(session, doc_id, "deleted", {"pages": body.pages})
-    input_n = pageops.page_count(pdf)
+    await _persist_pdf(
+        session,
+        record,
+        out,
+        blob_store=blob_store,
+        registry=registry,
+        op="deleted",
+        detail={"pages": body.pages},
+    )
     removed = len({p for p in body.pages if 0 <= p < input_n})
     report = validation.validate_pageop(
         doc, "delete", out, expected_pages=input_n - removed, signature_valid=_sig_valid(doc)
@@ -124,6 +175,7 @@ async def reorder(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
@@ -131,7 +183,15 @@ async def reorder(
         out = pageops.reorder_pages(pdf, body.order)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _audit(session, doc_id, "reordered", {"order": body.order})
+    await _persist_pdf(
+        session,
+        record,
+        out,
+        blob_store=blob_store,
+        registry=registry,
+        op="reordered",
+        detail={"order": body.order},
+    )
     report = validation.validate_pageop(
         doc, "reorder", out, expected_pages=len(body.order), signature_valid=_sig_valid(doc)
     )
@@ -191,11 +251,20 @@ async def compress(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
     out = pageops.compress_pdf(pdf)
-    _audit(session, doc_id, "compressed", {"bytes_in": len(pdf), "bytes_out": len(out)})
+    await _persist_pdf(
+        session,
+        record,
+        out,
+        blob_store=blob_store,
+        registry=registry,
+        op="compressed",
+        detail={"bytes_in": len(pdf), "bytes_out": len(out)},
+    )
     report = validation.validate_pageop(
         doc,
         "compress",
@@ -237,6 +306,7 @@ async def watermark(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    registry: AdapterRegistry = Depends(get_registry),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     pdf = await _current_pdf(record, doc, blob_store)
@@ -244,7 +314,15 @@ async def watermark(
         out = pageops.watermark_pdf(pdf, body.text)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _audit(session, doc_id, "watermarked", {"text": body.text})
+    await _persist_pdf(
+        session,
+        record,
+        out,
+        blob_store=blob_store,
+        registry=registry,
+        op="watermarked",
+        detail={"text": body.text},
+    )
     report = validation.validate_pageop(
         doc,
         "watermark",

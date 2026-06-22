@@ -246,7 +246,7 @@ export const TASKS: TaskDef[] = [
     ],
     cta: "Split",
     run: async ({ docIds, options }) => {
-      await splitPdf(docIds[0], parsePageList(options.pages ?? "").map((n) => n + 1));
+      await splitPdf(docIds[0], parsePageList(options.pages ?? ""));
       return { kind: "downloaded" };
     },
   },
@@ -337,7 +337,7 @@ export const TASKS: TaskDef[] = [
   {
     slug: "convert",
     title: "Convert document",
-    blurb: "Turn any document into PDF, Word, Excel, PowerPoint, image, or text.",
+    blurb: "Export structured copies to PDF, Word, Excel, PowerPoint, image, or text. Native layout fidelity varies by format.",
     category: "Convert",
     emoji: "🔁",
     accept: ANY,
@@ -355,6 +355,7 @@ export const TASKS: TaskDef[] = [
           { value: "pptx", label: "PowerPoint (.pptx)" },
           { value: "png", label: "Image (.png)" },
           { value: "txt", label: "Plain text (.txt)" },
+          { value: "rtf", label: "Rich Text (.rtf)" },
           { value: "md", label: "Markdown (.md)" },
           { value: "html", label: "HTML (.html)" },
           { value: "csv", label: "CSV (.csv)" },
@@ -470,7 +471,7 @@ export const TASKS: TaskDef[] = [
   {
     slug: "protect-pdf",
     title: "Protect PDF",
-    blurb: "Add a password and AES-256 encryption to a PDF.",
+    blurb: "Download a password-protected, AES-256-encrypted copy of a PDF.",
     category: "Secure",
     emoji: "🔒",
     accept: PDF,
@@ -712,8 +713,8 @@ export const TASKS: TaskDef[] = [
   },
   {
     slug: "bulk-send",
-    title: "Bulk send",
-    blurb: "Prepare one document packet for many recipients with independent approval copies.",
+    title: "Create recipient packets",
+    blurb: "Prepare one document packet per recipient, each with its own approval copy. Creates the packets for routing — it does not email or deliver them.",
     category: "Review",
     emoji: "✉️",
     accept: ANY,
