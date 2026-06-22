@@ -1,11 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
+  cleanDocument,
+  exportUrl,
   fetchReadiness,
   redactSensitive,
   sanitizeMetadata,
+  type CleanResponse,
+  type ExportFormat,
   type ReadinessCheck,
 } from "@/lib/api";
 
@@ -35,6 +40,15 @@ export function ReadinessPanel({ docId }: { docId: string }) {
       return Promise.reject(new Error("This check has no automatic fix."));
     },
     onSuccess: refresh,
+  });
+
+  const [cleaned, setCleaned] = useState<CleanResponse | null>(null);
+  const clean = useMutation({
+    mutationFn: () => cleanDocument(docId),
+    onSuccess: (result) => {
+      setCleaned(result);
+      refresh();
+    },
   });
 
   if (readiness.isLoading || !readiness.data) {
@@ -67,6 +81,33 @@ export function ReadinessPanel({ docId }: { docId: string }) {
         <p className={`text-sm font-semibold ${tone.text}`}>{tone.label}</p>
         <p className="mt-0.5 text-xs text-slate-600">{report.summary}</p>
       </div>
+
+      {report.verdict !== "ready" && (
+        <button
+          type="button"
+          onClick={() => clean.mutate()}
+          disabled={clean.isPending}
+          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+        >
+          {clean.isPending ? "Cleaning & verifying…" : "Clean before you send"}
+        </button>
+      )}
+
+      {cleaned && cleaned.validation.ok && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+          <p className="text-sm font-semibold text-green-800">Verified clean copy ready</p>
+          <p className="mt-0.5 text-xs text-green-700">
+            Proof: {cleaned.validation.summary}. Redacted text is unrecoverable and embedded
+            metadata is stripped.
+          </p>
+          <a
+            href={exportUrl(docId, cleaned.validation.output_format as ExportFormat)}
+            className="mt-2 inline-block rounded-md border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100"
+          >
+            Download clean copy (.{cleaned.validation.output_format})
+          </a>
+        </div>
+      )}
 
       <ul className="space-y-2">
         {report.checks.map((check) => (
@@ -103,9 +144,9 @@ export function ReadinessPanel({ docId }: { docId: string }) {
         ))}
       </ul>
 
-      {(readiness.isError || fix.isError) && (
+      {(readiness.isError || fix.isError || clean.isError) && (
         <p role="alert" className="text-xs text-red-600">
-          {[readiness.error, fix.error]
+          {[readiness.error, fix.error, clean.error]
             .filter(Boolean)
             .map((e) => (e instanceof Error ? e.message : String(e)))
             .join(" · ")}

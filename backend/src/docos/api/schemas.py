@@ -76,6 +76,16 @@ class ReadinessResponse(BaseModel):
     report: ReadinessReport
 
 
+class CleanResponse(BaseModel):
+    """Result of a one-shot 'Clean Before You Send': fixes applied + post-clean verdict + proof."""
+
+    doc_id: str
+    applied: bool
+    new_version_id: str | None
+    report: ReadinessReport  # re-run after cleaning
+    validation: ValidationReport  # proof the clean copy is sound (redaction unrecoverable, …)
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport

@@ -100,8 +100,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
   PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
-  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` ·
-  🟡 `POST /clean` one-shot verified copy (next)
+  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx`
+- ✅ Clean Before You Send — `POST /documents/{id}/clean` applies the auto-fixes (strip hidden
+  metadata + true-redact PII) as one reversible patch, re-checks, and returns the post-clean
+  verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
+  via `/export`. PDF embedded /Info + XMP metadata is stripped on the clean export (scoped to
+  sanitized docs in `writers/pdf_writer.py`)
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but

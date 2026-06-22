@@ -108,6 +108,21 @@ export async function fetchReadiness(docId: string): Promise<ReadinessResponse> 
   return json<ReadinessResponse>(await fetch(`${BASE}/documents/${docId}/readiness`));
 }
 
+export interface CleanResponse {
+  doc_id: string;
+  applied: boolean;
+  new_version_id: string | null;
+  report: ReadinessReport;
+  validation: ValidationReport; // defined below — output opens, redactions removed, …
+}
+
+/** Clean Before You Send: apply the auto-fixes, re-check, and return the verdict + proof. */
+export async function cleanDocument(docId: string): Promise<CleanResponse> {
+  return json<CleanResponse>(
+    await fetch(`${BASE}/documents/${docId}/clean`, { method: "POST" }),
+  );
+}
+
 export interface EditorSession {
   doc_id: string;
   session_id: string;
