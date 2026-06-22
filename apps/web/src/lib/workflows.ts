@@ -55,7 +55,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   {
     preset: "proposal_to_signature",
     title: "Proposal to signature",
-    blurb: "Check SOW details, add signature fields, approve, and validate a sendable copy.",
+    blurb: "Check SOW details, add signature form fields, route for approval, apply an integrity seal, and validate a sendable copy. (Internal approval + tamper-evident seal — not a legally-binding e-signature.)",
     audience: "Sales and legal",
     uploadLabel: "proposal, SOW, pitch, or agreement",
     revenueSignal: "Speeds proposal-to-close workflows",

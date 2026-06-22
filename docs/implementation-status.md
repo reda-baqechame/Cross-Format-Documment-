@@ -63,10 +63,15 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
 - 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
   table primitives; high-fidelity slide thumbnails/formula editor still pending)
+- 🟡 **PDF editing — known limits** (honest scope): write-back covers editing/redacting *existing*
+  text spans (matched by bbox) and true redaction. Arbitrary new-text placement, paragraph reflow,
+  moving/replacing objects, and native form/signature fields need a PDF SDK provider (surfaced as
+  "PDF native editor: not connected" in the System status panel) — `writers/pdf_writer.py`
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
-- ✅ Markdown / HTML / CSV export — `writers/markup.py`
+- ✅ Markdown / HTML / CSV / RTF export — `writers/markup.py` (RTF now round-trips: import strips
+  control words, export rebuilds a real `.rtf` with paragraphs/bold/italic/tables, redaction-safe)
 - ✅ XLSX / PPTX / PNG export from any source format — `writers/{xlsx,pptx,image}_writer.py`
   (XLSX now descends into page nodes; DOCX/PPTX embed real image bytes when persisted)
 - ✅ Image persistence — adapters extract image bytes at parse, the upload route writes them to

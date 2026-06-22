@@ -561,6 +561,7 @@ export type ExportFormat =
   | "md"
   | "html"
   | "csv"
+  | "rtf"
   | "xlsx"
   | "pptx"
   | "png";

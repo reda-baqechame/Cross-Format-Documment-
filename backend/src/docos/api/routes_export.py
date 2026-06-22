@@ -32,6 +32,7 @@ from docos.services.docengine.writers.markup import (
     model_to_csv,
     model_to_html,
     model_to_markdown,
+    model_to_rtf,
 )
 from docos.services.docengine.writers.pptx_writer import model_to_pptx
 from docos.services.docengine.writers.redaction import is_redacted
@@ -57,6 +58,7 @@ _DIRECT_WRITERS = {
     "md": (model_to_markdown, "text/markdown", "md"),
     "html": (model_to_html, "text/html", "html"),
     "csv": (model_to_csv, "text/csv", "csv"),
+    "rtf": (model_to_rtf, "application/rtf", "rtf"),
     "xlsx": (model_to_xlsx, _XLSX_MIME, "xlsx"),
     "png": (model_to_png, "image/png", "png"),
 }

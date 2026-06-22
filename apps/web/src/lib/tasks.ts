@@ -355,6 +355,7 @@ export const TASKS: TaskDef[] = [
           { value: "pptx", label: "PowerPoint (.pptx)" },
           { value: "png", label: "Image (.png)" },
           { value: "txt", label: "Plain text (.txt)" },
+          { value: "rtf", label: "Rich Text (.rtf)" },
           { value: "md", label: "Markdown (.md)" },
           { value: "html", label: "HTML (.html)" },
           { value: "csv", label: "CSV (.csv)" },

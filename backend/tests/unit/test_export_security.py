@@ -21,7 +21,12 @@ from docos.model.nodes import (
 )
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.adapters.txt import TxtAdapter
-from docos.services.docengine.writers.markup import model_to_csv, model_to_html, model_to_markdown
+from docos.services.docengine.writers.markup import (
+    model_to_csv,
+    model_to_html,
+    model_to_markdown,
+    model_to_rtf,
+)
 from docos.services.docengine.writers.pdf_writer import write_back_pdf
 from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
 from docos.services.provenance.validation import validate_export
@@ -63,6 +68,18 @@ def test_redacted_field_value_is_removed_and_validation_detects_leak():
     report = validate_export(doc, "html", leaked)
     assert report.ok is False
     assert any(f.code == "redaction.recovery" and f.level == "fail" for f in report.findings)
+
+
+def test_rtf_export_is_valid_and_redaction_safe():
+    root = RootNode(id="root", children=["field"])
+    field = FieldNode(id="field", parent_id="root", field_name="SSN", value="123-45-6789")
+    doc = _doc({root.id: root, field.id: field})
+    doc.redaction.redacted_node_ids.append(field.id)
+
+    rtf = model_to_rtf(doc)
+    assert rtf[:5] == b"{\\rtf"
+    assert rtf[-1:] == b"}"
+    assert b"123-45-6789" not in rtf  # redacted content never reaches output
 
 
 def test_csv_and_xlsx_escape_spreadsheet_formula_payloads():
