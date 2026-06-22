@@ -7,6 +7,7 @@ import {
   cleanDocument,
   exportUrl,
   fetchReadiness,
+  fetchRedactionAudit,
   redactSensitive,
   sanitizeMetadata,
   type CleanResponse,
@@ -24,6 +25,10 @@ export function ReadinessPanel({ docId }: { docId: string }) {
   const readiness = useQuery({
     queryKey: ["readiness", docId],
     queryFn: () => fetchReadiness(docId),
+  });
+  const audit = useQuery({
+    queryKey: ["redaction-audit", docId],
+    queryFn: () => fetchRedactionAudit(docId),
   });
 
   const refresh = () => {
@@ -81,6 +86,20 @@ export function ReadinessPanel({ docId }: { docId: string }) {
         <p className={`text-sm font-semibold ${tone.text}`}>{tone.label}</p>
         <p className="mt-0.5 text-xs text-slate-600">{report.summary}</p>
       </div>
+
+      {audit.data?.audit.is_pdf && audit.data.audit.verdict === "leaky" && (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3">
+          <p className="text-sm font-semibold text-red-800">⚠ Un-Redact Test failed</p>
+          <p className="mt-0.5 text-xs text-red-700">{audit.data.audit.summary}</p>
+          <p className="mt-1 text-[11px] text-red-600">
+            Those black boxes are cosmetic — the text underneath is still in the file. Clean
+            this document to remove it for real.
+          </p>
+        </div>
+      )}
+      {audit.data?.audit.is_pdf && audit.data.audit.verdict === "safe" && (
+        <p className="text-xs text-green-700">✓ Un-Redact Test passed — no text recoverable under any cover.</p>
+      )}
 
       {report.verdict !== "ready" && (
         <button

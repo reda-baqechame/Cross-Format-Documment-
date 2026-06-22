@@ -123,6 +123,27 @@ export async function cleanDocument(docId: string): Promise<CleanResponse> {
   );
 }
 
+export interface RedactionAuditReport {
+  is_pdf: boolean;
+  scanned_pages: number;
+  covered_regions: number;
+  recoverable_count: number;
+  verdict: "safe" | "leaky" | "not_applicable";
+  summary: string;
+}
+
+export interface RedactionAuditResponse {
+  doc_id: string;
+  audit: RedactionAuditReport;
+}
+
+/** Un-Redact Test: is text still recoverable under this PDF's "redactions"? */
+export async function fetchRedactionAudit(docId: string): Promise<RedactionAuditResponse> {
+  return json<RedactionAuditResponse>(
+    await fetch(`${BASE}/documents/${docId}/redaction-audit`),
+  );
+}
+
 export interface EditorSession {
   doc_id: string;
   session_id: string;

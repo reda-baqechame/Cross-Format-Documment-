@@ -18,6 +18,7 @@ from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.readiness import ReadinessReport
+from docos.services.provenance.redaction_audit import RedactionAuditReport
 from docos.services.provenance.sensitive import SensitiveFinding
 from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
@@ -84,6 +85,13 @@ class CleanResponse(BaseModel):
     new_version_id: str | None
     report: ReadinessReport  # re-run after cleaning
     validation: ValidationReport  # proof the clean copy is sound (redaction unrecoverable, …)
+
+
+class RedactionAuditResponse(BaseModel):
+    """Un-Redact Test verdict: is text still recoverable under this PDF's 'redactions'?"""
+
+    doc_id: str
+    audit: RedactionAuditReport
 
 
 class ValidationReportResponse(BaseModel):

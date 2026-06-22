@@ -106,6 +106,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
   verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
   via `/export`. PDF embedded /Info + XMP metadata is stripped on the clean export (scoped to
   sanitized docs in `writers/pdf_writer.py`)
+- ✅ Un-Redact Test — detect text still recoverable under a PDF's "redactions" (black-box fills /
+  redaction annotations); reports recoverable count + verdict (safe/leaky) without echoing the
+  text — `services/provenance/redaction_audit.py`, `GET /documents/{id}/redaction-audit`,
+  surfaced as an alarm banner in `ReadinessPanel.tsx`
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
