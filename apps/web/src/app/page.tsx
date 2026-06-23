@@ -106,6 +106,43 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section id="featured" className="scroll-mt-20">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Link
+              href="/tasks/un-redact-test"
+              className="group rounded-2xl border border-red-200 bg-red-50 p-5 transition-colors hover:bg-red-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-red-600">
+                Free · no login
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">🕵️ Un-Redact Test</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Drop a “redacted” PDF and see if the blacked-out text is still recoverable. If our
+                tool can pull it back, so can anyone you sent it to.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-red-700 group-hover:underline">
+                Test my redactions →
+              </span>
+            </Link>
+            <Link
+              href="/tasks/send-ready-check"
+              className="group rounded-2xl border border-trust-200 bg-trust-50 p-5 transition-colors hover:bg-trust-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-trust-700">
+                Before you hit send
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">🛡️ Send-Ready Check</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                One click reveals hidden metadata, exposed PII, and unsafe redactions — then cleans
+                it and proves the removed text is unrecoverable.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-trust-700 group-hover:underline">
+                Check before sending →
+              </span>
+            </Link>
+          </div>
+        </section>
+
         <section id="workflows" className="scroll-mt-20">
           <div className="mb-4">
             <h2 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">

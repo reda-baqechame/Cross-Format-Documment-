@@ -110,6 +110,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
   redaction annotations); reports recoverable count + verdict (safe/leaky) without echoing the
   text — `services/provenance/redaction_audit.py`, `GET /documents/{id}/redaction-audit`,
   surfaced as an alarm banner in `ReadinessPanel.tsx`
+- ✅ Public no-login tool pages: `/tasks/un-redact-test` (instant reveal) and `/tasks/send-ready-check`
+  (→ trust tab), featured on the landing page; per-page SEO metadata via `generateMetadata` in
+  `app/tasks/[slug]/page.tsx`. (Layer-1 distribution surface; Chrome extension still ⬜)
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but

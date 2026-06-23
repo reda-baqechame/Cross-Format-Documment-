@@ -17,6 +17,7 @@ import {
   downloadSearchablePdf,
   fetchExtract,
   fetchIntelligence,
+  fetchRedactionAudit,
   fetchSummary,
   mergePdfs,
   parsePageList,
@@ -434,6 +435,57 @@ export const TASKS: TaskDef[] = [
   },
 
   // ── Secure ──────────────────────────────────────────────────────────────────
+  {
+    slug: "un-redact-test",
+    title: "Un-Redact Test",
+    blurb:
+      "Drop a redacted PDF and see if the blacked-out text is still recoverable — before you send it. Free, no login.",
+    category: "Secure",
+    emoji: "🕵️",
+    accept: PDF,
+    acceptLabel: "a redacted PDF",
+    cta: "Test my redactions",
+    run: async ({ docIds }) => {
+      const { audit } = await fetchRedactionAudit(docIds[0]);
+      if (!audit.is_pdf) {
+        return {
+          kind: "text",
+          title: "Not a PDF",
+          body: "The un-redact test only applies to PDF files.",
+        };
+      }
+      if (audit.verdict === "leaky") {
+        return {
+          kind: "text",
+          title: "⚠ Un-Redact Test failed",
+          body:
+            `${audit.summary}\n\nThose black boxes are cosmetic — the text underneath is still ` +
+            "in the file, and anyone you send it to can pull it back. Open the document and run " +
+            "Clean Before You Send to remove it for real, with proof.",
+        };
+      }
+      return {
+        kind: "text",
+        title: "✓ Un-Redact Test passed",
+        body: `${audit.summary} Still run a Send-Ready Check to catch hidden metadata and PII.`,
+      };
+    },
+  },
+  {
+    slug: "send-ready-check",
+    title: "Send-Ready Check",
+    blurb:
+      "One click before you hit send: see hidden metadata, exposed PII, and unsafe redactions — then clean it with proof.",
+    category: "Secure",
+    emoji: "🛡️",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Check before sending",
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=trust`,
+    }),
+  },
   {
     slug: "redact",
     title: "Redact sensitive data",

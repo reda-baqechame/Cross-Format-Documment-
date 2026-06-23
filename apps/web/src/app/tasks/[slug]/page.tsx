@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -8,6 +9,17 @@ import { getTask, TASKS } from "@/lib/tasks";
 
 export function generateStaticParams() {
   return TASKS.map((t) => ({ slug: t.slug }));
+}
+
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const task = getTask(params.slug);
+  if (!task) return {};
+  const title = `${task.title} — free, no login | Docframe`;
+  return {
+    title,
+    description: task.blurb,
+    openGraph: { title, description: task.blurb },
+  };
 }
 
 export default function TaskPage({ params }: { params: { slug: string } }) {
