@@ -112,6 +112,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
   redaction annotations); reports recoverable count + verdict (safe/leaky) without echoing the
   text — `services/provenance/redaction_audit.py`, `GET /documents/{id}/redaction-audit`,
   surfaced as an alarm banner in `ReadinessPanel.tsx`
+- ✅ Un-Retype (PDF→Excel) — `/tasks/pdf-to-excel` pulls tables + data points out of a PDF/scan into
+  Excel/CSV with a "found N data points" reveal, on the table-extraction + xlsx-writer path
 - ✅ Public no-login tool pages: `/tasks/un-redact-test` (instant reveal) and `/tasks/send-ready-check`
   (→ trust tab), featured on the landing page; per-page SEO metadata via `generateMetadata` in
   `app/tasks/[slug]/page.tsx`. (Layer-1 distribution surface; Chrome extension still ⬜)

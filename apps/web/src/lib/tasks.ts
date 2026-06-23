@@ -336,6 +336,44 @@ export const TASKS: TaskDef[] = [
 
   // ── Convert ──────────────────────────────────────────────────────────────────
   {
+    slug: "pdf-to-excel",
+    title: "PDF to Excel (stop retyping)",
+    blurb:
+      "Pull tables and data out of a PDF, statement, or scan straight into Excel — no retyping. Free, no login.",
+    category: "Convert",
+    emoji: "📊",
+    accept: ANY,
+    acceptLabel: "a PDF, scan, or document with tables",
+    cta: "Get my spreadsheet",
+    options: [
+      {
+        name: "target",
+        label: "Export as",
+        type: "select",
+        default: "xlsx",
+        choices: [
+          { value: "xlsx", label: "Excel (.xlsx)" },
+          { value: "csv", label: "CSV (.csv)" },
+        ],
+      },
+    ],
+    run: async ({ docIds, options }) => {
+      const target = (options.target as ExportFormat) ?? "xlsx";
+      const { extraction } = await fetchExtract(docIds[0]).catch(() => ({
+        extraction: { entities: [], fields: [] },
+      }));
+      await downloadExport(docIds[0], target);
+      const found = extraction.fields.length + extraction.entities.length;
+      return {
+        kind: "text",
+        title: "Spreadsheet downloaded",
+        body:
+          `Tables became rows and ${found} data point(s) were pulled out — ready to edit in ` +
+          "your spreadsheet. That's work you'd otherwise retype by hand.",
+      };
+    },
+  },
+  {
     slug: "convert",
     title: "Convert document",
     blurb: "Export structured copies to PDF, Word, Excel, PowerPoint, image, or text. Native layout fidelity varies by format.",

@@ -107,7 +107,23 @@ export default function HomePage() {
         </section>
 
         <section id="featured" className="scroll-mt-20">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link
+              href="/tasks/pdf-to-excel"
+              className="group rounded-2xl border border-amber-200 bg-amber-50 p-5 transition-colors hover:bg-amber-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Free · no login
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">📊 PDF → Excel</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Pull tables and data out of a PDF or scan straight into a spreadsheet. Stop paying
+                someone to retype it by hand.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-amber-800 group-hover:underline">
+                Get my spreadsheet →
+              </span>
+            </Link>
             <Link
               href="/tasks/un-redact-test"
               className="group rounded-2xl border border-red-200 bg-red-50 p-5 transition-colors hover:bg-red-100"
