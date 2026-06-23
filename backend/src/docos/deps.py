@@ -140,6 +140,14 @@ def get_tts_provider():
     return NoopTts()
 
 
+@lru_cache
+def get_presence_hub():
+    """Process-wide presence registry (single-node in-process; Redis is the multi-node seam)."""
+    from docos.services.collab.presence import MemoryHub
+
+    return MemoryHub(ttl_seconds=get_settings().presence_ttl_seconds)
+
+
 def get_provenance(session: Session) -> ProvenancePolicyServiceImpl:
     return ProvenancePolicyServiceImpl(session)
 

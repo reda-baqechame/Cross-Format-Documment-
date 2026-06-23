@@ -28,6 +28,7 @@ import { AiEditBar } from "@/components/canvas/AiEditBar";
 import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { FindReplaceModal } from "@/components/canvas/FindReplaceModal";
 import { FormatToolbar } from "@/components/canvas/FormatToolbar";
+import { PresenceIndicator } from "@/components/canvas/PresenceIndicator";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
 import { redoDocument, undoDocument } from "@/lib/api";
 import type { CanonicalDocument } from "@docos/shared-types";
@@ -233,6 +234,7 @@ export function DocumentWorkspaceHeader({
         <AiEditBar docId={docId} />
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <PresenceIndicator docId={docId} />
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Export validation ready

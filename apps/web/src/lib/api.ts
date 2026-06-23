@@ -599,6 +599,34 @@ export async function downloadAudio(docId: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+export interface PresenceViewer {
+  viewer_id: string;
+  name: string;
+  color: string;
+  idle_seconds: number;
+}
+
+export interface PresenceState {
+  doc_id: string;
+  viewers: PresenceViewer[];
+  ttl_seconds: number;
+}
+
+/** Heartbeat this view's presence and get back everyone currently viewing the document. */
+export async function presenceHeartbeat(
+  docId: string,
+  viewerId: string,
+  name = "Guest",
+): Promise<PresenceState> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/presence`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ viewer_id: viewerId, name }),
+    }),
+  );
+}
+
 export async function renewalSuggestions(docId: string): Promise<string[]> {
   return (
     await json<{ doc_id: string; due_dates: string[] }>(

@@ -242,6 +242,26 @@ class IdpExtractResponse(BaseModel):
     detail: str = ""
 
 
+# ── Live presence (single-node) ────────────────────────────────────────────────────────────
+class PresenceBeat(BaseModel):
+    viewer_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(default="Guest", max_length=80)
+    color: str = Field(default="#2451e6", max_length=16)
+
+
+class ViewerSchema(BaseModel):
+    viewer_id: str
+    name: str
+    color: str
+    idle_seconds: float = 0.0
+
+
+class PresenceResponse(BaseModel):
+    doc_id: str
+    viewers: list[ViewerSchema]
+    ttl_seconds: int
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport
