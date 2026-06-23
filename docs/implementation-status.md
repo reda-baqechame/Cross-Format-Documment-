@@ -18,10 +18,16 @@ This file is the source of truth for "don't forget anything." Update it as featu
   is emitted only on a clear full-page grid (≥2 rows × ≥2 aligned columns, every column across ≥2
   rows, ≥70% of words participating) so prose is never mangled. — `services/ocr/tesseract.py`,
   `adapters/image.py`
-- 🔒 Mobile camera capture + deskew — needs native/mobile client
-- 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
+- ✅ Mobile camera capture — installable PWA (`public/manifest.webmanifest`) + a "Scan with camera"
+  affordance (`accept=image/* capture=environment`) on the dropzone; a phone shoots a doc straight
+  into the ingest pipeline. Native apps still 🔒. — `components/upload/UploadDropzone.tsx`
+- 🟡 Import from Drive/Dropbox/Box/OneDrive/Slack — **OAuth seam wired** (`services/integrations`,
+  `routes_integrations.py`): real authorization-code handshake + token store + token-authenticated
+  import through the shared ingest pipeline. Activate per provider with `<PROVIDER>_CLIENT_ID/SECRET`
+  + `OAUTH_REDIRECT_BASE`; inert/not-connected without creds.
 - 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
-- ⬜ Handwriting OCR
+- 🟡 Handwriting OCR — **seam wired** (`services/ocr/handwriting.py`): calls a specialized model
+  when `HANDWRITING_PROVIDER_URL` is set; otherwise standard OCR (honest "not connected").
 
 ## B. Understand it (OCR, IDP, structure)
 - ✅ Parse to structured model (nodes, reading order, tables)
@@ -48,7 +54,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
   every other recognized type. `GET /documents/{id}/autopilot` +
   Autopilot workspace tab — `services/semantic/skills/`
 - ✅ Searchable-PDF generation (invisible OCR layer for scans; born-digital text otherwise) — `writers/searchable_pdf.py`
-- 🔒 Cloud IDP (ABBYY/Textract/Google) parity — external APIs/keys
+- 🟡 Cloud IDP (Textract/ABBYY/Google) parity — **seam wired** (`services/ocr/idp.py`,
+  `GET /documents/{id}/idp-extract`): uses AWS Textract (boto3) or a custom IDP endpoint when
+  configured, else falls back to the deterministic local extractor. Activate with `IDP_PROVIDER=textract`
+  (+ AWS creds) or `IDP_PROVIDER=external` + `IDP_PROVIDER_URL`.
 
 ## C. Edit & author
 - ✅ Inline text edit · ✅ explicit structural ops · ✅ AI natural-language edit (validated)
@@ -68,7 +77,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Comment threads UI (anchored to nodes, reply/resolve, versioned) — `services/collab/comments.py`, `components/canvas/CommentsPanel`
 - ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
 - ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py` (UI: `TemplateGallery`)
-- 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
+- 🟡 Real-time co-authoring / presence — **live presence wired** (single-node heartbeat/poll,
+  `services/collab/presence.py`, `routes_presence.py`, `PresenceIndicator`): shows everyone
+  currently viewing, works out of the box. Multi-node presence (`COLLAB_BACKEND=redis`) and true
+  CRDT co-editing remain 🔒 infra.
 - ✅ Native slide/spreadsheet editing UX (tractable slice): Modify Studio handles page/slide, text,
   image, and table primitives, **plus structural slide thumbnails** rendered per-page from the model
   (`GET /documents/{id}/slide-thumbnail`, works for any format) and a **cell formula editor**
@@ -106,8 +118,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
   ✅ Fillable form fields (list + fill) — `routes_forms.py`
 - ✅ Approval / multi-party sign-off workflow (ordered or parallel, audited) — `routes_approvals.py`, `services/collab/approvals.py`
 - ✅ Bulk send (one packet to many recipients; per-recipient copy + sign-off) — `routes_bulk_send.py`
-- 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
-  payments — needs a certificate authority / regulated signing & KYC provider
+- 🟡 Legally-binding e-sign (ESIGN/UETA/eIDAS) — **provider seam wired** (`services/esign`,
+  `routes_esign.py`): `POST /documents/{id}/signature-request` sends to a regulated provider when
+  `SIGNATURE_PROVIDER_URL` + key are set (HMAC-verified webhook updates status); otherwise it applies
+  the tamper-evident integrity seal and is explicit that it is **not** legally binding. The legal
+  *standing* (CA / KYC / notarization vendor account) is still 🔒.
 - ✅ Full CLM (clause library + renewals) — session-scoped `Clause`/`RenewalReminder` (migration
   0009). Save reusable clauses and insert them as reversible `add_node` patches
   (`POST /documents/{id}/insert-clause`); track renewal/expiry dates in-app, sorted by due date with
@@ -147,21 +162,26 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
   unreachable; offline default stays NoopScanner — `services/ingestion/scanner.py`
-- ✅ Watermark (text stamp) — `pageops.watermark_pdf` · ⬜ DRM
+- ✅ Watermark (text stamp) — `pageops.watermark_pdf`
+- 🟡 DRM — **seam wired** (`services/drm`, `POST /documents/{id}/drm`): applies a rights-management
+  provider when `DRM_PROVIDER_URL` is set, else 501 pointing to AES-256 Protect PDF (the honest
+  local protection).
 
 ## G. Compare, review & collaborate
 - ✅ Version DAG + audit log
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
 - ✅ Approval workflows (ordered / parallel sign-off, audited) — `routes_approvals.py`
-- 🔒 Real-time presence / shareable links with live perms — collaboration infra
+- 🟡 Real-time presence (single-node) wired (see §C); shareable links with live perms + multi-node
+  presence remain 🔒 collaboration infra
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
 - ✅ Extract structured data on request — `services/semantic/extract.py`
 - ✅ Translate (LLM-backed)
 - ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`
-- 🔒 Doc → audio/podcast — needs a TTS service
+- 🟡 Doc → audio — **seam wired** (`services/tts`, `GET /documents/{id}/audio`): streams narrated,
+  redaction-aware audio when `TTS_PROVIDER_URL` is set, else an honest 501. No offline TTS engine.
 
 ## I. Store, find & manage
 - ✅ Per-session document ownership — every document is owned by a signed anonymous-session
@@ -177,8 +197,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
 - ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
 - ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`
-- 🔒 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth + creds
-- 🔒 Mobile apps — native clients
+- 🟡 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth seam wired (see §A)
+- 🔒 Mobile **apps** (native clients) — PWA capture is wired (see §A); native apps still need clients
 
 ---
 

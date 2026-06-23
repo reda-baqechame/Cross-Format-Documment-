@@ -54,6 +54,7 @@ Because the healthcheck is `/api/ready`, a deploy with no working persistent sto
 | `RATE_LIMIT_UPLOADS_PER_MIN` | `30` | Per-session+IP upload burst guard. |
 | `MAX_UPLOAD_MB` | `50` | Streamed upload size cap (413 over the limit). |
 | `BLOB_ENCRYPTION=aesgcm` + `BLOB_ENCRYPTION_KEY` | `none` | Opt-in encryption-at-rest for stored blobs. |
+| Gated provider seams (e-sign, cloud IDP, handwriting, TTS, DRM, cloud storage, multi-node presence) | _(unset)_ | All off/local by default. See **[docs/providers.md](providers.md)** for the env vars that activate each. |
 
 **First-deploy verification**
 
