@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { FreeBadge } from "@/components/marketing/FreeBadge";
 import { fetchBackendHealth, uploadDocument } from "@/lib/api";
 import { getTask, type TaskResult } from "@/lib/tasks";
 import { friendlyApiError, friendlyUploadError, validateFile } from "@/lib/upload";
@@ -103,6 +104,7 @@ export function TaskRunner({ slug }: { slug: string }) {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">{task.title}</h1>
         <p className="mt-1 text-sm text-slate-600">{task.blurb}</p>
+        <FreeBadge className="mt-3 justify-center" />
       </header>
 
       {aiBlocked && (

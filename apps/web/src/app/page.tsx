@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { DocumentList } from "@/components/documents/DocumentList";
+import { FreeBadge } from "@/components/marketing/FreeBadge";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
@@ -77,6 +78,7 @@ export default function HomePage() {
                 Browse all tools
               </Link>
             </div>
+            <FreeBadge className="mt-4" />
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {TRUST_ITEMS.map((item) => {
                 const Icon = item.icon;
