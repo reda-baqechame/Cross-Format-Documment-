@@ -43,6 +43,15 @@ class HealthCheck(BaseModel):
     office_editor: bool = False
     pdf_editor: bool = False
     database: str = "sqlite"
+    # Gated-capability truthing: each is False/[] until its external provider/credential is wired,
+    # so the UI shows the real state ("Not connected") instead of implying it works.
+    esign_configured: bool = False
+    idp_configured: bool = False
+    handwriting_configured: bool = False
+    tts_configured: bool = False
+    drm_configured: bool = False
+    presence_enabled: bool = True
+    cloud_integrations: list[str] = []
 
 
 class ReadyCheck(BaseModel):

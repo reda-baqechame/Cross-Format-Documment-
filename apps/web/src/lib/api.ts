@@ -24,6 +24,14 @@ export interface BackendHealth {
   office_editor: boolean;
   pdf_editor: boolean;
   database: string;
+  // Gated-capability state (all default to off until the external provider/credential is wired).
+  esign_configured?: boolean;
+  idp_configured?: boolean;
+  handwriting_configured?: boolean;
+  tts_configured?: boolean;
+  drm_configured?: boolean;
+  presence_enabled?: boolean;
+  cloud_integrations?: string[];
 }
 
 /** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */

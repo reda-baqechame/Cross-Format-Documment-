@@ -19,6 +19,14 @@ Scanner = Literal["noop", "clamav"]
 BlobEncryption = Literal["none", "aesgcm"]
 OfficeEditorProvider = Literal["local", "onlyoffice"]
 PdfEditorProvider = Literal["basic", "external"]
+# Gated-capability provider switches. Each defaults to an honest local/off state and activates
+# only when its provider URL/key/credential is configured (the seam pattern used across the app).
+SignatureProvider = Literal["seal", "external"]
+IdpProvider = Literal["local", "textract", "external"]
+HandwritingProvider = Literal["none", "external"]
+TtsProvider = Literal["none", "external"]
+DrmProvider = Literal["none", "external"]
+CollabBackend = Literal["memory", "redis"]
 
 
 class Settings(BaseSettings):
@@ -75,6 +83,58 @@ class Settings(BaseSettings):
     onlyoffice_document_server_url: str | None = None
     pdf_editor_provider: PdfEditorProvider = "basic"
     pdf_editor_url: str | None = None
+
+    # ── Gated-capability provider seams ───────────────────────────────────────────────────────
+    # Legal e-signature. ``seal`` (default) is the offline integrity seal (tamper-evident, NOT
+    # legally binding); ``external`` POSTs to a regulated signing provider when a URL+key are set.
+    signature_provider: SignatureProvider = "seal"
+    signature_provider_url: str | None = None
+    signature_provider_key: str | None = None
+
+    # Cloud IDP. ``local`` (default) uses Tesseract + the deterministic extractor; ``textract`` uses
+    # AWS Textract (boto3 + the S3 creds below); ``external`` POSTs pages to a custom IDP endpoint.
+    idp_provider: IdpProvider = "local"
+    idp_provider_url: str | None = None
+    idp_provider_key: str | None = None
+
+    # Handwriting OCR. ``none`` (default) falls back to standard OCR; ``external`` calls a
+    # specialized handwriting model over HTTPS.
+    handwriting_provider: HandwritingProvider = "none"
+    handwriting_provider_url: str | None = None
+    handwriting_provider_key: str | None = None
+
+    # Text-to-speech (document → audio). ``none`` (default) returns 501; ``external`` calls a TTS
+    # service over HTTPS and streams the audio back.
+    tts_provider: TtsProvider = "none"
+    tts_provider_url: str | None = None
+    tts_provider_key: str | None = None
+
+    # DRM / rights management applied on export. ``none`` (default) → the honest local protection is
+    # AES-256 PDF passwording; ``external`` POSTs the export to a DRM service.
+    drm_provider: DrmProvider = "none"
+    drm_provider_url: str | None = None
+    drm_provider_key: str | None = None
+
+    # Real-time presence. ``memory`` (default) is a single-node in-process registry that works out
+    # of the box; ``redis`` shares presence across workers/nodes (multi-node seam).
+    collab_backend: CollabBackend = "memory"
+    collab_redis_url: str | None = None
+    # Presence heartbeat TTL (seconds): a viewer drops off this long after their last heartbeat.
+    presence_ttl_seconds: int = 20
+
+    # Cloud storage integrations (OAuth). A provider is "connected" only when its client id+secret
+    # are set; the shared redirect base builds the OAuth callback URL.
+    oauth_redirect_base: str | None = None  # e.g. https://app.example.com
+    gdrive_client_id: str | None = None
+    gdrive_client_secret: str | None = None
+    dropbox_client_id: str | None = None
+    dropbox_client_secret: str | None = None
+    box_client_id: str | None = None
+    box_client_secret: str | None = None
+    onedrive_client_id: str | None = None
+    onedrive_client_secret: str | None = None
+    slack_client_id: str | None = None
+    slack_client_secret: str | None = None
 
     # archive (OOXML/zip) safety limits — defense against zip bombs.
     zip_max_entries: int = 2000
@@ -168,6 +228,44 @@ class Settings(BaseSettings):
     def pdf_editor_configured(self) -> bool:
         """True when a real external PDF editor/SDK is wired up."""
         return self.pdf_editor_provider == "external" and bool(self.pdf_editor_url)
+
+    @property
+    def esign_configured(self) -> bool:
+        """True when a regulated external e-signature provider is wired up (else integrity seal)."""
+        return self.signature_provider == "external" and bool(self.signature_provider_url)
+
+    @property
+    def idp_configured(self) -> bool:
+        """True when a cloud IDP (Textract/external) is wired up (else: local OCR + extractor)."""
+        if self.idp_provider == "textract":
+            return bool(self.s3_access_key and self.s3_secret_key)
+        if self.idp_provider == "external":
+            return bool(self.idp_provider_url)
+        return False
+
+    @property
+    def handwriting_configured(self) -> bool:
+        return self.handwriting_provider == "external" and bool(self.handwriting_provider_url)
+
+    @property
+    def tts_configured(self) -> bool:
+        return self.tts_provider == "external" and bool(self.tts_provider_url)
+
+    @property
+    def drm_configured(self) -> bool:
+        return self.drm_provider == "external" and bool(self.drm_provider_url)
+
+    @property
+    def configured_integrations(self) -> list[str]:
+        """Cloud providers whose OAuth client id+secret are both set (honest 'connected' list)."""
+        pairs = {
+            "gdrive": (self.gdrive_client_id, self.gdrive_client_secret),
+            "dropbox": (self.dropbox_client_id, self.dropbox_client_secret),
+            "box": (self.box_client_id, self.box_client_secret),
+            "onedrive": (self.onedrive_client_id, self.onedrive_client_secret),
+            "slack": (self.slack_client_id, self.slack_client_secret),
+        }
+        return [name for name, (cid, secret) in pairs.items() if cid and secret]
 
     @property
     def database_kind(self) -> str:

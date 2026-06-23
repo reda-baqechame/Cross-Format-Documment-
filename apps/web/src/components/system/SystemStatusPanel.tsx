@@ -39,6 +39,44 @@ function rows(h: BackendHealth): Row[] {
       value: h.database === "postgres" ? "Postgres" : "SQLite (ephemeral without a volume)",
       tone: h.database === "postgres" ? "ok" : "warn",
     },
+    {
+      label: "E-signature",
+      value: h.esign_configured ? "Provider connected" : "Integrity seal only (not legally binding)",
+      tone: h.esign_configured ? "ok" : "muted",
+    },
+    {
+      label: "Cloud IDP",
+      value: h.idp_configured ? "Connected" : "Local OCR + extraction",
+      tone: h.idp_configured ? "ok" : "muted",
+    },
+    {
+      label: "Handwriting OCR",
+      value: h.handwriting_configured ? "Connected" : "Not connected",
+      tone: h.handwriting_configured ? "ok" : "muted",
+    },
+    {
+      label: "Text-to-speech",
+      value: h.tts_configured ? "Connected" : "Not connected",
+      tone: h.tts_configured ? "ok" : "muted",
+    },
+    {
+      label: "DRM",
+      value: h.drm_configured ? "Provider connected" : "Password protection only",
+      tone: h.drm_configured ? "ok" : "muted",
+    },
+    {
+      label: "Cloud storage",
+      value:
+        h.cloud_integrations && h.cloud_integrations.length > 0
+          ? `Connected · ${h.cloud_integrations.join(", ")}`
+          : "Not connected",
+      tone: h.cloud_integrations && h.cloud_integrations.length > 0 ? "ok" : "muted",
+    },
+    {
+      label: "Live presence",
+      value: h.presence_enabled === false ? "Off" : "On (single-node)",
+      tone: "ok",
+    },
   ];
 }
 
