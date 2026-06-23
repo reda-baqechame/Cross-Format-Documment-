@@ -19,7 +19,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## B. Understand it (OCR, IDP, structure)
 - ✅ Parse to structured model (nodes, reading order, tables)
-- 🟡 Table extraction
+- ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
+  `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by
+  the existing xlsx writer — `services/docengine/adapters/pdf.py`
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
 - ✅ Typed document intelligence (invoice/receipt/contract/résumé/**forms + templates**/**presentation + visual docs**):

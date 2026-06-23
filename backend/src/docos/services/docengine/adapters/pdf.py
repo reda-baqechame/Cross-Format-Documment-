@@ -18,7 +18,16 @@ import fitz  # PyMuPDF
 from docos.model.document import CanonicalDocument, DocumentMeta
 from docos.model.geometry import BBox
 from docos.model.ids import new_doc_id, new_node_id
-from docos.model.nodes import ImageNode, PageNode, ParagraphNode, RootNode, RunNode
+from docos.model.nodes import (
+    ImageNode,
+    PageNode,
+    ParagraphNode,
+    RootNode,
+    RunNode,
+    TableCellNode,
+    TableNode,
+    TableRowNode,
+)
 from docos.services.docengine.interface import FormatAdapter
 from docos.storage.blob import BlobStore
 
@@ -72,15 +81,7 @@ class PdfAdapter(FormatAdapter):
                 root.children.append(pnode.id)
                 doc.add_node(pnode)
 
-                text_dict = page.get_text("dict")
-                block_order = 0
-                for block in text_dict.get("blocks", []):
-                    if block.get("type") == 1:  # image block
-                        self._add_image(doc, pnode, block, block_order)
-                        block_order += 1
-                        continue
-                    self._add_text_block(doc, pnode, block, block_order)
-                    block_order += 1
+                self._add_page_content(doc, pnode, page)
 
             if meta.title:
                 doc.accessibility.has_doc_title = True
@@ -143,6 +144,84 @@ class PdfAdapter(FormatAdapter):
         page.children.append(node.id)
         doc.add_node(node)
 
+    def _add_page_content(self, doc: CanonicalDocument, page: PageNode, src) -> None:
+        """Lay out a page's tables, text blocks and images in vertical reading order.
+
+        Tables are detected first; text/image blocks that fall inside a detected table region
+        are dropped so their content isn't duplicated outside the table.
+        """
+        tables = self._find_tables(src)
+        table_rects = [t["rect"] for t in tables]
+
+        # (y0, x0, kind, payload) for everything on the page, then sort top-to-bottom.
+        items: list[tuple[float, float, str, object]] = [
+            (t["rect"].y0, t["rect"].x0, "table", t) for t in tables
+        ]
+        for block in src.get_text("dict").get("blocks", []):
+            bbox = block.get("bbox")
+            if bbox and _inside_any(bbox, table_rects):
+                continue
+            y0 = float(bbox[1]) if bbox else 0.0
+            x0 = float(bbox[0]) if bbox else 0.0
+            kind = "image" if block.get("type") == 1 else "text"
+            items.append((y0, x0, kind, block))
+
+        items.sort(key=lambda it: (round(it[0], 1), round(it[1], 1)))
+        for order, (_y, _x, kind, payload) in enumerate(items):
+            if kind == "table":
+                self._add_table(doc, page, payload, order)  # type: ignore[arg-type]
+            elif kind == "image":
+                self._add_image(doc, page, payload, order)  # type: ignore[arg-type]
+            else:
+                self._add_text_block(doc, page, payload, order)  # type: ignore[arg-type]
+
+    def _find_tables(self, src) -> list[dict]:
+        """Detect tables on a page via PyMuPDF; degrade to [] on old fitz or any failure."""
+        if not hasattr(src, "find_tables"):
+            return []
+        try:
+            finder = src.find_tables()
+        except Exception:  # noqa: BLE001 - table detection is best-effort, never fatal
+            return []
+        out: list[dict] = []
+        for table in getattr(finder, "tables", []):
+            try:
+                rows = table.extract()
+                rect = fitz.Rect(table.bbox)
+            except Exception:  # noqa: BLE001 - skip a malformed table, keep the rest
+                continue
+            # Require at least one non-empty cell so a stray ruling line isn't a "table".
+            if rows and any(any((c or "").strip() for c in row) for row in rows):
+                out.append({"rect": rect, "rows": rows})
+        return out
+
+    def _add_table(self, doc: CanonicalDocument, page: PageNode, tdata: dict, order: int) -> None:
+        rows: list[list] = tdata["rows"]
+        ncols = max((len(r) for r in rows), default=0)
+        tnode = TableNode(
+            id=new_node_id(),
+            parent_id=page.id,
+            reading_order=order,
+            bbox=_bbox(tuple(tdata["rect"])),
+            rows=len(rows),
+            cols=ncols,
+        )
+        page.children.append(tnode.id)
+        doc.add_node(tnode)
+        for ri, row in enumerate(rows):
+            rnode = TableRowNode(id=new_node_id(), parent_id=tnode.id, row=ri, reading_order=ri)
+            tnode.children.append(rnode.id)
+            doc.add_node(rnode)
+            for ci, cell in enumerate(row):
+                cnode = TableCellNode(
+                    id=new_node_id(), parent_id=rnode.id, row=ri, col=ci, reading_order=ci
+                )
+                run = RunNode(id=new_node_id(), parent_id=cnode.id, text=(cell or "").strip())
+                cnode.children.append(run.id)
+                rnode.children.append(cnode.id)
+                doc.add_node(cnode)
+                doc.add_node(run)
+
     def render_preview(self, doc: CanonicalDocument, page: int) -> bytes:
         raise NotImplementedError(
             "PdfAdapter.render_preview needs source bytes — use render_preview_bytes(data, page)"
@@ -159,6 +238,13 @@ class PdfAdapter(FormatAdapter):
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
         raise NotImplementedError("PdfAdapter.export — write-back via incremental save is deferred")
+
+
+def _inside_any(bbox, rects) -> bool:
+    """True if a block's centre falls inside any of the given table rectangles."""
+    x0, y0, x1, y1 = bbox
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    return any(r.x0 <= cx <= r.x1 and r.y0 <= cy <= r.y1 for r in rects)
 
 
 def _bbox(raw) -> BBox | None:
