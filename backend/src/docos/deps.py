@@ -106,6 +106,30 @@ def get_signature_provider():
     return SealProvider()
 
 
+def get_idp_provider():
+    """The cloud IDP provider, or None when only local extraction is available."""
+    s = get_settings()
+    if not s.idp_configured:
+        return None
+    if s.idp_provider == "textract":
+        from docos.services.ocr.idp import TextractIdp
+
+        return TextractIdp(s.s3_access_key, s.s3_secret_key, s.s3_endpoint_url and None)
+    from docos.services.ocr.idp import ExternalIdp
+
+    return ExternalIdp(s.idp_provider_url, s.idp_provider_key)
+
+
+def get_handwriting_provider():
+    """The handwriting-OCR provider, or None when not configured."""
+    s = get_settings()
+    if not s.handwriting_configured:
+        return None
+    from docos.services.ocr.handwriting import ExternalHandwriting
+
+    return ExternalHandwriting(s.handwriting_provider_url, s.handwriting_provider_key)
+
+
 def get_provenance(session: Session) -> ProvenancePolicyServiceImpl:
     return ProvenancePolicyServiceImpl(session)
 

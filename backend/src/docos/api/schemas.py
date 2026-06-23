@@ -227,6 +227,21 @@ class IntegrationImportRequest(BaseModel):
     filename: str | None = Field(default=None, max_length=255)
 
 
+# ── Cloud IDP / handwriting (gated seam) ───────────────────────────────────────────────────
+class IdpFieldSchema(BaseModel):
+    key: str
+    value: str
+    confidence: float = 0.0
+
+
+class IdpExtractResponse(BaseModel):
+    doc_id: str
+    provider: str  # "textract" | "external" | "local"
+    used_provider: bool  # True when a cloud IDP/handwriting model produced the result
+    fields: list[IdpFieldSchema]
+    detail: str = ""
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport
