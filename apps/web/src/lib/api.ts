@@ -66,6 +66,11 @@ export async function fetchBackendHealth(): Promise<BackendHealth> {
   return json<BackendHealth>(await fetch(`${BASE}/health`));
 }
 
+/** Private Mode: delete every document owned by this browser session. */
+export async function purgeDocuments(): Promise<{ deleted: number }> {
+  return json(await fetch(`${BASE}/documents`, { method: "DELETE" }));
+}
+
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const body = new FormData();
   body.append("file", file);

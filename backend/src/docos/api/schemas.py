@@ -94,6 +94,12 @@ class RedactionAuditResponse(BaseModel):
     audit: RedactionAuditReport
 
 
+class PurgeResponse(BaseModel):
+    """How many of the caller's documents were deleted by a Private-Mode purge."""
+
+    deleted: int
+
+
 class FillProfileResponse(BaseModel):
     """The caller's saved Fill-Once profile (field-name → value)."""
 

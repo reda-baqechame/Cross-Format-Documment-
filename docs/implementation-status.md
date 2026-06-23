@@ -117,6 +117,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Fill Once — reusable autofill profile (`FillProfile` table + migration `0008`):
   `GET/PUT /fill-profile` saves field-name→value answers once; `POST /documents/{id}/autofill`
   fills matching blank fields as one reversible patch — `api/routes_profile.py`, FormsPanel UI
+- ✅ Private Mode — honest privacy posture + control: session-private docs, "AI off → nothing sent
+  to third parties", one-click `DELETE /documents` purge-all (no fake auto-delete claim) —
+  `routes_documents.purge_my_documents`, `components/system/PrivacyPanel.tsx`
 - ✅ Public no-login tool pages: `/tasks/un-redact-test` (instant reveal) and `/tasks/send-ready-check`
   (→ trust tab), featured on the landing page; per-page SEO metadata via `generateMetadata` in
   `app/tasks/[slug]/page.tsx`. (Layer-1 distribution surface; Chrome extension still ⬜)

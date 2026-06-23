@@ -16,6 +16,7 @@ import { DocumentList } from "@/components/documents/DocumentList";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
+import { PrivacyPanel } from "@/components/system/PrivacyPanel";
 import { SystemStatusPanel } from "@/components/system/SystemStatusPanel";
 import { TaskGrid } from "@/components/tasks/TaskGrid";
 import { TemplateGallery } from "@/components/templates/TemplateGallery";
@@ -103,6 +104,7 @@ export default function HomePage() {
               <UploadDropzone />
             </div>
             <SystemStatusPanel className="mt-5 border-t border-line pt-4" />
+            <PrivacyPanel className="mt-5 border-t border-line pt-4" />
           </div>
         </section>
 
