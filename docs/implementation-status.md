@@ -13,8 +13,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - ✅ OCR structure extraction — `TesseractOcr` recognises positioned, confidence-scored word runs
   (`image_to_data` → `RunNode` + bbox + `attrs.confidence`/`ocr_review`), geometric reading order,
-  Pillow cleanup; the image adapter prefers structured OCR and falls back to flat text. Scanned-grid
-  table detection still deferred. — `services/ocr/tesseract.py`, `adapters/image.py`
+  Pillow cleanup; the image adapter prefers a confident scanned-grid table, then structured OCR,
+  then flat text. **Conservative scanned-grid tables** (`build_table_nodes`): a `TableNode` subtree
+  is emitted only on a clear full-page grid (≥2 rows × ≥2 aligned columns, every column across ≥2
+  rows, ≥70% of words participating) so prose is never mangled. — `services/ocr/tesseract.py`,
+  `adapters/image.py`
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
 - 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
 - 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
