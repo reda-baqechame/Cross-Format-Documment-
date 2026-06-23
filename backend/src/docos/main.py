@@ -36,6 +36,12 @@ from docos.api import (
     routes_templates,
     routes_workflows,
 )
+from docos.api.observability import (
+    RequestContextMiddleware,
+    configure_logging,
+    init_sentry,
+    register_error_handlers,
+)
 from docos.api.session import SessionMiddleware
 from docos.settings import get_settings
 
@@ -46,6 +52,9 @@ _INSECURE_SIGNING_SECRET = "docos-dev-signing-secret"
 
 def create_app() -> FastAPI:
     settings = get_settings()
+
+    configure_logging(settings)
+    init_sentry(settings)
 
     # Fail fast on insecure production config rather than silently shipping a known key.
     if settings.is_production and settings.signing_secret == _INSECURE_SIGNING_SECRET:
@@ -69,6 +78,9 @@ def create_app() -> FastAPI:
     )
     # Issue/validate the anonymous session cookie so every document gets a private owner.
     app.add_middleware(SessionMiddleware)
+    # Outermost: bind a request id + emit access logs for everything below.
+    app.add_middleware(RequestContextMiddleware)
+    register_error_handlers(app)
 
     app.include_router(routes_health.router)
     app.include_router(routes_documents.router)

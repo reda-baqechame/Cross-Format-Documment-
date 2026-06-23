@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     privacy_mode: PrivacyMode = "offline"
     app_env: Literal["dev", "staging", "production"] = "dev"
 
+    # observability. ``human`` (default) is readable in dev; ``json`` emits one JSON line per log
+    # record for production aggregation. Sentry error tracking activates only when a DSN is set.
+    log_format: Literal["human", "json"] = "human"
+    sentry_dsn: str | None = None
+
     # CORS allow-list for the browser app (comma-separated origins).
     cors_origins: str = "http://localhost:3100"
 
