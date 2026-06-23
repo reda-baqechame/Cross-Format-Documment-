@@ -249,6 +249,53 @@ class Clause(Base):
     )
 
 
+class SignatureRequest(Base):
+    """An e-signature request (the gated e-sign seam).
+
+    With the default ``seal`` provider this records the integrity-seal action (tamper-evident, not
+    legally binding); with an external provider it tracks the regulated envelope by ``external_id``.
+    Session-scoped like the other library tables.
+    """
+
+    __tablename__ = "signature_requests"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    document_id: Mapped[str] = mapped_column(String)
+    provider: Mapped[str] = mapped_column(String)
+    external_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    subject: Mapped[str | None] = mapped_column(String, nullable=True)
+    signers: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
+class IntegrationToken(Base):
+    """An OAuth token for a connected cloud-storage provider (the gated integrations seam).
+
+    Session-scoped; stored only when the provider's OAuth client credentials are configured and the
+    user completes the connect flow. Without creds there are no tokens (provider = not-connected).
+    """
+
+    __tablename__ = "integration_tokens"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    provider: Mapped[str] = mapped_column(String, index=True)
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
 class RenewalReminder(Base):
     """An in-app renewal/expiry reminder for a contract (CLM).
 

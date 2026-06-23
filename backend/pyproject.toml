@@ -30,6 +30,9 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.14"]
 anthropic = ["anthropic>=0.25"]
+# Optional error tracking. Not installed by default; activate by installing this extra and
+# setting SENTRY_DSN. Without the DSN the integration is completely inert.
+sentry = ["sentry-sdk>=2.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

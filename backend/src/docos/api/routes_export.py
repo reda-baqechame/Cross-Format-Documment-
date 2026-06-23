@@ -19,6 +19,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from docos.api.access import get_owned_document
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import ValidationReportResponse
 from docos.api.session import Actor, get_actor
@@ -149,6 +150,7 @@ async def export_document(
     actor: Actor = Depends(get_actor),
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
+    _rate: None = Depends(enforce_op_rate),
 ) -> Response:
     record, doc = _load_latest(session, doc_id, actor)
     data, mime, ext = await _render_export(doc, record, format, registry, blob_store)
@@ -175,6 +177,7 @@ async def export_report(
     actor: Actor = Depends(get_actor),
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
+    _rate: None = Depends(enforce_op_rate),
 ) -> ValidationReportResponse:
     """Render the export in-memory and return the validation report (no file download)."""
     record, doc = _load_latest(session, doc_id, actor)
@@ -190,6 +193,7 @@ async def searchable_pdf(
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
     registry: AdapterRegistry = Depends(get_registry),
+    _rate: None = Depends(enforce_op_rate),
 ) -> Response:
     """Produce a searchable PDF: scans get an invisible OCR text layer over the page
     image; every other format becomes a clean, born-digital selectable-text PDF."""

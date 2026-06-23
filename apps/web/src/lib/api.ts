@@ -24,6 +24,14 @@ export interface BackendHealth {
   office_editor: boolean;
   pdf_editor: boolean;
   database: string;
+  // Gated-capability state (all default to off until the external provider/credential is wired).
+  esign_configured?: boolean;
+  idp_configured?: boolean;
+  handwriting_configured?: boolean;
+  tts_configured?: boolean;
+  drm_configured?: boolean;
+  presence_enabled?: boolean;
+  cloud_integrations?: string[];
 }
 
 /** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */
@@ -526,6 +534,97 @@ export async function createRenewal(input: {
 export async function deleteRenewal(renewalId: string): Promise<void> {
   const res = await fetch(`${BASE}/renewals/${renewalId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export interface SignatureRequest {
+  id: string;
+  doc_id: string;
+  provider: string;
+  status: string;
+  signing_url?: string | null;
+  detail: string;
+  legally_binding: boolean;
+}
+
+export async function requestSignature(
+  docId: string,
+  input: { signers?: { name: string; email?: string }[]; subject?: string } = {},
+): Promise<SignatureRequest> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/signature-request`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ signers: input.signers ?? [], subject: input.subject ?? null }),
+    }),
+  );
+}
+
+export interface Integration {
+  name: string;
+  label: string;
+  configured: boolean;
+  connected: boolean;
+}
+
+export async function listIntegrations(): Promise<Integration[]> {
+  return (await json<{ integrations: Integration[] }>(await fetch(`${BASE}/integrations`)))
+    .integrations;
+}
+
+/** Begin OAuth: navigates the browser to the provider's consent screen. */
+export async function connectIntegration(name: string): Promise<void> {
+  const res = await json<{ authorize_url: string }>(
+    await fetch(`${BASE}/integrations/${name}/connect`),
+  );
+  window.location.href = res.authorize_url;
+}
+
+export async function disconnectIntegration(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/integrations/${name}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+/** Fetch narrated audio and trigger a download. Throws "501: …" when no TTS provider is wired. */
+export async function downloadAudio(docId: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}/audio`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${docId}.mp3`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface PresenceViewer {
+  viewer_id: string;
+  name: string;
+  color: string;
+  idle_seconds: number;
+}
+
+export interface PresenceState {
+  doc_id: string;
+  viewers: PresenceViewer[];
+  ttl_seconds: number;
+}
+
+/** Heartbeat this view's presence and get back everyone currently viewing the document. */
+export async function presenceHeartbeat(
+  docId: string,
+  viewerId: string,
+  name = "Guest",
+): Promise<PresenceState> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/presence`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ viewer_id: viewerId, name }),
+    }),
+  );
 }
 
 export async function renewalSuggestions(docId: string): Promise<string[]> {

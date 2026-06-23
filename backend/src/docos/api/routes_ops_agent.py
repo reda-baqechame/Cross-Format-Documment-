@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import OpsAgentAction, OpsAgentPlanRequest, OpsAgentPlanResponse
 from docos.api.session import Actor, get_actor
@@ -20,6 +21,7 @@ def plan_ops(
     body: OpsAgentPlanRequest,
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> OpsAgentPlanResponse:
     """Plan deterministic document workflow actions without mutating the document."""
     _record, doc = _load_latest(session, doc_id, actor)

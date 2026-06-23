@@ -27,8 +27,8 @@ def upgrade() -> None:
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("category", sa.String(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_clauses_owner_session_id", "clauses", ["owner_session_id"])
     op.create_index("ix_clauses_owner_user_id", "clauses", ["owner_user_id"])
@@ -43,8 +43,8 @@ def upgrade() -> None:
         sa.Column("due_date", sa.String(), nullable=False),
         sa.Column("note", sa.Text(), nullable=True),
         sa.Column("status", sa.String(), nullable=False, server_default="open"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index(
         "ix_renewal_reminders_owner_session_id", "renewal_reminders", ["owner_session_id"]

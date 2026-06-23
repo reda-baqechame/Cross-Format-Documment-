@@ -43,6 +43,15 @@ class HealthCheck(BaseModel):
     office_editor: bool = False
     pdf_editor: bool = False
     database: str = "sqlite"
+    # Gated-capability truthing: each is False/[] until its external provider/credential is wired,
+    # so the UI shows the real state ("Not connected") instead of implying it works.
+    esign_configured: bool = False
+    idp_configured: bool = False
+    handwriting_configured: bool = False
+    tts_configured: bool = False
+    drm_configured: bool = False
+    presence_enabled: bool = True
+    cloud_integrations: list[str] = []
 
 
 class ReadyCheck(BaseModel):
@@ -174,6 +183,83 @@ class CreateRenewalRequest(BaseModel):
 class RenewalSuggestionsResponse(BaseModel):
     doc_id: str
     due_dates: list[str]
+
+
+# ── E-signature (gated provider seam) ──────────────────────────────────────────────────────
+class SignerInput(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=320)
+
+
+class SignatureRequestCreate(BaseModel):
+    signers: list[SignerInput] = Field(default_factory=list)
+    subject: str | None = Field(default=None, max_length=300)
+
+
+class SignatureRequestResponse(BaseModel):
+    id: str
+    doc_id: str
+    provider: str
+    status: str
+    signing_url: str | None = None
+    detail: str = ""
+    legally_binding: bool = False
+
+
+# ── Cloud integrations (gated OAuth seam) ──────────────────────────────────────────────────
+class IntegrationStatus(BaseModel):
+    name: str
+    label: str
+    configured: bool  # OAuth client creds present in this deployment
+    connected: bool  # the caller has completed the connect flow (a token is stored)
+
+
+class IntegrationListResponse(BaseModel):
+    integrations: list[IntegrationStatus]
+
+
+class ConnectResponse(BaseModel):
+    authorize_url: str
+
+
+class IntegrationImportRequest(BaseModel):
+    file_url: str = Field(min_length=1)
+    filename: str | None = Field(default=None, max_length=255)
+
+
+# ── Cloud IDP / handwriting (gated seam) ───────────────────────────────────────────────────
+class IdpFieldSchema(BaseModel):
+    key: str
+    value: str
+    confidence: float = 0.0
+
+
+class IdpExtractResponse(BaseModel):
+    doc_id: str
+    provider: str  # "textract" | "external" | "local"
+    used_provider: bool  # True when a cloud IDP/handwriting model produced the result
+    fields: list[IdpFieldSchema]
+    detail: str = ""
+
+
+# ── Live presence (single-node) ────────────────────────────────────────────────────────────
+class PresenceBeat(BaseModel):
+    viewer_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(default="Guest", max_length=80)
+    color: str = Field(default="#2451e6", max_length=16)
+
+
+class ViewerSchema(BaseModel):
+    viewer_id: str
+    name: str
+    color: str
+    idle_seconds: float = 0.0
+
+
+class PresenceResponse(BaseModel):
+    doc_id: str
+    viewers: list[ViewerSchema]
+    ttl_seconds: int
 
 
 class ValidationReportResponse(BaseModel):

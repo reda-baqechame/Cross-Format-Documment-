@@ -25,8 +25,8 @@ def upgrade() -> None:
         sa.Column("owner_session_id", sa.String(), nullable=True),
         sa.Column("owner_user_id", sa.String(), nullable=True),
         sa.Column("data", sa.JSON(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index(
         "ix_fill_profiles_owner_session_id", "fill_profiles", ["owner_session_id"]

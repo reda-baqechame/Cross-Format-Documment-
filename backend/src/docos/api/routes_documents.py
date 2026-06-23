@@ -105,27 +105,25 @@ async def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
     return b"".join(chunks)
 
 
-@router.post("", response_model=UploadResponse)
-async def upload_document(
-    request: Request,
-    file: UploadFile = File(...),
-    session: Session = Depends(db_session),
-    gateway: IngestionGateway = Depends(get_ingestion_gateway),
-    registry: AdapterRegistry = Depends(get_registry),
-    blob_store: BlobStore = Depends(blob_store_dep),
-    actor: Actor = Depends(get_actor),
-    _rate: None = Depends(enforce_upload_rate),
-) -> UploadResponse:
-    # Reject oversized uploads before buffering anything when the size is declared.
-    declared = request.headers.get("content-length")
-    if declared is not None and declared.isdigit() and int(declared) > gateway.max_bytes:
-        max_mb = gateway.max_bytes // (1024 * 1024)
-        raise HTTPException(status_code=413, detail=f"the file is too large (max {max_mb} MB)")
+async def ingest_bytes(
+    session: Session,
+    *,
+    filename: str,
+    data: bytes,
+    actor: Actor,
+    gateway: IngestionGateway,
+    registry: AdapterRegistry,
+    blob_store: BlobStore,
+) -> tuple[Document, str, str]:
+    """Validate → scan → parse → stage → version a byte payload into a new document.
 
-    data = await _read_capped(file, gateway.max_bytes)
+    Shared by the upload route and the cloud-integration import route so a file pulled from Drive/
+    Dropbox/… goes through the exact same validation, malware scan, and provenance pipeline as an
+    upload. Returns ``(record, version_id, detected_format)``.
+    """
     provenance = get_provenance(session)
 
-    result = await gateway.validate(file.filename or "upload", data)
+    result = await gateway.validate(filename or "upload", data)
     if not result.ok:
         provenance.record_event(
             None, "upload.rejected", actor=actor.session_id, detail={"reason": result.reason}
@@ -163,7 +161,7 @@ async def upload_document(
             detail=f"format '{result.detected_format}' not yet supported (stubbed adapter)",
         ) from exc
     except Exception as exc:  # noqa: BLE001 - hostile files may trigger parser-specific errors
-        logger.warning("document parse failed for %s: %s", file.filename, exc)
+        logger.warning("document parse failed for %s: %s", filename, exc)
         session.add(
             JobRecord(
                 id=uuid.uuid4().hex,
@@ -210,9 +208,38 @@ async def upload_document(
         )
     )
     session.commit()
+    return record, version_id, result.detected_format
 
+
+@router.post("", response_model=UploadResponse)
+async def upload_document(
+    request: Request,
+    file: UploadFile = File(...),
+    session: Session = Depends(db_session),
+    gateway: IngestionGateway = Depends(get_ingestion_gateway),
+    registry: AdapterRegistry = Depends(get_registry),
+    blob_store: BlobStore = Depends(blob_store_dep),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_upload_rate),
+) -> UploadResponse:
+    # Reject oversized uploads before buffering anything when the size is declared.
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > gateway.max_bytes:
+        max_mb = gateway.max_bytes // (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"the file is too large (max {max_mb} MB)")
+
+    data = await _read_capped(file, gateway.max_bytes)
+    record, version_id, detected_format = await ingest_bytes(
+        session,
+        filename=file.filename or "upload",
+        data=data,
+        actor=actor,
+        gateway=gateway,
+        registry=registry,
+        blob_store=blob_store,
+    )
     return UploadResponse(
-        doc_id=doc.doc_id, version_id=version_id, detected_format=result.detected_format
+        doc_id=record.id, version_id=version_id, detected_format=detected_format
     )
 
 

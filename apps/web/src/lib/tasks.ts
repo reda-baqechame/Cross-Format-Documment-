@@ -11,6 +11,7 @@ import {
   askDocument,
   classifyDocument,
   compressPdf,
+  downloadAudio,
   deletePages,
   diffDocuments,
   downloadExport,
@@ -24,6 +25,7 @@ import {
   protectPdf,
   redactSensitive,
   remediateAccessibility,
+  requestSignature,
   reorderPages,
   rotatePdf,
   sanitizeMetadata,
@@ -751,6 +753,33 @@ export const TASKS: TaskDef[] = [
     },
   },
   {
+    slug: "request-signature",
+    title: "Request a signature",
+    blurb:
+      "Send a document for signature. Connects to a regulated e-signature provider when configured; otherwise applies a tamper-evident integrity seal (not legally binding).",
+    category: "Secure",
+    emoji: "✍️",
+    accept: ANY,
+    acceptLabel: "any document",
+    options: [
+      { name: "signer", label: "Signer name", type: "text", placeholder: "e.g. Jane Doe" },
+      { name: "email", label: "Signer email (for a provider)", type: "text", placeholder: "optional" },
+    ],
+    cta: "Request signature",
+    run: async ({ docIds, options }) => {
+      const signer = options.signer?.trim() || "Signer";
+      const res = await requestSignature(docIds[0], {
+        signers: [{ name: signer, email: options.email?.trim() || undefined }],
+      });
+      if (res.signing_url) return { kind: "navigate", href: res.signing_url };
+      return {
+        kind: "text",
+        title: res.legally_binding ? "Sent for signature" : "Integrity seal applied",
+        body: res.detail,
+      };
+    },
+  },
+  {
     slug: "make-accessible",
     title: "Make accessible",
     blurb: "Auto-tag headings, reading order, and missing image alt text before sharing.",
@@ -864,6 +893,21 @@ export const TASKS: TaskDef[] = [
         ...res.extraction.fields.map((f) => `${f.key}: ${f.value}`),
       ];
       return { kind: "list", title: "Extracted data", items: items.length ? items : ["Nothing found."] };
+    },
+  },
+  {
+    slug: "listen",
+    title: "Listen to a document",
+    blurb:
+      "Turn a document into narrated audio. Requires a configured text-to-speech provider; otherwise you'll get a clear 'not connected' message.",
+    category: "Ask AI",
+    emoji: "🔊",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Generate audio",
+    run: async ({ docIds }) => {
+      await downloadAudio(docIds[0]);
+      return { kind: "downloaded" };
     },
   },
   {

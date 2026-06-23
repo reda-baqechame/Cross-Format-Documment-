@@ -49,6 +49,12 @@ def health(
         office_editor=settings.office_editor_configured,
         pdf_editor=settings.pdf_editor_configured,
         database=settings.database_kind,
+        esign_configured=settings.esign_configured,
+        idp_configured=settings.idp_configured,
+        handwriting_configured=settings.handwriting_configured,
+        tts_configured=settings.tts_configured,
+        drm_configured=settings.drm_configured,
+        cloud_integrations=settings.configured_integrations,
     )
 
 

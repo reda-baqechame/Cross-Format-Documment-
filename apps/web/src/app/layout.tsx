@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: "Docframe — open, edit & trust any document",
   description:
     "Open PDF, Word, Excel, and more in one workspace. Edit, redact, convert, and sign with trust controls built in.",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
   appleWebApp: {
     capable: true,
     title: "Docframe",

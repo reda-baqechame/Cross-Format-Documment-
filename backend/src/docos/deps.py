@@ -96,6 +96,68 @@ def get_orchestrator() -> SemanticOrchestratorImpl:
     return SemanticOrchestratorImpl(get_llm_client())
 
 
+def get_signature_provider():
+    """The e-signature provider: external when configured, else the honest integrity seal."""
+    from docos.services.esign import ExternalSignatureProvider, SealProvider
+
+    s = get_settings()
+    if s.esign_configured:
+        return ExternalSignatureProvider(s.signature_provider_url, s.signature_provider_key)
+    return SealProvider()
+
+
+def get_idp_provider():
+    """The cloud IDP provider, or None when only local extraction is available."""
+    s = get_settings()
+    if not s.idp_configured:
+        return None
+    if s.idp_provider == "textract":
+        from docos.services.ocr.idp import TextractIdp
+
+        return TextractIdp(s.s3_access_key, s.s3_secret_key, s.s3_endpoint_url and None)
+    from docos.services.ocr.idp import ExternalIdp
+
+    return ExternalIdp(s.idp_provider_url, s.idp_provider_key)
+
+
+def get_handwriting_provider():
+    """The handwriting-OCR provider, or None when not configured."""
+    s = get_settings()
+    if not s.handwriting_configured:
+        return None
+    from docos.services.ocr.handwriting import ExternalHandwriting
+
+    return ExternalHandwriting(s.handwriting_provider_url, s.handwriting_provider_key)
+
+
+def get_tts_provider():
+    """The TTS provider: external when configured, else a noop that signals 'not configured'."""
+    from docos.services.tts import ExternalTts, NoopTts
+
+    s = get_settings()
+    if s.tts_configured:
+        return ExternalTts(s.tts_provider_url, s.tts_provider_key)
+    return NoopTts()
+
+
+def get_drm_provider():
+    """The DRM provider, or None when not configured (local protection = AES-256 PDF password)."""
+    s = get_settings()
+    if not s.drm_configured:
+        return None
+    from docos.services.drm import ExternalDrm
+
+    return ExternalDrm(s.drm_provider_url, s.drm_provider_key)
+
+
+@lru_cache
+def get_presence_hub():
+    """Process-wide presence registry (single-node in-process; Redis is the multi-node seam)."""
+    from docos.services.collab.presence import MemoryHub
+
+    return MemoryHub(ttl_seconds=get_settings().presence_ttl_seconds)
+
+
 def get_provenance(session: Session) -> ProvenancePolicyServiceImpl:
     return ProvenancePolicyServiceImpl(session)
 
