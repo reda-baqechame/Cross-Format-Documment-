@@ -114,6 +114,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
   surfaced as an alarm banner in `ReadinessPanel.tsx`
 - ✅ Un-Retype (PDF→Excel) — `/tasks/pdf-to-excel` pulls tables + data points out of a PDF/scan into
   Excel/CSV with a "found N data points" reveal, on the table-extraction + xlsx-writer path
+- ✅ Fill Once — reusable autofill profile (`FillProfile` table + migration `0008`):
+  `GET/PUT /fill-profile` saves field-name→value answers once; `POST /documents/{id}/autofill`
+  fills matching blank fields as one reversible patch — `api/routes_profile.py`, FormsPanel UI
 - ✅ Public no-login tool pages: `/tasks/un-redact-test` (instant reveal) and `/tasks/send-ready-check`
   (→ trust tab), featured on the landing page; per-page SEO metadata via `generateMetadata` in
   `app/tasks/[slug]/page.tsx`. (Layer-1 distribution surface; Chrome extension still ⬜)

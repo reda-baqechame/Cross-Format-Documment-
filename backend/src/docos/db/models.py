@@ -206,3 +206,23 @@ class BlobTombstone(Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class FillProfile(Base):
+    """A reusable set of field-name → value answers for one-click form autofill ("Fill Once").
+
+    Keyed to the session (same anonymous-owner model as documents/templates), so a user enters
+    their details once and any later form's matching fields auto-populate. Stores the user's own
+    answers, never document content.
+    """
+
+    __tablename__ = "fill_profiles"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)  # field-name (lowercased) → value
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )

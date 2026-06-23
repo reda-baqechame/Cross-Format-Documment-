@@ -422,6 +422,29 @@ export async function deleteField(docId: string, fieldId: string): Promise<Patch
   );
 }
 
+// ── Fill Once: a reusable autofill profile ─────────────────────────────────────
+export async function getFillProfile(): Promise<{ data: Record<string, string> }> {
+  return json(await fetch(`${BASE}/fill-profile`));
+}
+
+export async function saveFillProfile(
+  data: Record<string, string>,
+): Promise<{ data: Record<string, string> }> {
+  return json(
+    await fetch(`${BASE}/fill-profile`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data }),
+    }),
+  );
+}
+
+export async function autofillDocument(
+  docId: string,
+): Promise<{ doc_id: string; filled: number; new_version_id: string | null }> {
+  return json(await fetch(`${BASE}/documents/${docId}/autofill`, { method: "POST" }));
+}
+
 /** Delete a block (reversible — restorable via undo). */
 export function deleteNode(docId: string, nodeId: string): Promise<PatchResponse> {
   return submitPatch(docId, { ops: [{ op: "remove_node", target_id: nodeId }] });

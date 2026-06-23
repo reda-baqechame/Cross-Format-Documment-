@@ -94,6 +94,24 @@ class RedactionAuditResponse(BaseModel):
     audit: RedactionAuditReport
 
 
+class FillProfileResponse(BaseModel):
+    """The caller's saved Fill-Once profile (field-name → value)."""
+
+    data: dict[str, str]
+
+
+class SaveFillProfileRequest(BaseModel):
+    data: dict[str, str]
+
+
+class AutofillResponse(BaseModel):
+    """Result of autofilling a document's blank fields from the saved profile."""
+
+    doc_id: str
+    filled: int
+    new_version_id: str | None
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport

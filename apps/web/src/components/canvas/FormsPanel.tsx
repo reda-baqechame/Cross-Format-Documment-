@@ -4,15 +4,37 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
+  autofillDocument,
   createField,
   deleteField,
   detectFields,
   fillField,
+  getFillProfile,
   listFields,
+  saveFillProfile,
   updateField,
   type FormField,
 } from "@/lib/api";
 import { friendlyApiError } from "@/lib/upload";
+
+/** Parse "Key: value" lines into a profile map. */
+function parseProfile(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    const value = line.slice(idx + 1).trim();
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
+function serializeProfile(data: Record<string, string>): string {
+  return Object.entries(data)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join("\n");
+}
 
 function FieldRow({ docId, field }: { docId: string; field: FormField }) {
   const queryClient = useQueryClient();
@@ -182,6 +204,19 @@ export function FormsPanel({ docId }: { docId: string }) {
     onSuccess: refresh,
   });
 
+  // Fill Once: a reusable profile that auto-populates matching fields across documents.
+  const profile = useQuery({ queryKey: ["fill-profile"], queryFn: getFillProfile });
+  const [profileText, setProfileText] = useState<string | null>(null);
+  const autofill = useMutation({
+    mutationFn: () => autofillDocument(docId),
+    onSuccess: refresh,
+  });
+  const saveProfile = useMutation({
+    mutationFn: () => saveFillProfile(parseProfile(profileText ?? "")),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fill-profile"] }),
+  });
+  const profileLines = profileText ?? serializeProfile(profile.data?.data ?? {});
+
   if (fields.isLoading) return <p className="p-6 text-sm text-slate-500">Loading form fields…</p>;
   if (fields.isError) {
     return (
@@ -238,6 +273,51 @@ export function FormsPanel({ docId }: { docId: string }) {
           {friendlyApiError(detect.error ?? create.error, "Couldn't update form fields.")}
         </p>
       )}
+
+      <div className="mt-3 space-y-2 rounded-lg border border-trust-200 bg-trust-50 p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-ink">Fill Once</span>
+          <button
+            type="button"
+            onClick={() => autofill.mutate()}
+            disabled={autofill.isPending}
+            className="min-h-[36px] rounded-lg bg-trust-700 px-3 text-sm font-medium text-white hover:bg-trust-800 disabled:opacity-40"
+          >
+            {autofill.isPending ? "Filling…" : "Autofill from my profile"}
+          </button>
+        </div>
+        <p className="text-xs text-slate-600">
+          Save your details once; matching blank fields fill automatically on every form.
+        </p>
+        <details>
+          <summary className="cursor-pointer text-xs font-medium text-slate-500">
+            Edit my profile
+          </summary>
+          <textarea
+            value={profileLines}
+            onChange={(e) => setProfileText(e.target.value)}
+            rows={5}
+            placeholder={"Name: Ada Lovelace\nEmail: ada@example.com\nAddress: 1 Analytical Way"}
+            className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1 font-mono text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => saveProfile.mutate()}
+            disabled={saveProfile.isPending}
+            className="mt-2 min-h-[36px] rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-40"
+          >
+            {saveProfile.isPending ? "Saving…" : "Save profile"}
+          </button>
+        </details>
+        {autofill.data && (
+          <p className="text-xs text-trust-700">Filled {autofill.data.filled} field(s).</p>
+        )}
+        {(autofill.isError || saveProfile.isError) && (
+          <p role="alert" className="text-xs text-red-600">
+            {friendlyApiError(autofill.error ?? saveProfile.error, "Couldn't autofill.")}
+          </p>
+        )}
+      </div>
       {list.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">
           This document has no fillable fields. Fields appear here for forms and templates with
