@@ -69,9 +69,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
   table primitives; high-fidelity slide thumbnails/formula editor still pending)
 - 🟡 **PDF editing — known limits** (honest scope): write-back covers editing/redacting *existing*
-  text spans (matched by bbox) and true redaction. Arbitrary new-text placement, paragraph reflow,
-  moving/replacing objects, and native form/signature fields need a PDF SDK provider (surfaced as
-  "PDF native editor: not connected" in the System status panel) — `writers/pdf_writer.py`
+  text spans (matched by bbox), true redaction, **and placing new text that carries a bbox**
+  (positioned new text now lands in the export — `tests/integration/test_pdf_new_text.py`). The
+  canvas "Add text" doesn't yet capture an on-page position for PDFs, so UI-added text currently
+  flows to DOCX/TXT exports. Paragraph reflow, moving/replacing objects, and native form/signature
+  fields still need a PDF SDK provider (surfaced as "PDF native editor: not connected") —
+  `writers/pdf_writer.py`
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
