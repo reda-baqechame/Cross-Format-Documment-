@@ -26,6 +26,7 @@ from docos.api.schemas import (
     DocumentModelResponse,
     DocumentSummary,
     HistoryResponse,
+    PurgeResponse,
     UploadResponse,
 )
 from docos.api.session import Actor, get_actor
@@ -357,6 +358,39 @@ def redo(
     )
     session.commit()
     return DocumentModelResponse(document=from_dict(child.model), version_id=child.id)
+
+
+@router.delete("", response_model=PurgeResponse)
+async def purge_my_documents(
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> PurgeResponse:
+    """Delete every document owned by the caller's session (Private Mode "delete all now")."""
+    records = session.scalars(
+        select(Document).where(Document.owner_session_id == actor.session_id)
+    ).all()
+    blob_keys = [r.blob_key for r in records if r.blob_key]
+    deleted = len(records)
+    for record in records:
+        session.delete(record)  # versions cascade-delete
+    get_provenance(session).record_event(
+        None, "documents.purged", actor=actor.session_id, detail={"count": deleted}
+    )
+    session.commit()
+
+    from docos.deps import get_blob_store
+
+    blob_store = get_blob_store()
+    for blob_key in blob_keys:
+        try:
+            await blob_store.delete(blob_key)
+        except Exception as exc:  # noqa: BLE001 - record for retry, never swallow
+            logger.warning("blob delete failed for %s: %s", blob_key, exc)
+            session.add(
+                BlobTombstone(blob_key=blob_key, reason="delete_failed", last_error=str(exc))
+            )
+    session.commit()
+    return PurgeResponse(deleted=deleted)
 
 
 @router.delete("/{doc_id}", status_code=204)

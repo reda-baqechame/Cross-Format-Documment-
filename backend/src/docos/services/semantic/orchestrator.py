@@ -489,6 +489,14 @@ class SemanticOrchestratorImpl(SemanticOrchestrator):
                     cell.attrs["number_format"] = op.payload["number_format"]
                 else:
                     cell.attrs.pop("number_format", None)
+            if "formula" in op.payload:
+                # A formula string ("=A1+B1") exports as a real Excel formula (recomputed on open);
+                # an empty value clears it back to plain text.
+                formula = op.payload["formula"]
+                if isinstance(formula, str) and formula.strip():
+                    cell.attrs["formula"] = formula.strip()
+                else:
+                    cell.attrs.pop("formula", None)
             return Patch(op="set_table_cell", target_id=cell.id, payload=before)
 
         if op.op == "insert_image":

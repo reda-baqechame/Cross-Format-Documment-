@@ -23,6 +23,7 @@ import {
   setListAttrs,
   setPageAttrs,
   setTableCell,
+  slideThumbnailUrl,
   uploadDocumentAsset,
 } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
@@ -89,6 +90,7 @@ export function ModifyStudio({ doc, docId }: { doc: CanonicalDocument; docId: st
   const [fieldKind, setFieldKind] = useState("text");
   const [fieldRequired, setFieldRequired] = useState(true);
   const [cellText, setCellText] = useState("");
+  const [cellFormula, setCellFormula] = useState("");
   const [linkHref, setLinkHref] = useState("");
   const [altText, setAltText] = useState("");
   const [newText, setNewText] = useState("New text");
@@ -96,6 +98,7 @@ export function ModifyStudio({ doc, docId }: { doc: CanonicalDocument; docId: st
 
   useEffect(() => {
     setCellText(cell ? collectText(doc, cell) : "");
+    setCellFormula(cell ? String(cell.attrs?.formula ?? "") : "");
     setAltText(image?.alt_text ?? "");
     setLinkHref(selected?.type === "run" ? (selected.link_href ?? "") : "");
     setPageRotation(String(page?.rotation ?? 0));
@@ -142,10 +145,20 @@ export function ModifyStudio({ doc, docId }: { doc: CanonicalDocument; docId: st
                 >
                   <button
                     type="button"
-                    className="aspect-[4/3] rounded-md border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-600"
+                    className="relative aspect-[4/3] overflow-hidden rounded-md border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-600"
                     onClick={() => selectNode(p.id)}
+                    title={`Open ${p.type === "page" ? "page" : "slide"} ${p.page_number ?? index + 1}`}
                   >
-                    {index + 1}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slideThumbnailUrl(docId, p.id)}
+                      alt={`${p.type === "page" ? "Page" : "Slide"} ${p.page_number ?? index + 1} preview`}
+                      className="h-full w-full object-cover object-top"
+                      loading="lazy"
+                    />
+                    <span className="absolute bottom-0 right-0 rounded-tl bg-slate-900/70 px-1 text-[10px] text-white">
+                      {index + 1}
+                    </span>
                   </button>
                   <div className="min-w-0 space-y-2">
                     <button
@@ -266,6 +279,20 @@ export function ModifyStudio({ doc, docId }: { doc: CanonicalDocument; docId: st
                 <textarea value={cellText} onChange={(e) => setCellText(e.target.value)} className="studio-input min-h-[72px]" />
                 <button className="studio-btn w-full" disabled={action.isPending} onClick={() => run(() => setTableCell(docId, cell.id, { text: cellText }))}>
                   Save cell
+                </button>
+                <input
+                  value={cellFormula}
+                  onChange={(e) => setCellFormula(e.target.value)}
+                  placeholder="Formula, e.g. =A1+B1"
+                  className="studio-input font-mono text-xs"
+                />
+                <button
+                  className="studio-btn w-full"
+                  disabled={action.isPending}
+                  onClick={() => run(() => setTableCell(docId, cell.id, { formula: cellFormula }))}
+                  title="Exports as a real Excel formula; Excel recomputes it on open (not recomputed in-app)"
+                >
+                  {cellFormula.trim() ? "Save formula" : "Clear formula"}
                 </button>
               </div>
             )}

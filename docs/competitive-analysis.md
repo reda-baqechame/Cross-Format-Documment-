@@ -157,6 +157,25 @@ The engine is novel; the **surface** reads as a generic uploader. Fixes:
 5. **Distinctive visual identity.** Avoid default Tailwind/Inter "AI slop." Adopt a confident, document‑craft aesthetic (a real typographic system, a signature accent, a "paper" canvas) so it doesn't look like every starter template.
 6. **Trust as the brand.** Position as the *only* document tool that guarantees what leaves the building is clean (redaction truly removed, metadata stripped, accessible, signed) — the through‑line competitors fragment.
 
+### 6.1 Retention thesis (what actually makes people come back)
+
+Generic edit/convert tools win SEO traffic but not retention. Products retain when they own a
+**recurring job where someone must complete an action** (check → fix → send), and AI is defensible
+only when it's **workflow‑specific**, not "chat with a PDF." Our shipped surface is built on this:
+
+- **The trust loop is the habit.** *Document X‑Ray* (drop a file → instantly see hidden metadata,
+  recoverable redactions, exposed PII) → *Un‑Redact Test* (proof bad redactions are recoverable) →
+  *Clean Before You Send* (one click → verified clean copy + proof the removed text is unrecoverable)
+  → *Send‑Ready Check*. This is the recurring "before you hit send" job iLovePDF/Smallpdf never owned
+  and rule‑based incumbents (Office Inspector, Metadact) structurally can't match (they don't truly
+  remove, and they're not AI).
+- **Verticals are presets, not separate builds.** Contract / invoice / intake run on the same
+  readiness engine; **CLM** (clause library + renewals) makes contract work *recurring* in‑app.
+- **The wedge is free, unlimited, no login, no file caps** — the single biggest documented daily
+  frustration with the incumbents — printed on the hero and every tool page.
+- **Why it's possible:** the canonical model + reversible patches + true‑removal redaction. That's
+  the moat; the trust loop is how users feel it.
+
 ---
 
 ## 7. Roadmap to the one‑stop shop
@@ -179,14 +198,42 @@ The engine is novel; the **surface** reads as a generic uploader. Fixes:
 
 **Sequencing logic:** Phase 1 reuses the existing canonical model + AI client for fast, demoable wins that already beat point tools. Phase 2 is where money is (e‑sign, compliance, IDP are budgeted line items). Phase 3 builds the collaboration surface that makes it sticky and replaces Google/M365 for document‑centric teams.
 
+### 7.1 Status (June 2026) — most of Phases 1–2 are shipped
+
+Phase 0 (de‑generic surface) and the bulk of Phase 1 are **done**: jobs‑first home, the trust loop
+(X‑Ray / Un‑Redact Test / Clean / Send‑Ready Check), any‑to‑any convert + RTF, page ops, AI Q&A /
+summarize / extract / translate, AI‑assisted redaction + metadata sanitize. From Phase 2:
+accessibility auto‑remediation, IDP/field extraction (Un‑Retype), forms + Fill‑Once, the integrity
+seal (tamper‑evident, *not* legally binding), and **CLM** (clause library + renewals) ship; PDF
+positioned‑text editing, conservative scanned‑grid table OCR, and the slide/spreadsheet fidelity
+slice (structural slide thumbnails + Excel formula export) are in. The **verb‑SEO tool pages + the
+free/unlimited/no‑login wedge** (Layer‑1 distribution) are live.
+
+**Near‑term next unit:** the **Chrome extension** (a thin wrapper over the same `/api`) to compound
+the distribution flywheel, plus more verb‑SEO pages and storage integrations.
+
+**Still infra/credential‑gated (scaffolded, not faked):** legally‑binding e‑sign/PKI/KYC, real‑time
+co‑authoring, cloud integrations (Drive/Dropbox/Box/SharePoint), mobile capture, doc→audio (TTS),
+cloud‑IDP parity, LibreOffice/ONLYOFFICE‑grade native rendering + live formula recompute, handwriting
+OCR, DRM. Seams exist; wiring needs the external service.
+
 ---
 
 ## 8. Positioning
 
-> **"Open any document. Do anything to it. Trust what comes out."**
-> One workspace that ingests every format into a single model, lets you edit it by hand or by AI, and guarantees the output is converted, redacted, accessible, and signed — replacing the five point tools the job takes today.
+> **"Check before you send. Never leak hidden data, never send an incomplete doc."**
+> Lead with the recurring job: drop any file and instantly see what's hidden (metadata, recoverable
+> redactions, exposed PII, blanks), then clean it with proof in one click — free, unlimited, no
+> login. The full edit/convert/redact/sign/compare toolkit is right there too, but the trust loop is
+> the habit that brings people back.
 
-The defensible center is the **canonical model + reversible patches + unified trust** — the one design that lets a single product legitimately span PDF tools, Office suites, e‑sign, OCR/IDP, redaction, accessibility, and AI. Everyone else is a feature; this is the platform.
+The brand is **trust**: the only document tool that *proves* what leaves the building is clean
+(redaction truly removed, metadata stripped, accessible, signed) across every format. The defensible
+center that makes it possible is the **canonical model + reversible patches + true‑removal
+redaction** — the one design that lets a single product legitimately span PDF tools, Office suites,
+e‑sign, OCR/IDP, redaction, accessibility, AI, and CLM. Everyone else is a feature; this is the
+platform. The growth wedge is **free / unlimited / no login / no file caps** — the incumbents' #1
+daily friction, turned into our headline.
 
 ---
 

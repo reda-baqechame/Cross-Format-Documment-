@@ -17,6 +17,7 @@ import {
   downloadSearchablePdf,
   fetchExtract,
   fetchIntelligence,
+  fetchRedactionAudit,
   fetchSummary,
   mergePdfs,
   parsePageList,
@@ -92,10 +93,148 @@ export interface TaskDef {
 }
 
 const PDF = "application/pdf";
+const DOCX = ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const XLSX = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const PPTX = ".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const IMAGE = "image/png,image/jpeg,image/tiff";
+const HTML = ".html,.htm,text/html";
 const ANY =
   "application/pdf,.docx,.xlsx,.pptx,.rtf,.txt,.md,.csv,.html,image/png,image/jpeg,image/tiff,text/plain,text/markdown,text/csv,text/html";
 
 const downloaded = async (): Promise<TaskResult> => ({ kind: "downloaded" });
+
+/**
+ * A single-direction "verb + filetype" converter (pdf-to-word, word-to-pdf, …). These exist as
+ * their own tasks so each gets a dedicated, SEO-friendly `/tasks/<slug>` landing page for the
+ * head-term searches iLovePDF/Smallpdf win on — free, no login, no file caps. They preset the
+ * export target and reuse the same backend export path as the generic Convert task.
+ */
+function convertTask(opts: {
+  slug: string;
+  title: string;
+  blurb: string;
+  emoji: string;
+  accept: string;
+  acceptLabel: string;
+  target: ExportFormat;
+  cta?: string;
+}): TaskDef {
+  return {
+    slug: opts.slug,
+    title: opts.title,
+    blurb: opts.blurb,
+    category: "Convert",
+    emoji: opts.emoji,
+    accept: opts.accept,
+    acceptLabel: opts.acceptLabel,
+    cta: opts.cta ?? "Convert",
+    run: async ({ docIds }) => {
+      const validation =
+        opts.target === "pdf"
+          ? await downloadSearchablePdf(docIds[0])
+          : await downloadExport(docIds[0], opts.target);
+      return { kind: "downloaded", validation: validation ?? undefined };
+    },
+  };
+}
+
+const VERB_TASKS: TaskDef[] = [
+  convertTask({
+    slug: "pdf-to-word",
+    title: "PDF to Word",
+    blurb: "Turn a PDF into an editable Word (.docx) document. Free, unlimited, no login.",
+    emoji: "📄",
+    accept: PDF,
+    acceptLabel: "a PDF",
+    target: "docx",
+    cta: "Convert to Word",
+  }),
+  convertTask({
+    slug: "word-to-pdf",
+    title: "Word to PDF",
+    blurb: "Convert a Word (.docx) document into a clean, shareable PDF. Free, no login.",
+    emoji: "📝",
+    accept: DOCX,
+    acceptLabel: "a Word (.docx) file",
+    target: "pdf",
+    cta: "Convert to PDF",
+  }),
+  convertTask({
+    slug: "jpg-to-pdf",
+    title: "JPG to PDF",
+    blurb: "Turn a JPG or PNG image into a PDF. Free, unlimited, no login, no file-size caps.",
+    emoji: "🖼️",
+    accept: IMAGE,
+    acceptLabel: "a JPG, PNG, or TIFF image",
+    target: "pdf",
+    cta: "Convert to PDF",
+  }),
+  convertTask({
+    slug: "pdf-to-jpg",
+    title: "PDF to JPG",
+    blurb: "Export a PDF page as a PNG/JPG image. Free, no login.",
+    emoji: "🏞️",
+    accept: PDF,
+    acceptLabel: "a PDF",
+    target: "png",
+    cta: "Convert to image",
+  }),
+  convertTask({
+    slug: "excel-to-pdf",
+    title: "Excel to PDF",
+    blurb: "Convert an Excel (.xlsx) spreadsheet into a PDF. Free, unlimited, no login.",
+    emoji: "📈",
+    accept: XLSX,
+    acceptLabel: "an Excel (.xlsx) file",
+    target: "pdf",
+    cta: "Convert to PDF",
+  }),
+  convertTask({
+    slug: "ppt-to-pdf",
+    title: "PowerPoint to PDF",
+    blurb: "Convert a PowerPoint (.pptx) deck into a PDF. Free, no login.",
+    emoji: "📽️",
+    accept: PPTX,
+    acceptLabel: "a PowerPoint (.pptx) file",
+    target: "pdf",
+    cta: "Convert to PDF",
+  }),
+  convertTask({
+    slug: "pdf-to-powerpoint",
+    title: "PDF to PowerPoint",
+    blurb: "Turn a PDF into an editable PowerPoint (.pptx) deck. Free, no login.",
+    emoji: "🎬",
+    accept: PDF,
+    acceptLabel: "a PDF",
+    target: "pptx",
+    cta: "Convert to PowerPoint",
+  }),
+  convertTask({
+    slug: "html-to-pdf",
+    title: "HTML to PDF",
+    blurb: "Convert an HTML page into a PDF. Free, unlimited, no login.",
+    emoji: "🌐",
+    accept: HTML,
+    acceptLabel: "an HTML (.html) file",
+    target: "pdf",
+    cta: "Convert to PDF",
+  }),
+  {
+    slug: "ocr-pdf",
+    title: "OCR PDF (make it searchable)",
+    blurb:
+      "Run OCR on a scanned PDF or image so the text becomes selectable and searchable. Free, no login.",
+    category: "Convert",
+    emoji: "🔠",
+    accept: PDF + "," + IMAGE,
+    acceptLabel: "a scanned PDF or image",
+    cta: "Make searchable",
+    run: async ({ docIds }) => {
+      const validation = await downloadSearchablePdf(docIds[0]);
+      return { kind: "downloaded", validation: validation ?? undefined };
+    },
+  },
+];
 
 export const TASKS: TaskDef[] = [
   {
@@ -335,6 +474,44 @@ export const TASKS: TaskDef[] = [
 
   // ── Convert ──────────────────────────────────────────────────────────────────
   {
+    slug: "pdf-to-excel",
+    title: "PDF to Excel (stop retyping)",
+    blurb:
+      "Pull tables and data out of a PDF, statement, or scan straight into Excel — no retyping. Free, no login.",
+    category: "Convert",
+    emoji: "📊",
+    accept: ANY,
+    acceptLabel: "a PDF, scan, or document with tables",
+    cta: "Get my spreadsheet",
+    options: [
+      {
+        name: "target",
+        label: "Export as",
+        type: "select",
+        default: "xlsx",
+        choices: [
+          { value: "xlsx", label: "Excel (.xlsx)" },
+          { value: "csv", label: "CSV (.csv)" },
+        ],
+      },
+    ],
+    run: async ({ docIds, options }) => {
+      const target = (options.target as ExportFormat) ?? "xlsx";
+      const { extraction } = await fetchExtract(docIds[0]).catch(() => ({
+        extraction: { entities: [], fields: [] },
+      }));
+      await downloadExport(docIds[0], target);
+      const found = extraction.fields.length + extraction.entities.length;
+      return {
+        kind: "text",
+        title: "Spreadsheet downloaded",
+        body:
+          `Tables became rows and ${found} data point(s) were pulled out — ready to edit in ` +
+          "your spreadsheet. That's work you'd otherwise retype by hand.",
+      };
+    },
+  },
+  {
     slug: "convert",
     title: "Convert document",
     blurb: "Export structured copies to PDF, Word, Excel, PowerPoint, image, or text. Native layout fidelity varies by format.",
@@ -372,6 +549,7 @@ export const TASKS: TaskDef[] = [
       return { kind: "downloaded", validation: validation ?? undefined };
     },
   },
+  ...VERB_TASKS,
 
   // ── Edit ──────────────────────────────────────────────────────────────────────
   {
@@ -434,6 +612,57 @@ export const TASKS: TaskDef[] = [
   },
 
   // ── Secure ──────────────────────────────────────────────────────────────────
+  {
+    slug: "un-redact-test",
+    title: "Un-Redact Test",
+    blurb:
+      "Drop a redacted PDF and see if the blacked-out text is still recoverable — before you send it. Free, no login.",
+    category: "Secure",
+    emoji: "🕵️",
+    accept: PDF,
+    acceptLabel: "a redacted PDF",
+    cta: "Test my redactions",
+    run: async ({ docIds }) => {
+      const { audit } = await fetchRedactionAudit(docIds[0]);
+      if (!audit.is_pdf) {
+        return {
+          kind: "text",
+          title: "Not a PDF",
+          body: "The un-redact test only applies to PDF files.",
+        };
+      }
+      if (audit.verdict === "leaky") {
+        return {
+          kind: "text",
+          title: "⚠ Un-Redact Test failed",
+          body:
+            `${audit.summary}\n\nThose black boxes are cosmetic — the text underneath is still ` +
+            "in the file, and anyone you send it to can pull it back. Open the document and run " +
+            "Clean Before You Send to remove it for real, with proof.",
+        };
+      }
+      return {
+        kind: "text",
+        title: "✓ Un-Redact Test passed",
+        body: `${audit.summary} Still run a Send-Ready Check to catch hidden metadata and PII.`,
+      };
+    },
+  },
+  {
+    slug: "send-ready-check",
+    title: "Send-Ready Check",
+    blurb:
+      "One click before you hit send: see hidden metadata, exposed PII, and unsafe redactions — then clean it with proof.",
+    category: "Secure",
+    emoji: "🛡️",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Check before sending",
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=trust`,
+    }),
+  },
   {
     slug: "redact",
     title: "Redact sensitive data",

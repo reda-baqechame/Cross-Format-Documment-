@@ -67,20 +67,25 @@ def write_back_pdf(data: bytes, doc: CanonicalDocument) -> bytes:
     """Return the original PDF with redactions removed and edited text rewritten."""
     pdf = fitz.open(stream=data, filetype="pdf")
     try:
+        # Only strip the PDF's embedded /Info + XMP metadata when the model was sanitized
+        # (the sanitize_metadata op / "Clean before you send"); plain exports keep it intact.
+        sanitized = doc.redaction.metadata_sanitized
         pdf.scrub(
             attached_files=True,
             clean_pages=False,
             embedded_files=True,
             hidden_text=False,
             javascript=True,
-            metadata=False,
+            metadata=sanitized,
             redactions=False,
             remove_links=True,
             reset_fields=False,
             reset_responses=True,
             thumbnails=False,
-            xml_metadata=False,
+            xml_metadata=sanitized,
         )
+        if sanitized:
+            pdf.set_metadata({})  # belt-and-suspenders: clear the /Info dict explicitly
         original = _original_text_by_box(data)
         # Per page index: spans to remove (redaction) and spans to rewrite after.
         rewrites: list[tuple[int, fitz.Rect, str, float, tuple[float, float, float]]] = []

@@ -13,6 +13,9 @@ import { useWorkspace } from "@/lib/store";
  */
 export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: string }) {
   const selectedId = useWorkspace((s) => s.selectedNodeId);
+  const addTextMode = useWorkspace((s) => s.addTextMode);
+  const toggleAddText = useWorkspace((s) => s.toggleAddText);
+  const isPdf = doc.meta.source_format === "pdf";
   const queryClient = useQueryClient();
   const node = selectedId ? doc.nodes[selectedId] : undefined;
   const isRun = node?.type === "run";
@@ -104,6 +107,23 @@ export function FormatToolbar({ doc, docId }: { doc: CanonicalDocument; docId: s
         title={isRun ? "Text color" : "Select text to set its color"}
         aria-label="Text color"
       />
+      {isPdf && (
+        <>
+          <span className="mx-0.5 h-5 w-px bg-slate-200" aria-hidden />
+          <button
+            type="button"
+            onClick={toggleAddText}
+            className={[
+              "flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+              addTextMode ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100",
+            ].join(" ")}
+            aria-pressed={addTextMode}
+            title="Click the page to drop a new text box"
+          >
+            + Text
+          </button>
+        </>
+      )}
     </div>
   );
 }

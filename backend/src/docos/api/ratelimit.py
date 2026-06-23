@@ -58,3 +58,16 @@ def enforce_upload_rate(request: Request, actor: Actor = Depends(get_actor)) -> 
     client_allowed = _allow(f"upload:client:{_client_key(request)}", rate, burst=burst)
     if not session_allowed or not client_allowed:
         raise HTTPException(status_code=429, detail="too many uploads — please slow down")
+
+
+def enforce_op_rate(request: Request, actor: Actor = Depends(get_actor)) -> None:
+    """Dependency: throttle expensive operations (clean, audit, autofill) per session + client."""
+    settings = get_settings()
+    if not settings.rate_limit_enabled:
+        return
+    rate = settings.rate_limit_ops_per_min
+    burst = max(rate, 1)
+    session_allowed = _allow(f"op:session:{actor.session_id}", rate, burst=burst)
+    client_allowed = _allow(f"op:client:{_client_key(request)}", rate, burst=burst)
+    if not session_allowed or not client_allowed:
+        raise HTTPException(status_code=429, detail="too many requests — please slow down")

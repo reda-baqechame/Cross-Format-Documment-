@@ -13,9 +13,12 @@ import {
 } from "lucide-react";
 
 import { DocumentList } from "@/components/documents/DocumentList";
+import { RenewalsSection } from "@/components/clm/RenewalsSection";
+import { FreeBadge } from "@/components/marketing/FreeBadge";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
+import { PrivacyPanel } from "@/components/system/PrivacyPanel";
 import { SystemStatusPanel } from "@/components/system/SystemStatusPanel";
 import { TaskGrid } from "@/components/tasks/TaskGrid";
 import { TemplateGallery } from "@/components/templates/TemplateGallery";
@@ -76,6 +79,7 @@ export default function HomePage() {
                 Browse all tools
               </Link>
             </div>
+            <FreeBadge className="mt-4" />
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {TRUST_ITEMS.map((item) => {
                 const Icon = item.icon;
@@ -103,6 +107,60 @@ export default function HomePage() {
               <UploadDropzone />
             </div>
             <SystemStatusPanel className="mt-5 border-t border-line pt-4" />
+            <PrivacyPanel className="mt-5 border-t border-line pt-4" />
+          </div>
+        </section>
+
+        <section id="featured" className="scroll-mt-20">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link
+              href="/tasks/pdf-to-excel"
+              className="group rounded-2xl border border-amber-200 bg-amber-50 p-5 transition-colors hover:bg-amber-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Free · no login
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">📊 PDF → Excel</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Pull tables and data out of a PDF or scan straight into a spreadsheet. Stop paying
+                someone to retype it by hand.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-amber-800 group-hover:underline">
+                Get my spreadsheet →
+              </span>
+            </Link>
+            <Link
+              href="/tasks/un-redact-test"
+              className="group rounded-2xl border border-red-200 bg-red-50 p-5 transition-colors hover:bg-red-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-red-600">
+                Free · no login
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">🕵️ Un-Redact Test</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Drop a “redacted” PDF and see if the blacked-out text is still recoverable. If our
+                tool can pull it back, so can anyone you sent it to.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-red-700 group-hover:underline">
+                Test my redactions →
+              </span>
+            </Link>
+            <Link
+              href="/tasks/send-ready-check"
+              className="group rounded-2xl border border-trust-200 bg-trust-50 p-5 transition-colors hover:bg-trust-100"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-trust-700">
+                Before you hit send
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-ink">🛡️ Send-Ready Check</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                One click reveals hidden metadata, exposed PII, and unsafe redactions — then cleans
+                it and proves the removed text is unrecoverable.
+              </p>
+              <span className="mt-3 inline-block text-sm font-medium text-trust-700 group-hover:underline">
+                Check before sending →
+              </span>
+            </Link>
           </div>
         </section>
 
@@ -165,6 +223,8 @@ export default function HomePage() {
           >
             <TemplateGallery />
           </Section>
+
+          <RenewalsSection />
         </section>
 
         <Section

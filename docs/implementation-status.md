@@ -11,7 +11,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
   contents not extension, zip-bomb limits) — `services/ingestion`
 - ✅ First-class Markdown / CSV / HTML import adapters — `services/docengine/adapters`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
-- 🟡 OCR scans (Tesseract best-effort) — `services/ocr` structure extraction still a stub
+- ✅ OCR structure extraction — `TesseractOcr` recognises positioned, confidence-scored word runs
+  (`image_to_data` → `RunNode` + bbox + `attrs.confidence`/`ocr_review`), geometric reading order,
+  Pillow cleanup; the image adapter prefers a confident scanned-grid table, then structured OCR,
+  then flat text. **Conservative scanned-grid tables** (`build_table_nodes`): a `TableNode` subtree
+  is emitted only on a clear full-page grid (≥2 rows × ≥2 aligned columns, every column across ≥2
+  rows, ≥70% of words participating) so prose is never mangled. — `services/ocr/tesseract.py`,
+  `adapters/image.py`
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
 - 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
 - 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
@@ -19,7 +25,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## B. Understand it (OCR, IDP, structure)
 - ✅ Parse to structured model (nodes, reading order, tables)
-- 🟡 Table extraction
+- ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
+  `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by
+  the existing xlsx writer — `services/docengine/adapters/pdf.py`
 - ✅ Key-value / entity extraction (dates, emails, money, etc.) — `services/semantic/extract.py`
 - ✅ Document classification — `services/semantic/classify.py`
 - ✅ Typed document intelligence (invoice/receipt/contract/résumé/**forms + templates**/**presentation + visual docs**):
@@ -61,12 +69,20 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
 - ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py` (UI: `TemplateGallery`)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
-  table primitives; high-fidelity slide thumbnails/formula editor still pending)
-- 🟡 **PDF editing — known limits** (honest scope): write-back covers editing/redacting *existing*
-  text spans (matched by bbox) and true redaction. Arbitrary new-text placement, paragraph reflow,
-  moving/replacing objects, and native form/signature fields need a PDF SDK provider (surfaced as
-  "PDF native editor: not connected" in the System status panel) — `writers/pdf_writer.py`
+- ✅ Native slide/spreadsheet editing UX (tractable slice): Modify Studio handles page/slide, text,
+  image, and table primitives, **plus structural slide thumbnails** rendered per-page from the model
+  (`GET /documents/{id}/slide-thumbnail`, works for any format) and a **cell formula editor**
+  (`table_cell.attrs.formula` → a real Excel `=` formula on export, recomputed by Excel on open).
+  PowerPoint-grade slide raster + live in-app formula recompute remain provider-gated (need a
+  rendering/calc engine). — `writers/image_writer.py`, `writers/xlsx_writer.py`, `ModifyStudio.tsx`
+- ✅ **PDF editing — positioned text** (honest scope): write-back covers editing/redacting
+  *existing* text spans (matched by bbox), true redaction, **and placing new text that carries a
+  bbox**. The canvas now has a **"+ Text" mode** (`FormatToolbar` → click a PDF page to drop a text
+  box): the click maps to PDF points and posts an `add_node` patch with a bbox'd run under the page,
+  which lands in the export — `tests/integration/test_pdf_add_text_api.py` (API path) and
+  `test_pdf_new_text.py` (writer). Paragraph reflow, moving/replacing objects, and native
+  form/signature fields still need a PDF SDK provider (surfaced as "PDF native editor: not
+  connected") — `writers/pdf_writer.py`
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export
@@ -92,11 +108,41 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Bulk send (one packet to many recipients; per-recipient copy + sign-off) — `routes_bulk_send.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
   payments — needs a certificate authority / regulated signing & KYC provider
-- ⬜ Full CLM (clause library, renewals)
+- ✅ Full CLM (clause library + renewals) — session-scoped `Clause`/`RenewalReminder` (migration
+  0009). Save reusable clauses and insert them as reversible `add_node` patches
+  (`POST /documents/{id}/insert-clause`); track renewal/expiry dates in-app, sorted by due date with
+  overdue/soon urgency, with date auto-suggestions from the deterministic extractor
+  (`GET /documents/{id}/renewal-suggestions`). In-app reminders only — email/push delivery needs
+  infra. — `services/clm/`, `routes_clm.py`, `components/canvas/ClausesPanel.tsx`,
+  `components/clm/RenewalsSection.tsx`
 
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
+- ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
+  PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
+  cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
+  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx`
+- ✅ Clean Before You Send — `POST /documents/{id}/clean` applies the auto-fixes (strip hidden
+  metadata + true-redact PII) as one reversible patch, re-checks, and returns the post-clean
+  verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
+  via `/export`. PDF embedded /Info + XMP metadata is stripped on the clean export (scoped to
+  sanitized docs in `writers/pdf_writer.py`)
+- ✅ Un-Redact Test — detect text still recoverable under a PDF's "redactions" (black-box fills /
+  redaction annotations); reports recoverable count + verdict (safe/leaky) without echoing the
+  text — `services/provenance/redaction_audit.py`, `GET /documents/{id}/redaction-audit`,
+  surfaced as an alarm banner in `ReadinessPanel.tsx`
+- ✅ Un-Retype (PDF→Excel) — `/tasks/pdf-to-excel` pulls tables + data points out of a PDF/scan into
+  Excel/CSV with a "found N data points" reveal, on the table-extraction + xlsx-writer path
+- ✅ Fill Once — reusable autofill profile (`FillProfile` table + migration `0008`):
+  `GET/PUT /fill-profile` saves field-name→value answers once; `POST /documents/{id}/autofill`
+  fills matching blank fields as one reversible patch — `api/routes_profile.py`, FormsPanel UI
+- ✅ Private Mode — honest privacy posture + control: session-private docs, "AI off → nothing sent
+  to third parties", one-click `DELETE /documents` purge-all (no fake auto-delete claim) —
+  `routes_documents.purge_my_documents`, `components/system/PrivacyPanel.tsx`
+- ✅ Public no-login tool pages: `/tasks/un-redact-test` (instant reveal) and `/tasks/send-ready-check`
+  (→ trust tab), featured on the landing page; per-page SEO metadata via `generateMetadata` in
+  `app/tasks/[slug]/page.tsx`. (Layer-1 distribution surface; Chrome extension still ⬜)
 - ✅ Password / encrypt / permissions on PDF (AES-256) — `pageops.encrypt_pdf`
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
@@ -150,6 +196,11 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
   fast). `/health` stays a 200 status summary the UI reads — `api/routes_health.py`.
 - ✅ Provider/storage truthing in `/health` (AI provider, Office/PDF native-editor state, storage,
   SQLite vs Postgres) surfaced by the home page **System status** panel — `components/system/SystemStatusPanel.tsx`.
+- ✅ Enterprise hardening: per-session+IP rate limiting on expensive ops (clean / redaction-audit /
+  autofill) via `enforce_op_rate`; input bounds on the Fill-Once profile (entry count + key/value
+  length → 422); page-scan caps (`max_scan_pages`) so a many-page PDF can't exhaust CPU during table
+  detection or the un-redact test; cross-session/tenant isolation enforced (404) and covered by
+  `tests/integration/test_enterprise_hardening.py`.
 - ✅ Both Docker images install the Anthropic **and** OpenAI provider extras so a configured
   `OPENAI_API_KEY` can't crash on a missing SDK at runtime.
 - ✅ Windows-safe web build: local `pnpm --filter @docos/web build` skips Next standalone

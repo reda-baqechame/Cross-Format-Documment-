@@ -17,6 +17,8 @@ from docos.model.patch import PatchOp
 from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
+from docos.services.provenance.readiness import ReadinessReport
+from docos.services.provenance.redaction_audit import RedactionAuditReport
 from docos.services.provenance.sensitive import SensitiveFinding
 from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
@@ -66,6 +68,112 @@ class DocumentModelResponse(BaseModel):
 class DocumentHealthResponse(BaseModel):
     doc_id: str
     health: DocumentHealth
+
+
+class ReadinessResponse(BaseModel):
+    """Send-Ready / Document X-Ray verdict + per-check breakdown for a document."""
+
+    doc_id: str
+    report: ReadinessReport
+
+
+class CleanResponse(BaseModel):
+    """Result of a one-shot 'Clean Before You Send': fixes applied + post-clean verdict + proof."""
+
+    doc_id: str
+    applied: bool
+    new_version_id: str | None
+    report: ReadinessReport  # re-run after cleaning
+    validation: ValidationReport  # proof the clean copy is sound (redaction unrecoverable, …)
+
+
+class RedactionAuditResponse(BaseModel):
+    """Un-Redact Test verdict: is text still recoverable under this PDF's 'redactions'?"""
+
+    doc_id: str
+    audit: RedactionAuditReport
+
+
+class PurgeResponse(BaseModel):
+    """How many of the caller's documents were deleted by a Private-Mode purge."""
+
+    deleted: int
+
+
+class FillProfileResponse(BaseModel):
+    """The caller's saved Fill-Once profile (field-name → value)."""
+
+    data: dict[str, str]
+
+
+class SaveFillProfileRequest(BaseModel):
+    data: dict[str, str]
+
+
+class AutofillResponse(BaseModel):
+    """Result of autofilling a document's blank fields from the saved profile."""
+
+    doc_id: str
+    filled: int
+    new_version_id: str | None
+
+
+# ── CLM: clause library + renewals ──────────────────────────────────────────────────────────
+class ClauseResponse(BaseModel):
+    id: str
+    title: str
+    body: str
+    category: str | None = None
+
+
+class ClauseListResponse(BaseModel):
+    clauses: list[ClauseResponse]
+
+
+class CreateClauseRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1, max_length=20000)
+    category: str | None = Field(default=None, max_length=100)
+
+
+class InsertClauseRequest(BaseModel):
+    """Insert either a saved clause (by id) or ad-hoc title/body into a document."""
+
+    clause_id: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=20000)
+
+
+class InsertClauseResponse(BaseModel):
+    doc_id: str
+    inserted: int  # number of blocks added
+    new_version_id: str | None
+
+
+class RenewalResponse(BaseModel):
+    id: str
+    title: str
+    due_date: str
+    note: str | None = None
+    status: str
+    doc_id: str | None = None
+    urgency: str  # overdue | soon | later
+
+
+class RenewalListResponse(BaseModel):
+    renewals: list[RenewalResponse]
+
+
+class CreateRenewalRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    due_date: str = Field(description="ISO date YYYY-MM-DD")
+    note: str | None = Field(default=None, max_length=2000)
+    doc_id: str | None = None
+
+
+class RenewalSuggestionsResponse(BaseModel):
+    doc_id: str
+    due_dates: list[str]
 
 
 class ValidationReportResponse(BaseModel):

@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from docos.api import (
     routes_approvals,
     routes_bulk_send,
+    routes_clm,
     routes_comments,
     routes_documents,
     routes_editor,
@@ -28,7 +29,9 @@ from docos.api import (
     routes_ops_agent,
     routes_pages,
     routes_patches,
+    routes_profile,
     routes_query,
+    routes_readiness,
     routes_suggestions,
     routes_templates,
     routes_workflows,
@@ -70,11 +73,14 @@ def create_app() -> FastAPI:
     app.include_router(routes_health.router)
     app.include_router(routes_documents.router)
     app.include_router(routes_health_panel.router)
+    app.include_router(routes_readiness.router)
     app.include_router(routes_patches.router)
     app.include_router(routes_query.router)
     app.include_router(routes_pages.router)
     app.include_router(routes_library.router)
     app.include_router(routes_forms.router)
+    app.include_router(routes_profile.router)
+    app.include_router(routes_clm.router)
     app.include_router(routes_editor.router)
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)

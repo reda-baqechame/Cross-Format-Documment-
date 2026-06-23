@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
+import { ClausesPanel } from "@/components/canvas/ClausesPanel";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import {
@@ -19,6 +20,7 @@ import { FormsPanel } from "@/components/canvas/FormsPanel";
 import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
+import { ReadinessPanel } from "@/components/health-panel/ReadinessPanel";
 import { WorkflowRunnerPanel } from "@/components/workflows/WorkflowRunnerPanel";
 import { fetchHealth, fetchModel, type WorkflowPreset } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
@@ -32,6 +34,7 @@ const TABS: WorkspaceTab[] = [
   "autopilot",
   "insights",
   "forms",
+  "clauses",
   "trust",
   "comments",
   "approvals",
@@ -175,6 +178,7 @@ function RightPanel({
   initialWorkflow: WorkflowPreset;
 }) {
   if (tab === "forms") return <FormsPanel docId={docId} />;
+  if (tab === "clauses") return <ClausesPanel doc={doc} docId={docId} />;
   if (tab === "comments") return <CommentsPanel docId={docId} />;
   if (tab === "approvals") return <ApprovalsPanel docId={docId} />;
   if (tab === "trust") {
@@ -188,7 +192,12 @@ function RightPanel({
     if (health.isLoading || !health.data) {
       return <p className="p-6 text-sm text-slate-500">Loading trust checks...</p>;
     }
-    return <HealthPanel health={health.data.health} docId={docId} />;
+    return (
+      <div className="flex h-full w-full flex-col overflow-auto lg:w-96">
+        <ReadinessPanel docId={docId} />
+        <HealthPanel health={health.data.health} docId={docId} />
+      </div>
+    );
   }
   if (tab === "editor") return <EditorSessionPanel docId={docId} sourceFormat={doc.meta.source_format} />;
   if (tab === "modify" || tab === "document") return <ModifyStudio doc={doc} docId={docId} />;

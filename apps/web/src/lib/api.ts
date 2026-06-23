@@ -66,6 +66,11 @@ export async function fetchBackendHealth(): Promise<BackendHealth> {
   return json<BackendHealth>(await fetch(`${BASE}/health`));
 }
 
+/** Private Mode: delete every document owned by this browser session. */
+export async function purgeDocuments(): Promise<{ deleted: number }> {
+  return json(await fetch(`${BASE}/documents`, { method: "DELETE" }));
+}
+
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const body = new FormData();
   body.append("file", file);
@@ -78,6 +83,70 @@ export async function fetchModel(docId: string): Promise<DocumentModelResponse> 
 
 export async function fetchHealth(docId: string): Promise<DocumentHealthResponse> {
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
+}
+
+// Send-Ready Check / Document X-Ray. Defined inline (like BackendHealth) so the surface
+// doesn't depend on a codegen run; the backend shapes live in services/provenance/readiness.py.
+export interface ReadinessCheck {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+  count: number;
+  fixable: boolean;
+  fix_action: "redact_pii" | "sanitize_metadata" | "apply_redactions" | null;
+}
+
+export interface ReadinessReport {
+  verdict: "ready" | "needs_fixes" | "blocked";
+  summary: string;
+  checks: ReadinessCheck[];
+}
+
+export interface ReadinessResponse {
+  doc_id: string;
+  report: ReadinessReport;
+}
+
+/** One verdict on whether a document is safe + complete to send (read-only). */
+export async function fetchReadiness(docId: string): Promise<ReadinessResponse> {
+  return json<ReadinessResponse>(await fetch(`${BASE}/documents/${docId}/readiness`));
+}
+
+export interface CleanResponse {
+  doc_id: string;
+  applied: boolean;
+  new_version_id: string | null;
+  report: ReadinessReport;
+  validation: ValidationReport; // defined below — output opens, redactions removed, …
+}
+
+/** Clean Before You Send: apply the auto-fixes, re-check, and return the verdict + proof. */
+export async function cleanDocument(docId: string): Promise<CleanResponse> {
+  return json<CleanResponse>(
+    await fetch(`${BASE}/documents/${docId}/clean`, { method: "POST" }),
+  );
+}
+
+export interface RedactionAuditReport {
+  is_pdf: boolean;
+  scanned_pages: number;
+  covered_regions: number;
+  recoverable_count: number;
+  verdict: "safe" | "leaky" | "not_applicable";
+  summary: string;
+}
+
+export interface RedactionAuditResponse {
+  doc_id: string;
+  audit: RedactionAuditReport;
+}
+
+/** Un-Redact Test: is text still recoverable under this PDF's "redactions"? */
+export async function fetchRedactionAudit(docId: string): Promise<RedactionAuditResponse> {
+  return json<RedactionAuditResponse>(
+    await fetch(`${BASE}/documents/${docId}/redaction-audit`),
+  );
 }
 
 export interface EditorSession {
@@ -358,6 +427,115 @@ export async function deleteField(docId: string, fieldId: string): Promise<Patch
   );
 }
 
+// ── Fill Once: a reusable autofill profile ─────────────────────────────────────
+export async function getFillProfile(): Promise<{ data: Record<string, string> }> {
+  return json(await fetch(`${BASE}/fill-profile`));
+}
+
+export async function saveFillProfile(
+  data: Record<string, string>,
+): Promise<{ data: Record<string, string> }> {
+  return json(
+    await fetch(`${BASE}/fill-profile`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data }),
+    }),
+  );
+}
+
+export async function autofillDocument(
+  docId: string,
+): Promise<{ doc_id: string; filled: number; new_version_id: string | null }> {
+  return json(await fetch(`${BASE}/documents/${docId}/autofill`, { method: "POST" }));
+}
+
+// ── CLM: clause library + renewals ─────────────────────────────────────────────
+export interface Clause {
+  id: string;
+  title: string;
+  body: string;
+  category?: string | null;
+}
+
+export async function listClauses(): Promise<Clause[]> {
+  return (await json<{ clauses: Clause[] }>(await fetch(`${BASE}/clauses`))).clauses;
+}
+
+export async function createClause(input: {
+  title: string;
+  body: string;
+  category?: string | null;
+}): Promise<Clause> {
+  return json(
+    await fetch(`${BASE}/clauses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function deleteClause(clauseId: string): Promise<void> {
+  const res = await fetch(`${BASE}/clauses/${clauseId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function insertClause(
+  docId: string,
+  input: { clause_id?: string; title?: string; body?: string },
+): Promise<{ doc_id: string; inserted: number; new_version_id: string | null }> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/insert-clause`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export interface Renewal {
+  id: string;
+  title: string;
+  due_date: string;
+  note?: string | null;
+  status: string;
+  doc_id?: string | null;
+  urgency: "overdue" | "soon" | "later";
+}
+
+export async function listRenewals(): Promise<Renewal[]> {
+  return (await json<{ renewals: Renewal[] }>(await fetch(`${BASE}/renewals`))).renewals;
+}
+
+export async function createRenewal(input: {
+  title: string;
+  due_date: string;
+  note?: string | null;
+  doc_id?: string | null;
+}): Promise<Renewal> {
+  return json(
+    await fetch(`${BASE}/renewals`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function deleteRenewal(renewalId: string): Promise<void> {
+  const res = await fetch(`${BASE}/renewals/${renewalId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function renewalSuggestions(docId: string): Promise<string[]> {
+  return (
+    await json<{ doc_id: string; due_dates: string[] }>(
+      await fetch(`${BASE}/documents/${docId}/renewal-suggestions`),
+    )
+  ).due_dates;
+}
+
 /** Delete a block (reversible — restorable via undo). */
 export function deleteNode(docId: string, nodeId: string): Promise<PatchResponse> {
   return submitPatch(docId, { ops: [{ op: "remove_node", target_id: nodeId }] });
@@ -391,7 +569,12 @@ export const setPageAttrs = (
 export const setTableCell = (
   docId: string,
   cellId: string,
-  changes: { text?: string; header?: boolean; number_format?: string | null },
+  changes: {
+    text?: string;
+    header?: boolean;
+    number_format?: string | null;
+    formula?: string | null;
+  },
 ): Promise<PatchResponse> =>
   submitPatch(docId, { ops: [{ op: "set_table_cell", target_id: cellId, payload: changes }] });
 
@@ -554,6 +737,49 @@ export function addTextBlock(
   });
 }
 
+/**
+ * Place a new text box at a fixed position on a PDF page. The run carries a `bbox` (PDF points)
+ * and is parented under the page node, so `write_back_pdf` inserts it at that location — the
+ * tractable, no-SDK slice of PDF authoring (reflow/object-move still need a PDF SDK provider).
+ */
+export function addPositionedText(
+  docId: string,
+  pageId: string,
+  bbox: { x0: number; y0: number; x1: number; y1: number },
+  text: string,
+  opts?: { size?: number },
+): Promise<PatchResponse> {
+  const blockId = localNodeId("p");
+  const runId = localNodeId("run");
+  const block = {
+    id: blockId,
+    type: "paragraph",
+    parent_id: pageId,
+    children: [runId],
+    attrs: {},
+    tags: [],
+  };
+  const run = {
+    id: runId,
+    type: "run",
+    parent_id: blockId,
+    children: [],
+    attrs: {},
+    tags: [],
+    text,
+    bbox,
+    size: opts?.size ?? 12,
+  };
+  return submitPatch(docId, {
+    ops: [
+      {
+        op: "add_node",
+        payload: { node: block, nodes: [block, run], parent_id: pageId, index: null },
+      },
+    ],
+  });
+}
+
 export type ExportFormat =
   | "docx"
   | "txt"
@@ -705,6 +931,11 @@ export async function fetchIntelligence(
 
 export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
+}
+
+/** A structural PNG thumbnail of one slide/page, rendered from the model (works for any format). */
+export function slideThumbnailUrl(docId: string, nodeId: string): string {
+  return `${BASE}/documents/${docId}/slide-thumbnail?node_id=${encodeURIComponent(nodeId)}`;
 }
 
 // ── Document Autopilot ───────────────────────────────────────────────────────

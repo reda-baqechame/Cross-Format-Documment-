@@ -79,9 +79,14 @@ class Settings(BaseSettings):
     # upload rate limiting (per session, falling back to client IP).
     rate_limit_enabled: bool = True
     rate_limit_uploads_per_min: int = 30
+    # rate limit for expensive non-upload operations (clean, redaction-audit, autofill, …).
+    rate_limit_ops_per_min: int = 60
 
     # ingestion limits
     max_upload_mb: int = 50
+    # Hard cap on pages scanned by per-page analyses (table detection, un-redact test) so a
+    # pathological many-page PDF can't exhaust CPU. Content beyond the cap is left as-is.
+    max_scan_pages: int = 200
     allowed_mime_types: str = (
         "text/plain,"
         "text/markdown,"
