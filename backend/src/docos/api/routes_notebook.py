@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from docos.api._corpus import load_corpus
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.session import Actor, get_actor
 from docos.deps import db_session, get_llm_client, get_settings
 from docos.services.semantic import corpus as corpus_service
@@ -34,7 +35,10 @@ class NotebookResponse(BaseModel):
 
 @router.post("/ask", response_model=NotebookResponse)
 async def notebook_ask(
-    body: NotebookRequest, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+    body: NotebookRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> NotebookResponse:
     question = body.question.strip()
     if not question:

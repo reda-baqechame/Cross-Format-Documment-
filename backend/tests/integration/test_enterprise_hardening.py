@@ -78,3 +78,26 @@ def test_op_rate_limit_eventually_429s(client, monkeypatch):
     doc_id = _upload(client)
     statuses = [client.post(f"/documents/{doc_id}/autofill").status_code for _ in range(8)]
     assert 429 in statuses  # the bucket drains and throttles
+
+
+def test_export_is_burst_limited_but_first_call_passes(client, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "rate_limit_ops_per_min", 3)
+    doc_id = _upload(client)
+    statuses = [
+        client.get(f"/documents/{doc_id}/export", params={"format": "txt"}).status_code
+        for _ in range(8)
+    ]
+    assert statuses[0] == 200  # a normal export works
+    assert 429 in statuses  # rapid-fire bursts are throttled
+
+
+def test_ai_ask_is_burst_limited(client, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "rate_limit_ops_per_min", 3)
+    doc_id = _upload(client)
+    statuses = [
+        client.post(f"/documents/{doc_id}/ask", json={"question": "what is this?"}).status_code
+        for _ in range(8)
+    ]
+    assert 429 in statuses

@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     AskRequest,
@@ -41,6 +42,7 @@ async def ask_document(
     body: AskRequest,
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> AskResponse:
     """Answer a question from the document's own text, citing the nodes used."""
     _record, doc = _load_latest(session, doc_id, actor)
@@ -56,7 +58,10 @@ async def ask_document(
 
 @router.get("/{doc_id}/summary", response_model=SummaryResponse)
 async def summarize_document(
-    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+    doc_id: str,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> SummaryResponse:
     """Summarize the document, citing the nodes the summary draws from."""
     _record, doc = _load_latest(session, doc_id, actor)
@@ -127,6 +132,7 @@ async def translate_document(
     body: TranslateRequest,
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> TranslateResponse:
     """Translate the document text. Requires a configured LLM provider."""
     if get_settings().effective_llm_provider == "noop":

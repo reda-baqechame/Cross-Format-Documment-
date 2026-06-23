@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     MergeRequest,
@@ -36,7 +37,8 @@ from docos.services.provenance import validation
 from docos.settings import get_settings
 from docos.storage.blob import BlobStore
 
-router = APIRouter(prefix="/documents", tags=["pages"])
+# Every page op is an expensive PDF rewrite; burst-guard them all (per session+IP, generous).
+router = APIRouter(prefix="/documents", tags=["pages"], dependencies=[Depends(enforce_op_rate)])
 
 
 def _safe(name: str | None, fallback: str) -> str:
