@@ -1,8 +1,11 @@
-"""Background tasks.
+"""Background tasks — an **unwired future-scale seam**.
 
-Ingestion of large files and OCR are slow and belong off the request path. The
-synchronous upload route handles small files inline; this task proves the async
-path and is the hook for batch/heavy work. OCR and patch tasks are stubs.
+The app runs entirely synchronously in-request today (uploads, OCR, and patches all complete on
+the request path), so nothing here is invoked in normal operation and no worker is required. This
+module exists so heavy/batch work can be moved off the request path later by running a Celery
+worker against ``celery_app``; the two tasks below are real, working extension points (large-file
+ingest mirroring the sync route, and the tombstone sweeper). It is intentionally *not* imported by
+the API process.
 """
 
 from __future__ import annotations
@@ -36,13 +39,3 @@ def sweep_blob_tombstones() -> dict:
 
     with session_scope() as session:
         return asyncio.run(sweep_tombstones(session, get_blob_store()))
-
-
-@celery_app.task(name="docos.run_ocr")
-def run_ocr(doc_id: str) -> dict:
-    raise NotImplementedError("run_ocr — invoke the OCR & structure service")
-
-
-@celery_app.task(name="docos.apply_patch")
-def apply_patch(doc_id: str, patch_id: str) -> dict:
-    raise NotImplementedError("apply_patch — apply a stored reversible patch and commit a version")

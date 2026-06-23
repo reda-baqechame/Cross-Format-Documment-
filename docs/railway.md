@@ -31,6 +31,37 @@ Because the healthcheck is `/api/ready`, a deploy with no working persistent sto
 
 > 🛑 **Required for persistence:** mount a Railway **volume** at `/app/data`. The default single-service deploy keeps the SQLite DB at `/app/data/docos.db` and uploaded blobs under `/app/data/blobs`; Railway containers are otherwise ephemeral, so **without the volume every document, version, and upload is lost on the next redeploy or restart** (and, now that the healthcheck is `/api/ready`, the deploy will fail rather than come up broken). For higher-scale production, switch to Postgres + S3-compatible object storage (see the two-service section below) instead of SQLite + local disk.
 
+## Production checklist
+
+**Required**
+
+| Variable | Why |
+|----------|-----|
+| `APP_ENV=production` | Enables secure cookies + HSTS; **refuses to start** if `SIGNING_SECRET` is still the dev default. |
+| `SIGNING_SECRET` | Long random string. Signs the anonymous-session cookie + integrity seals; a forged/weak value breaks document ownership. |
+| Volume at `/app/data` (or Postgres `DATABASE_URL` + S3) | Persistence — see the box above. |
+| `ANTHROPIC_API_KEY` *or* `OPENAI_API_KEY` | Optional, but AI features are no-ops without it (the app is otherwise fully offline). |
+
+**Optional hardening / ops knobs**
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `CORS_ORIGINS` | `http://localhost:3100` | Only needed for the **two-service** split (the single-service proxy is same-origin, so CORS is unused). Comma-separated allow-list. |
+| `LOG_FORMAT` | `human` | Set `json` for structured, aggregatable logs (one JSON object per line, with `request_id`). |
+| `SENTRY_DSN` | _(unset)_ | Set to enable error tracking. Requires installing the `[sentry]` extra; **completely inert when unset**. |
+| `API_PROXY_TIMEOUT_MS` | `60000` | Web→API upstream timeout (a hung backend yields a clean 504). |
+| `RATE_LIMIT_OPS_PER_MIN` | `60` | Per-session+IP **burst** guard on costly ops (AI, export, page ops). Not a daily/total cap. |
+| `RATE_LIMIT_UPLOADS_PER_MIN` | `30` | Per-session+IP upload burst guard. |
+| `MAX_UPLOAD_MB` | `50` | Streamed upload size cap (413 over the limit). |
+| `BLOB_ENCRYPTION=aesgcm` + `BLOB_ENCRYPTION_KEY` | `none` | Opt-in encryption-at-rest for stored blobs. |
+
+**First-deploy verification**
+
+1. `GET /api/ready` returns **200** (DB tables present + migrations applied + storage writable). A 503 means the volume/DB isn't working — fix before relying on it.
+2. `GET /api/health` shows the expected provider/storage/database (e.g. `database: postgres`, AI provider connected).
+3. Upload a file → open it → **export** it back out (round-trips the canonical model + blob storage).
+4. Responses carry an `X-Request-ID` header; with `LOG_FORMAT=json`, logs show one correlated line per request.
+
 ---
 
 ## Two services: API + Web (optional)

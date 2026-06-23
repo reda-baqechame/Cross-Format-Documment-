@@ -223,3 +223,18 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
   gates, action reasons, and legal-signing honesty.
 - 🟡 Native PDF editing: still labeled basic unless `PDF_EDITOR_PROVIDER=external` and
   `PDF_EDITOR_URL` point at a licensed PDF editor provider.
+- ✅ Web resilience: route-segment + global error boundaries, branded 404, and a loading fallback
+  (`app/{error,global-error,not-found,loading}.tsx`); the react-query client uses production
+  defaults (1 retry, staleTime, no refetch-on-focus) so a failing backend isn't hammered.
+- ✅ HTTP security headers on every response (`next.config.mjs` `headers()`): a Next-14-safe CSP
+  (same-origin `connect-src`, `data:`/`blob:` images for previews/downloads), `X-Content-Type-Options`,
+  `X-Frame-Options` + `frame-ancestors`, `Referrer-Policy`, `Permissions-Policy`, and HSTS in prod.
+- ✅ Request-correlated observability: `RequestContextMiddleware` binds an `X-Request-ID` (inbound or
+  generated) + one access-log line per request; a global exception handler returns a clean
+  `{detail, request_id}` envelope that never leaks tracebacks. `LOG_FORMAT=json` for structured logs.
+  Sentry is an env-gated seam (`SENTRY_DSN` + the optional `[sentry]` extra) — inert when unset —
+  `api/observability.py`.
+- ✅ Burst rate-limiting extended to all costly endpoints (AI ask/summarize/translate, notebook,
+  ops-agent, export/searchable-pdf, page ops) via `enforce_op_rate` — a generous per-minute
+  session+IP burst guard (not a total/daily cap, so the "unlimited" promise holds); preview +
+  slide-thumbnail stay unlimited for the canvas. — `api/ratelimit.py`.
