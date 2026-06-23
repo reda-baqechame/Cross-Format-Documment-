@@ -646,6 +646,49 @@ export function addTextBlock(
   });
 }
 
+/**
+ * Place a new text box at a fixed position on a PDF page. The run carries a `bbox` (PDF points)
+ * and is parented under the page node, so `write_back_pdf` inserts it at that location — the
+ * tractable, no-SDK slice of PDF authoring (reflow/object-move still need a PDF SDK provider).
+ */
+export function addPositionedText(
+  docId: string,
+  pageId: string,
+  bbox: { x0: number; y0: number; x1: number; y1: number },
+  text: string,
+  opts?: { size?: number },
+): Promise<PatchResponse> {
+  const blockId = localNodeId("p");
+  const runId = localNodeId("run");
+  const block = {
+    id: blockId,
+    type: "paragraph",
+    parent_id: pageId,
+    children: [runId],
+    attrs: {},
+    tags: [],
+  };
+  const run = {
+    id: runId,
+    type: "run",
+    parent_id: blockId,
+    children: [],
+    attrs: {},
+    tags: [],
+    text,
+    bbox,
+    size: opts?.size ?? 12,
+  };
+  return submitPatch(docId, {
+    ops: [
+      {
+        op: "add_node",
+        payload: { node: block, nodes: [block, run], parent_id: pageId, index: null },
+      },
+    ],
+  });
+}
+
 export type ExportFormat =
   | "docx"
   | "txt"

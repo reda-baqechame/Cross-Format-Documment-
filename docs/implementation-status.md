@@ -68,13 +68,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
 - 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
   table primitives; high-fidelity slide thumbnails/formula editor still pending)
-- 🟡 **PDF editing — known limits** (honest scope): write-back covers editing/redacting *existing*
-  text spans (matched by bbox), true redaction, **and placing new text that carries a bbox**
-  (positioned new text now lands in the export — `tests/integration/test_pdf_new_text.py`). The
-  canvas "Add text" doesn't yet capture an on-page position for PDFs, so UI-added text currently
-  flows to DOCX/TXT exports. Paragraph reflow, moving/replacing objects, and native form/signature
-  fields still need a PDF SDK provider (surfaced as "PDF native editor: not connected") —
-  `writers/pdf_writer.py`
+- ✅ **PDF editing — positioned text** (honest scope): write-back covers editing/redacting
+  *existing* text spans (matched by bbox), true redaction, **and placing new text that carries a
+  bbox**. The canvas now has a **"+ Text" mode** (`FormatToolbar` → click a PDF page to drop a text
+  box): the click maps to PDF points and posts an `add_node` patch with a bbox'd run under the page,
+  which lands in the export — `tests/integration/test_pdf_add_text_api.py` (API path) and
+  `test_pdf_new_text.py` (writer). Paragraph reflow, moving/replacing objects, and native
+  form/signature fields still need a PDF SDK provider (surfaced as "PDF native editor: not
+  connected") — `writers/pdf_writer.py`
 
 ## D. Convert & export
 - ✅ DOCX / TXT / PDF (write-back) export

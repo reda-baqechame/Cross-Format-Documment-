@@ -4,7 +4,7 @@ import type { CanonicalDocument, DocNode } from "@docos/shared-types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { deleteNode, moveNode, previewUrl, setRunText } from "@/lib/api";
+import { addPositionedText, deleteNode, moveNode, previewUrl, setRunText } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 
 // Matches the backend PdfAdapter.render_preview_bytes default so overlay coordinates
@@ -311,6 +311,11 @@ function PageView({
 }) {
   const select = useWorkspace((s) => s.select);
   const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  const addTextMode = useWorkspace((s) => s.addTextMode);
+  const setAddText = useWorkspace((s) => s.setAddText);
+  const queryClient = useQueryClient();
+  // Pending click position (in PDF points) where a new text box will be placed.
+  const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
   const isPdf = doc.meta.source_format === "pdf";
   if (!isPdf || !node.width || !node.height) {
     return (
@@ -330,14 +335,40 @@ function PageView({
   const w = node.width * PDF_SCALE;
   const h = node.height * PDF_SCALE;
   const runs = collectRuns(doc, node.id).filter((r) => r.bbox);
+
+  const placeText = async (text: string) => {
+    const point = pending;
+    setPending(null);
+    setAddText(false);
+    if (!point || !text.trim()) return;
+    const size = 12;
+    await addPositionedText(
+      docId,
+      node.id,
+      { x0: point.x, y0: point.y, x1: point.x + 240, y1: point.y + size * 1.5 },
+      text,
+      { size },
+    );
+    queryClient.invalidateQueries({ queryKey: ["model", docId] });
+  };
+
   return (
     <div
       className={[
         "relative mx-auto my-4 bg-white shadow",
         selected ? "outline outline-2 outline-brand-300" : "",
+        addTextMode ? "cursor-crosshair" : "",
       ].join(" ")}
       style={{ width: w, height: h }}
       onClick={(e) => {
+        if (addTextMode) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setPending({
+            x: (e.clientX - rect.left) / PDF_SCALE,
+            y: (e.clientY - rect.top) / PDF_SCALE,
+          });
+          return;
+        }
         if (e.target === e.currentTarget) select(node.id);
       }}
     >
@@ -351,6 +382,14 @@ function PageView({
       {runs.map((r) => (
         <RunOverlay key={r.id} doc={doc} node={r} />
       ))}
+      {pending && (
+        <div
+          className="absolute z-10"
+          style={{ left: pending.x * PDF_SCALE, top: pending.y * PDF_SCALE }}
+        >
+          <InlineEditor initial="" onCommit={placeText} onCancel={() => setPending(null)} />
+        </div>
+      )}
     </div>
   );
 }
