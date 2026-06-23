@@ -24,6 +24,7 @@ import {
   protectPdf,
   redactSensitive,
   remediateAccessibility,
+  requestSignature,
   reorderPages,
   rotatePdf,
   sanitizeMetadata,
@@ -747,6 +748,33 @@ export const TASKS: TaskDef[] = [
         kind: "text",
         title: "Sealed",
         body: `Sealed by ${res.signer ?? options.signer}. The integrity seal detects any later change — it is not a legally-binding e-signature.`,
+      };
+    },
+  },
+  {
+    slug: "request-signature",
+    title: "Request a signature",
+    blurb:
+      "Send a document for signature. Connects to a regulated e-signature provider when configured; otherwise applies a tamper-evident integrity seal (not legally binding).",
+    category: "Secure",
+    emoji: "✍️",
+    accept: ANY,
+    acceptLabel: "any document",
+    options: [
+      { name: "signer", label: "Signer name", type: "text", placeholder: "e.g. Jane Doe" },
+      { name: "email", label: "Signer email (for a provider)", type: "text", placeholder: "optional" },
+    ],
+    cta: "Request signature",
+    run: async ({ docIds, options }) => {
+      const signer = options.signer?.trim() || "Signer";
+      const res = await requestSignature(docIds[0], {
+        signers: [{ name: signer, email: options.email?.trim() || undefined }],
+      });
+      if (res.signing_url) return { kind: "navigate", href: res.signing_url };
+      return {
+        kind: "text",
+        title: res.legally_binding ? "Sent for signature" : "Integrity seal applied",
+        body: res.detail,
       };
     },
   },

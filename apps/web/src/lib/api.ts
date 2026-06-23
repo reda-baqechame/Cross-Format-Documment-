@@ -536,6 +536,29 @@ export async function deleteRenewal(renewalId: string): Promise<void> {
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 }
 
+export interface SignatureRequest {
+  id: string;
+  doc_id: string;
+  provider: string;
+  status: string;
+  signing_url?: string | null;
+  detail: string;
+  legally_binding: boolean;
+}
+
+export async function requestSignature(
+  docId: string,
+  input: { signers?: { name: string; email?: string }[]; subject?: string } = {},
+): Promise<SignatureRequest> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/signature-request`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ signers: input.signers ?? [], subject: input.subject ?? null }),
+    }),
+  );
+}
+
 export async function renewalSuggestions(docId: string): Promise<string[]> {
   return (
     await json<{ doc_id: string; due_dates: string[] }>(

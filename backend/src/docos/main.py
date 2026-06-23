@@ -20,6 +20,7 @@ from docos.api import (
     routes_comments,
     routes_documents,
     routes_editor,
+    routes_esign,
     routes_export,
     routes_forms,
     routes_health,
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_forms.router)
     app.include_router(routes_profile.router)
     app.include_router(routes_clm.router)
+    app.include_router(routes_esign.router)
     app.include_router(routes_editor.router)
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)

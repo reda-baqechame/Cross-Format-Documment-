@@ -185,6 +185,27 @@ class RenewalSuggestionsResponse(BaseModel):
     due_dates: list[str]
 
 
+# ── E-signature (gated provider seam) ──────────────────────────────────────────────────────
+class SignerInput(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=320)
+
+
+class SignatureRequestCreate(BaseModel):
+    signers: list[SignerInput] = Field(default_factory=list)
+    subject: str | None = Field(default=None, max_length=300)
+
+
+class SignatureRequestResponse(BaseModel):
+    id: str
+    doc_id: str
+    provider: str
+    status: str
+    signing_url: str | None = None
+    detail: str = ""
+    legally_binding: bool = False
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport

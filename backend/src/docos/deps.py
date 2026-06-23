@@ -96,6 +96,16 @@ def get_orchestrator() -> SemanticOrchestratorImpl:
     return SemanticOrchestratorImpl(get_llm_client())
 
 
+def get_signature_provider():
+    """The e-signature provider: external when configured, else the honest integrity seal."""
+    from docos.services.esign import ExternalSignatureProvider, SealProvider
+
+    s = get_settings()
+    if s.esign_configured:
+        return ExternalSignatureProvider(s.signature_provider_url, s.signature_provider_key)
+    return SealProvider()
+
+
 def get_provenance(session: Session) -> ProvenancePolicyServiceImpl:
     return ProvenancePolicyServiceImpl(session)
 
