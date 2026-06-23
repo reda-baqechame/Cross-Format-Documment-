@@ -45,8 +45,11 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_w
     return lines
 
 
-def _collect_lines(doc: CanonicalDocument) -> list[tuple[str, bool]]:
-    """(text, is_heading) lines in reading order, flattening pages and tables."""
+def _collect_lines(doc: CanonicalDocument, root_id: str | None = None) -> list[tuple[str, bool]]:
+    """(text, is_heading) lines in reading order, flattening pages and tables.
+
+    ``root_id`` restricts collection to one subtree (e.g. a single slide/page) for thumbnails.
+    """
     out: list[tuple[str, bool]] = []
 
     def visit(node: AnyNode) -> None:
@@ -72,21 +75,25 @@ def _collect_lines(doc: CanonicalDocument) -> list[tuple[str, bool]]:
                 ]
                 out.append((" | ".join(cells), False))
 
-    visit(doc.nodes[doc.root_id])
+    start = doc.nodes.get(root_id) if root_id else doc.nodes[doc.root_id]
+    if start is None:
+        return [("(empty document)", False)]
+    visit(start)
     return [(t, h) for (t, h) in out if t.strip()] or [("(empty document)", False)]
 
 
-def model_to_png(doc: CanonicalDocument) -> bytes:
+def model_to_png(doc: CanonicalDocument, *, root_id: str | None = None) -> bytes:
+    """Render the document — or a single subtree (``root_id``, e.g. one slide) — to PNG."""
     font = ImageFont.load_default()
     max_w = _WIDTH - 2 * _MARGIN
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
 
     wrapped: list[tuple[str, bool]] = []
-    if doc.meta.title:
+    if doc.meta.title and root_id is None:
         for ln in _wrap(measure, doc.meta.title, font, max_w):
             wrapped.append((ln, True))
         wrapped.append(("", False))
-    for text, is_heading in _collect_lines(doc):
+    for text, is_heading in _collect_lines(doc, root_id):
         for ln in _wrap(measure, text, font, max_w):
             wrapped.append((ln, is_heading))
         wrapped.append(("", False))  # paragraph gap

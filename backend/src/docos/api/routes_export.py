@@ -255,3 +255,28 @@ async def preview_page(
     except (IndexError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="page out of range") from exc
     return Response(content=png, media_type="image/png", headers=headers)
+
+
+@router.get("/{doc_id}/slide-thumbnail")
+def slide_thumbnail(
+    doc_id: str,
+    node_id: str = Query(..., description="the page/slide node to render"),
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> Response:
+    """A structural PNG thumbnail of a single slide/page, rendered from the canonical model.
+
+    This is a model-rendered *structural* preview (text/tables) — not a PowerPoint-grade raster,
+    which would need a rendering engine (provider-gated). It lets the deck editor show real slide
+    content for every format (pptx/docx/…), not just PDF.
+    """
+    _record, doc = _load_latest(session, doc_id, actor)
+    node = doc.nodes.get(node_id)
+    if node is None or node.type != "page":
+        raise HTTPException(status_code=404, detail="slide/page node not found")
+    png = model_to_png(doc, root_id=node_id)
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={"Cache-Control": "private, max-age=120"},
+    )

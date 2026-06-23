@@ -69,8 +69,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Track-changes / suggest mode (propose patches; accept→applied+versioned, reject) — `routes_suggestions.py`
 - ✅ Templates & styles library (snapshot a doc; stamp out fresh independent docs) — `services/templates`, `routes_templates.py` (UI: `TemplateGallery`)
 - 🔒 Real-time co-authoring / presence — needs WebSocket + CRDT infra
-- 🟡 Native slide/spreadsheet editing UX (Modify Studio handles page/slide, text, image, and
-  table primitives; high-fidelity slide thumbnails/formula editor still pending)
+- ✅ Native slide/spreadsheet editing UX (tractable slice): Modify Studio handles page/slide, text,
+  image, and table primitives, **plus structural slide thumbnails** rendered per-page from the model
+  (`GET /documents/{id}/slide-thumbnail`, works for any format) and a **cell formula editor**
+  (`table_cell.attrs.formula` → a real Excel `=` formula on export, recomputed by Excel on open).
+  PowerPoint-grade slide raster + live in-app formula recompute remain provider-gated (need a
+  rendering/calc engine). — `writers/image_writer.py`, `writers/xlsx_writer.py`, `ModifyStudio.tsx`
 - ✅ **PDF editing — positioned text** (honest scope): write-back covers editing/redacting
   *existing* text spans (matched by bbox), true redaction, **and placing new text that carries a
   bbox**. The canvas now has a **"+ Text" mode** (`FormatToolbar` → click a PDF page to drop a text

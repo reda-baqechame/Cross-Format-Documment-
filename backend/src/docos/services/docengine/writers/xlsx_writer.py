@@ -59,8 +59,14 @@ def _write_table(ws: Worksheet, doc: CanonicalDocument, tnode: AnyNode) -> None:
     for ri, row in enumerate(rows, start=1):
         cells = [c for c in doc.children_of(row.id) if c.type == "table_cell"]
         for ci, cell in enumerate(cells, start=1):
-            text = spreadsheet_text(_block_text(doc, cell))
-            ws.cell(row=ri, column=ci, value=text)
+            # A cell may carry a formula string (e.g. "=A1+B1"); write it as a real Excel formula
+            # so Excel recomputes it on open. We don't recompute in-app (no calc engine), so the
+            # displayed text stays the last-known value until Excel recalculates.
+            formula = cell.attrs.get("formula")
+            if isinstance(formula, str) and formula.startswith("="):
+                ws.cell(row=ri, column=ci, value=formula)
+            else:
+                ws.cell(row=ri, column=ci, value=spreadsheet_text(_block_text(doc, cell)))
             fmt = cell.attrs.get("number_format")
             if fmt:
                 ws.cell(row=ri, column=ci).number_format = fmt

@@ -569,7 +569,12 @@ export const setPageAttrs = (
 export const setTableCell = (
   docId: string,
   cellId: string,
-  changes: { text?: string; header?: boolean; number_format?: string | null },
+  changes: {
+    text?: string;
+    header?: boolean;
+    number_format?: string | null;
+    formula?: string | null;
+  },
 ): Promise<PatchResponse> =>
   submitPatch(docId, { ops: [{ op: "set_table_cell", target_id: cellId, payload: changes }] });
 
@@ -926,6 +931,11 @@ export async function fetchIntelligence(
 
 export function previewUrl(docId: string, page: number): string {
   return `${BASE}/documents/${docId}/preview?page=${page}`;
+}
+
+/** A structural PNG thumbnail of one slide/page, rendered from the model (works for any format). */
+export function slideThumbnailUrl(docId: string, nodeId: string): string {
+  return `${BASE}/documents/${docId}/slide-thumbnail?node_id=${encodeURIComponent(nodeId)}`;
 }
 
 // ── Document Autopilot ───────────────────────────────────────────────────────
