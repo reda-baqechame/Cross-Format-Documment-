@@ -104,11 +104,20 @@ class ImageAdapter(FormatAdapter):
         page.children.append(img_node.id)
         doc.add_node(img_node)
 
-        self._ocr_into(doc, page, image)
+        self._ocr_into(doc, page, image, data)
         return doc
 
-    def _ocr_into(self, doc: CanonicalDocument, page: PageNode, image: Image.Image) -> None:
-        """Recover text via Tesseract when available; a no-op otherwise."""
+    def _ocr_into(
+        self, doc: CanonicalDocument, page: PageNode, image: Image.Image, data: bytes
+    ) -> None:
+        """Recover text via Tesseract when available.
+
+        Prefers *structured* recognition (positioned, confidence-scored word runs); falls back to
+        flat text; a no-op when no OCR engine is present.
+        """
+        if self._structured_ocr_into(doc, page, data):
+            return
+
         text = _ocr_text(image)
         if not text:
             return
@@ -127,6 +136,31 @@ class ImageAdapter(FormatAdapter):
             order += 1
         if order > 1:
             doc.accessibility.tagged = True
+
+    def _structured_ocr_into(self, doc: CanonicalDocument, page: PageNode, data: bytes) -> bool:
+        """Attach positioned, confidence-tagged word runs. True if anything was recognised."""
+        try:
+            from docos.services.ocr.tesseract import TesseractOcr
+
+            ocr = TesseractOcr()
+            runs = ocr.recognize(data)
+            if not runs:
+                return False
+            order = {nid: i for i, nid in enumerate(ocr.infer_reading_order(runs))}
+            runs.sort(key=lambda r: order.get(r.id, 0))
+        except Exception:  # noqa: BLE001 - structured OCR is best-effort; caller falls back
+            return False
+
+        para = ParagraphNode(id=new_node_id(), parent_id=page.id, reading_order=1)
+        for run in runs:
+            run.parent_id = para.id
+            run.text = f"{run.text} "  # keep words separated for export/search
+            para.children.append(run.id)
+            doc.add_node(run)
+        page.children.append(para.id)
+        doc.add_node(para)
+        doc.accessibility.tagged = True
+        return True
 
     def render_preview(self, doc: CanonicalDocument, page: int) -> bytes:
         raise NotImplementedError("ImageAdapter.render_preview — original bytes serve as preview")

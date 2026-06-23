@@ -11,7 +11,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
   contents not extension, zip-bomb limits) — `services/ingestion`
 - ✅ First-class Markdown / CSV / HTML import adapters — `services/docengine/adapters`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
-- 🟡 OCR scans (Tesseract best-effort) — `services/ocr` structure extraction still a stub
+- ✅ OCR structure extraction — `TesseractOcr` recognises positioned, confidence-scored word runs
+  (`image_to_data` → `RunNode` + bbox + `attrs.confidence`/`ocr_review`), geometric reading order,
+  Pillow cleanup; the image adapter prefers structured OCR and falls back to flat text. Scanned-grid
+  table detection still deferred. — `services/ocr/tesseract.py`, `adapters/image.py`
 - 🔒 Mobile camera capture + deskew — needs native/mobile client
 - 🔒 Import from Drive/Dropbox/Box/email/URL — needs OAuth + provider credentials
 - 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
