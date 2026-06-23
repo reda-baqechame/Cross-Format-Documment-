@@ -11,6 +11,7 @@ import {
   askDocument,
   classifyDocument,
   compressPdf,
+  downloadAudio,
   deletePages,
   diffDocuments,
   downloadExport,
@@ -892,6 +893,21 @@ export const TASKS: TaskDef[] = [
         ...res.extraction.fields.map((f) => `${f.key}: ${f.value}`),
       ];
       return { kind: "list", title: "Extracted data", items: items.length ? items : ["Nothing found."] };
+    },
+  },
+  {
+    slug: "listen",
+    title: "Listen to a document",
+    blurb:
+      "Turn a document into narrated audio. Requires a configured text-to-speech provider; otherwise you'll get a clear 'not connected' message.",
+    category: "Ask AI",
+    emoji: "🔊",
+    accept: ANY,
+    acceptLabel: "any document",
+    cta: "Generate audio",
+    run: async ({ docIds }) => {
+      await downloadAudio(docIds[0]);
+      return { kind: "downloaded" };
     },
   },
   {

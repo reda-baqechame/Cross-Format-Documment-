@@ -584,6 +584,21 @@ export async function disconnectIntegration(name: string): Promise<void> {
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 }
 
+/** Fetch narrated audio and trigger a download. Throws "501: …" when no TTS provider is wired. */
+export async function downloadAudio(docId: string): Promise<void> {
+  const res = await fetch(`${BASE}/documents/${docId}/audio`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${docId}.mp3`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function renewalSuggestions(docId: string): Promise<string[]> {
   return (
     await json<{ doc_id: string; due_dates: string[] }>(

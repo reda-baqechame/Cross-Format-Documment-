@@ -130,6 +130,16 @@ def get_handwriting_provider():
     return ExternalHandwriting(s.handwriting_provider_url, s.handwriting_provider_key)
 
 
+def get_tts_provider():
+    """The TTS provider: external when configured, else a noop that signals 'not configured'."""
+    from docos.services.tts import ExternalTts, NoopTts
+
+    s = get_settings()
+    if s.tts_configured:
+        return ExternalTts(s.tts_provider_url, s.tts_provider_key)
+    return NoopTts()
+
+
 def get_provenance(session: Session) -> ProvenancePolicyServiceImpl:
     return ProvenancePolicyServiceImpl(session)
 

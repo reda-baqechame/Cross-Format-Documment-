@@ -37,6 +37,7 @@ from docos.api import (
     routes_readiness,
     routes_suggestions,
     routes_templates,
+    routes_tts,
     routes_workflows,
 )
 from docos.api.observability import (
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_esign.router)
     app.include_router(routes_integrations.router)
     app.include_router(routes_idp.router)
+    app.include_router(routes_tts.router)
     app.include_router(routes_editor.router)
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)
