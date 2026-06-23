@@ -206,6 +206,27 @@ class SignatureRequestResponse(BaseModel):
     legally_binding: bool = False
 
 
+# ── Cloud integrations (gated OAuth seam) ──────────────────────────────────────────────────
+class IntegrationStatus(BaseModel):
+    name: str
+    label: str
+    configured: bool  # OAuth client creds present in this deployment
+    connected: bool  # the caller has completed the connect flow (a token is stored)
+
+
+class IntegrationListResponse(BaseModel):
+    integrations: list[IntegrationStatus]
+
+
+class ConnectResponse(BaseModel):
+    authorize_url: str
+
+
+class IntegrationImportRequest(BaseModel):
+    file_url: str = Field(min_length=1)
+    filename: str | None = Field(default=None, max_length=255)
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport

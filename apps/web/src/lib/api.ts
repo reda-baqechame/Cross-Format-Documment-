@@ -559,6 +559,31 @@ export async function requestSignature(
   );
 }
 
+export interface Integration {
+  name: string;
+  label: string;
+  configured: boolean;
+  connected: boolean;
+}
+
+export async function listIntegrations(): Promise<Integration[]> {
+  return (await json<{ integrations: Integration[] }>(await fetch(`${BASE}/integrations`)))
+    .integrations;
+}
+
+/** Begin OAuth: navigates the browser to the provider's consent screen. */
+export async function connectIntegration(name: string): Promise<void> {
+  const res = await json<{ authorize_url: string }>(
+    await fetch(`${BASE}/integrations/${name}/connect`),
+  );
+  window.location.href = res.authorize_url;
+}
+
+export async function disconnectIntegration(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/integrations/${name}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
 export async function renewalSuggestions(docId: string): Promise<string[]> {
   return (
     await json<{ doc_id: string; due_dates: string[] }>(

@@ -14,6 +14,7 @@ import {
 
 import { DocumentList } from "@/components/documents/DocumentList";
 import { RenewalsSection } from "@/components/clm/RenewalsSection";
+import { CloudImportPanel } from "@/components/integrations/CloudImportPanel";
 import { FreeBadge } from "@/components/marketing/FreeBadge";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
@@ -225,6 +226,8 @@ export default function HomePage() {
           </Section>
 
           <RenewalsSection />
+
+          <CloudImportPanel />
         </section>
 
         <Section
