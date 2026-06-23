@@ -1,0 +1,12 @@
+{
+  "name": "Docframe — open, edit & trust any document",
+  "short_name": "Docframe",
+  "description": "Open, edit, convert, redact, and protect documents. Capture from your phone camera.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2451e6",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

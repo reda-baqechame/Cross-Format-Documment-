@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { FileUp, Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import { Camera, FileUp, Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -24,6 +24,7 @@ export function UploadDropzone() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [dragActive, setDragActive] = useState(false);
 
@@ -172,17 +173,40 @@ Signature: ______________________    Date: ____________
             if (files.length) void handleFiles(files);
           }}
         />
+        {/* Mobile capture: opens the rear camera on phones; a normal image picker elsewhere. */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            if (files.length) void handleFiles(files);
+          }}
+        />
       </div>
 
       {status.kind !== "uploading" && (
-        <button
-          type="button"
-          onClick={trySample}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition-colors hover:text-brand-800"
-        >
-          <Sparkles className="h-4 w-4" aria-hidden />
-          No file handy? Try a sample document
-        </button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button
+            type="button"
+            onClick={trySample}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition-colors hover:text-brand-800"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            No file handy? Try a sample document
+          </button>
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-800"
+          >
+            <Camera className="h-4 w-4" aria-hidden />
+            Scan with camera
+          </button>
+        </div>
       )}
 
       {status.kind === "error" && (

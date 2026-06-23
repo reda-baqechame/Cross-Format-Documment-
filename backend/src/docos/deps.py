@@ -140,6 +140,16 @@ def get_tts_provider():
     return NoopTts()
 
 
+def get_drm_provider():
+    """The DRM provider, or None when not configured (local protection = AES-256 PDF password)."""
+    s = get_settings()
+    if not s.drm_configured:
+        return None
+    from docos.services.drm import ExternalDrm
+
+    return ExternalDrm(s.drm_provider_url, s.drm_provider_key)
+
+
 @lru_cache
 def get_presence_hub():
     """Process-wide presence registry (single-node in-process; Redis is the multi-node seam)."""

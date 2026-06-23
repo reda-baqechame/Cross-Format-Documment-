@@ -28,7 +28,13 @@ from docos.api.schemas import (
 )
 from docos.api.session import Actor, get_actor
 from docos.db.models import Document
-from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
+from docos.deps import (
+    blob_store_dep,
+    db_session,
+    get_drm_provider,
+    get_provenance,
+    get_registry,
+)
 from docos.model.document import CanonicalDocument
 from docos.services.docengine import pageops
 from docos.services.docengine.registry import AdapterRegistry
@@ -299,6 +305,39 @@ async def protect(
         doc, "protect", out, expected_pages=pageops.page_count(pdf), signature_valid=_sig_valid(doc)
     )
     return _pdf_response(out, f"{_safe(record.title, doc_id)}_protected", report)
+
+
+@router.post("/{doc_id}/drm")
+async def apply_drm(
+    doc_id: str,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    blob_store: BlobStore = Depends(blob_store_dep),
+    drm=Depends(get_drm_provider),
+) -> Response:
+    """Apply DRM via the configured provider, or 501 with the honest local alternative."""
+    if drm is None:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "DRM is not configured — set DRM_PROVIDER_URL to enable a rights-management "
+                "provider. For password protection now, use Protect PDF (AES-256)."
+            ),
+        )
+    record, doc = _load_latest(session, doc_id, actor)
+    pdf = await _current_pdf(record, doc, blob_store)
+    try:
+        out, content_type = drm.apply(pdf, "application/pdf")
+    except Exception as exc:  # noqa: BLE001 - provider/transport failure
+        raise HTTPException(status_code=502, detail=f"drm provider error: {exc}") from exc
+    _audit(session, doc_id, "drm_protected", {"provider": drm.name})
+    return Response(
+        content=out,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{_safe(record.title, doc_id)}.pdf"'
+        },
+    )
 
 
 @router.post("/{doc_id}/watermark")
