@@ -65,6 +65,11 @@ class PdfAdapter(FormatAdapter):
             doc.permissions.encrypted = bool(pdf.is_encrypted)
             doc.permissions.password_protected = bool(pdf.needs_pass)
 
+            # Cap per-page table detection so a pathological many-page PDF can't exhaust CPU.
+            from docos.settings import get_settings
+
+            max_scan = get_settings().max_scan_pages
+
             order = 0
             for pno in range(pdf.page_count):
                 page = pdf[pno]
@@ -81,7 +86,7 @@ class PdfAdapter(FormatAdapter):
                 root.children.append(pnode.id)
                 doc.add_node(pnode)
 
-                self._add_page_content(doc, pnode, page)
+                self._add_page_content(doc, pnode, page, detect_tables=pno < max_scan)
 
             if meta.title:
                 doc.accessibility.has_doc_title = True
@@ -144,13 +149,15 @@ class PdfAdapter(FormatAdapter):
         page.children.append(node.id)
         doc.add_node(node)
 
-    def _add_page_content(self, doc: CanonicalDocument, page: PageNode, src) -> None:
+    def _add_page_content(
+        self, doc: CanonicalDocument, page: PageNode, src, *, detect_tables: bool = True
+    ) -> None:
         """Lay out a page's tables, text blocks and images in vertical reading order.
 
         Tables are detected first; text/image blocks that fall inside a detected table region
         are dropped so their content isn't duplicated outside the table.
         """
-        tables = self._find_tables(src)
+        tables = self._find_tables(src) if detect_tables else []
         table_rects = [t["rect"] for t in tables]
 
         # (y0, x0, kind, payload) for everything on the page, then sort top-to-bottom.

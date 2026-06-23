@@ -182,6 +182,11 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
   fast). `/health` stays a 200 status summary the UI reads — `api/routes_health.py`.
 - ✅ Provider/storage truthing in `/health` (AI provider, Office/PDF native-editor state, storage,
   SQLite vs Postgres) surfaced by the home page **System status** panel — `components/system/SystemStatusPanel.tsx`.
+- ✅ Enterprise hardening: per-session+IP rate limiting on expensive ops (clean / redaction-audit /
+  autofill) via `enforce_op_rate`; input bounds on the Fill-Once profile (entry count + key/value
+  length → 422); page-scan caps (`max_scan_pages`) so a many-page PDF can't exhaust CPU during table
+  detection or the un-redact test; cross-session/tenant isolation enforced (404) and covered by
+  `tests/integration/test_enterprise_hardening.py`.
 - ✅ Both Docker images install the Anthropic **and** OpenAI provider extras so a configured
   `OPENAI_API_KEY` can't crash on a missing SDK at runtime.
 - ✅ Windows-safe web build: local `pnpm --filter @docos/web build` skips Next standalone

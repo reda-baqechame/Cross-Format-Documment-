@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from docos.api._apply import apply_and_commit
 from docos.api.access import get_owned_document
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.routes_export import _render_export, _signature_valid
 from docos.api.schemas import CleanResponse, ReadinessResponse, RedactionAuditResponse
@@ -29,6 +30,7 @@ from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.provenance import readiness, redaction_audit, sensitive, validation
 from docos.services.provenance.redaction_audit import RedactionAuditReport
+from docos.settings import get_settings
 from docos.storage.blob import BlobStore
 
 router = APIRouter(prefix="/documents", tags=["readiness"])
@@ -64,6 +66,7 @@ async def redaction_audit_endpoint(
     session: Session = Depends(db_session),
     actor: Actor = Depends(get_actor),
     blob_store: BlobStore = Depends(blob_store_dep),
+    _rate: None = Depends(enforce_op_rate),
 ) -> RedactionAuditResponse:
     """Un-Redact Test: is any text still recoverable under this PDF's 'redactions'?"""
     record = get_owned_document(session, doc_id, actor)
@@ -72,7 +75,9 @@ async def redaction_audit_endpoint(
             is_pdf=False, summary="The un-redact test only applies to PDF files."
         )
     else:
-        audit = redaction_audit.audit_pdf(await blob_store.get(record.blob_key))
+        audit = redaction_audit.audit_pdf(
+            await blob_store.get(record.blob_key), max_pages=get_settings().max_scan_pages
+        )
     return RedactionAuditResponse(doc_id=doc_id, audit=audit)
 
 
@@ -83,6 +88,7 @@ async def clean_document(
     actor: Actor = Depends(get_actor),
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
+    _rate: None = Depends(enforce_op_rate),
 ) -> CleanResponse:
     """Apply the auto-fixable issues, re-check, and return the verdict + proof for the copy."""
     record, doc = _load_latest(session, doc_id, actor)

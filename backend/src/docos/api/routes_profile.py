@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api._apply import apply_and_commit
+from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import AutofillResponse, FillProfileResponse, SaveFillProfileRequest
 from docos.api.session import Actor, get_actor
@@ -24,6 +25,11 @@ from docos.model.ids import new_node_id, new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 
 router = APIRouter(tags=["profile"])
+
+# Bounds so a profile can't be used to store unbounded data.
+_MAX_PROFILE_ENTRIES = 200
+_MAX_KEY_LEN = 100
+_MAX_VALUE_LEN = 2000
 
 
 def _load_profile(session: Session, actor: Actor) -> FillProfile | None:
@@ -53,6 +59,13 @@ def save_fill_profile(
 ) -> FillProfileResponse:
     # Normalise keys to lowercase so matching is case-insensitive against field names.
     data = {k.strip().lower(): v for k, v in body.data.items() if k.strip()}
+    if len(data) > _MAX_PROFILE_ENTRIES:
+        raise HTTPException(
+            status_code=422, detail=f"profile exceeds {_MAX_PROFILE_ENTRIES} entries"
+        )
+    for key, value in data.items():
+        if len(key) > _MAX_KEY_LEN or len(str(value)) > _MAX_VALUE_LEN:
+            raise HTTPException(status_code=422, detail="profile key or value too long")
     row = _load_profile(session, actor)
     if row is None:
         row = FillProfile(
@@ -71,7 +84,10 @@ def save_fill_profile(
 
 @router.post("/documents/{doc_id}/autofill", response_model=AutofillResponse)
 def autofill_document(
-    doc_id: str, session: Session = Depends(db_session), actor: Actor = Depends(get_actor)
+    doc_id: str,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
 ) -> AutofillResponse:
     """Fill every blank field whose name matches a saved profile key."""
     _record, doc = _load_latest(session, doc_id, actor)

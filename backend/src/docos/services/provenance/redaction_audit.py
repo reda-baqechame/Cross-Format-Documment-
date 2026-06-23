@@ -77,8 +77,11 @@ def _covered(span_rect, covers) -> bool:
     return False
 
 
-def audit_pdf(data: bytes) -> RedactionAuditReport:
-    """Scan a PDF for text that is visually covered but still recoverable."""
+def audit_pdf(data: bytes, *, max_pages: int | None = None) -> RedactionAuditReport:
+    """Scan a PDF for text that is visually covered but still recoverable.
+
+    ``max_pages`` bounds the per-page work so a pathological many-page PDF can't exhaust CPU.
+    """
     import fitz
 
     try:
@@ -88,8 +91,12 @@ def audit_pdf(data: bytes) -> RedactionAuditReport:
 
     covered_regions = 0
     recoverable = 0
+    scanned = 0
     try:
-        for page in pdf:
+        for page_index, page in enumerate(pdf):
+            if max_pages is not None and page_index >= max_pages:
+                break
+            scanned += 1
             covers = _cover_rects(page)
             covered_regions += len(covers)
             if not covers:
@@ -102,7 +109,6 @@ def audit_pdf(data: bytes) -> RedactionAuditReport:
                             continue
                         if _covered(fitz.Rect(span.get("bbox")), covers):
                             recoverable += 1
-        scanned = pdf.page_count
     finally:
         pdf.close()
 
