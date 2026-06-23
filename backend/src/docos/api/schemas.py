@@ -118,6 +118,64 @@ class AutofillResponse(BaseModel):
     new_version_id: str | None
 
 
+# ── CLM: clause library + renewals ──────────────────────────────────────────────────────────
+class ClauseResponse(BaseModel):
+    id: str
+    title: str
+    body: str
+    category: str | None = None
+
+
+class ClauseListResponse(BaseModel):
+    clauses: list[ClauseResponse]
+
+
+class CreateClauseRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1, max_length=20000)
+    category: str | None = Field(default=None, max_length=100)
+
+
+class InsertClauseRequest(BaseModel):
+    """Insert either a saved clause (by id) or ad-hoc title/body into a document."""
+
+    clause_id: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=20000)
+
+
+class InsertClauseResponse(BaseModel):
+    doc_id: str
+    inserted: int  # number of blocks added
+    new_version_id: str | None
+
+
+class RenewalResponse(BaseModel):
+    id: str
+    title: str
+    due_date: str
+    note: str | None = None
+    status: str
+    doc_id: str | None = None
+    urgency: str  # overdue | soon | later
+
+
+class RenewalListResponse(BaseModel):
+    renewals: list[RenewalResponse]
+
+
+class CreateRenewalRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    due_date: str = Field(description="ISO date YYYY-MM-DD")
+    note: str | None = Field(default=None, max_length=2000)
+    doc_id: str | None = None
+
+
+class RenewalSuggestionsResponse(BaseModel):
+    doc_id: str
+    due_dates: list[str]
+
+
 class ValidationReportResponse(BaseModel):
     doc_id: str
     validation: ValidationReport

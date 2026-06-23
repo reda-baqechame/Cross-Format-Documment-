@@ -104,7 +104,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Bulk send (one packet to many recipients; per-recipient copy + sign-off) — `routes_bulk_send.py`
 - 🔒 Legally-binding e-sign (ESIGN/UETA/eIDAS), PKI certs, identity verification, notarization,
   payments — needs a certificate authority / regulated signing & KYC provider
-- ⬜ Full CLM (clause library, renewals)
+- ✅ Full CLM (clause library + renewals) — session-scoped `Clause`/`RenewalReminder` (migration
+  0009). Save reusable clauses and insert them as reversible `add_node` patches
+  (`POST /documents/{id}/insert-clause`); track renewal/expiry dates in-app, sorted by due date with
+  overdue/soon urgency, with date auto-suggestions from the deterministic extractor
+  (`GET /documents/{id}/renewal-suggestions`). In-app reminders only — email/push delivery needs
+  infra. — `services/clm/`, `routes_clm.py`, `components/canvas/ClausesPanel.tsx`,
+  `components/clm/RenewalsSection.tsx`
 
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel

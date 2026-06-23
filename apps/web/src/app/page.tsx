@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { DocumentList } from "@/components/documents/DocumentList";
+import { RenewalsSection } from "@/components/clm/RenewalsSection";
 import { FreeBadge } from "@/components/marketing/FreeBadge";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
@@ -222,6 +223,8 @@ export default function HomePage() {
           >
             <TemplateGallery />
           </Section>
+
+          <RenewalsSection />
         </section>
 
         <Section

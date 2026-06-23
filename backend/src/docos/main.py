@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from docos.api import (
     routes_approvals,
     routes_bulk_send,
+    routes_clm,
     routes_comments,
     routes_documents,
     routes_editor,
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_library.router)
     app.include_router(routes_forms.router)
     app.include_router(routes_profile.router)
+    app.include_router(routes_clm.router)
     app.include_router(routes_editor.router)
     app.include_router(routes_export.router)
     app.include_router(routes_comments.router)

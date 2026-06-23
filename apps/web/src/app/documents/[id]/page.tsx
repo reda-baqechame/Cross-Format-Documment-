@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
+import { ClausesPanel } from "@/components/canvas/ClausesPanel";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import {
@@ -33,6 +34,7 @@ const TABS: WorkspaceTab[] = [
   "autopilot",
   "insights",
   "forms",
+  "clauses",
   "trust",
   "comments",
   "approvals",
@@ -176,6 +178,7 @@ function RightPanel({
   initialWorkflow: WorkflowPreset;
 }) {
   if (tab === "forms") return <FormsPanel docId={docId} />;
+  if (tab === "clauses") return <ClausesPanel doc={doc} docId={docId} />;
   if (tab === "comments") return <CommentsPanel docId={docId} />;
   if (tab === "approvals") return <ApprovalsPanel docId={docId} />;
   if (tab === "trust") {

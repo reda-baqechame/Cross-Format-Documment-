@@ -450,6 +450,92 @@ export async function autofillDocument(
   return json(await fetch(`${BASE}/documents/${docId}/autofill`, { method: "POST" }));
 }
 
+// ── CLM: clause library + renewals ─────────────────────────────────────────────
+export interface Clause {
+  id: string;
+  title: string;
+  body: string;
+  category?: string | null;
+}
+
+export async function listClauses(): Promise<Clause[]> {
+  return (await json<{ clauses: Clause[] }>(await fetch(`${BASE}/clauses`))).clauses;
+}
+
+export async function createClause(input: {
+  title: string;
+  body: string;
+  category?: string | null;
+}): Promise<Clause> {
+  return json(
+    await fetch(`${BASE}/clauses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function deleteClause(clauseId: string): Promise<void> {
+  const res = await fetch(`${BASE}/clauses/${clauseId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function insertClause(
+  docId: string,
+  input: { clause_id?: string; title?: string; body?: string },
+): Promise<{ doc_id: string; inserted: number; new_version_id: string | null }> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/insert-clause`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export interface Renewal {
+  id: string;
+  title: string;
+  due_date: string;
+  note?: string | null;
+  status: string;
+  doc_id?: string | null;
+  urgency: "overdue" | "soon" | "later";
+}
+
+export async function listRenewals(): Promise<Renewal[]> {
+  return (await json<{ renewals: Renewal[] }>(await fetch(`${BASE}/renewals`))).renewals;
+}
+
+export async function createRenewal(input: {
+  title: string;
+  due_date: string;
+  note?: string | null;
+  doc_id?: string | null;
+}): Promise<Renewal> {
+  return json(
+    await fetch(`${BASE}/renewals`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function deleteRenewal(renewalId: string): Promise<void> {
+  const res = await fetch(`${BASE}/renewals/${renewalId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
+export async function renewalSuggestions(docId: string): Promise<string[]> {
+  return (
+    await json<{ doc_id: string; due_dates: string[] }>(
+      await fetch(`${BASE}/documents/${docId}/renewal-suggestions`),
+    )
+  ).due_dates;
+}
+
 /** Delete a block (reversible — restorable via undo). */
 export function deleteNode(docId: string, nodeId: string): Promise<PatchResponse> {
   return submitPatch(docId, { ops: [{ op: "remove_node", target_id: nodeId }] });

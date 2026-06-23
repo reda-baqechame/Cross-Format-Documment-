@@ -10,6 +10,7 @@ import {
   FilePenLine,
   FileText,
   FormInput,
+  Library,
   LockKeyhole,
   MessageSquare,
   MoreHorizontal,
@@ -42,6 +43,7 @@ type WorkspaceTab =
   | "autopilot"
   | "insights"
   | "forms"
+  | "clauses"
   | "trust"
   | "comments"
   | "approvals";
@@ -53,6 +55,7 @@ const PRIMARY_TABS: {
 }[] = [
   { id: "document", label: "Edit", icon: FilePenLine },
   { id: "forms", label: "Forms", icon: FormInput },
+  { id: "clauses", label: "Clauses", icon: Library },
   { id: "comments", label: "Review", icon: MessageSquare },
   { id: "trust", label: "Protect", icon: LockKeyhole },
   { id: "autopilot", label: "Automate", icon: Bot },
