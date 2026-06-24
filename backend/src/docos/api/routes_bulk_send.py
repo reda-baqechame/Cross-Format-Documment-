@@ -19,7 +19,7 @@ from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
 from docos.api.routes_share import create_recipient_share
 from docos.api.session import Actor, get_actor
-from docos.db.models import ApprovalStep, BulkSendPacket, Document
+from docos.db.models import ApprovalStep, BulkSendPacket, Document, DocumentShare
 from docos.deps import db_session, get_provenance
 from docos.services.collab import approvals
 from docos.services.templates import library
@@ -56,6 +56,20 @@ def _packet_state(session: Session, packet_doc_id: str) -> str:
         session.scalars(select(ApprovalStep).where(ApprovalStep.document_id == packet_doc_id)).all()
     )
     return approvals.overall_state(steps)
+
+
+def _portal_url(session: Session, packet_doc_id: str, recipient: str) -> str | None:
+    share = session.scalar(
+        select(DocumentShare)
+        .where(
+            DocumentShare.document_id == packet_doc_id,
+            DocumentShare.recipient_label == recipient,
+            DocumentShare.revoked.is_(False),
+        )
+        .order_by(DocumentShare.created_at.desc())
+        .limit(1)
+    )
+    return f"/portal/{share.token}" if share else None
 
 
 @router.post("/{doc_id}/bulk-send", response_model=BulkSendBatch)
@@ -175,6 +189,7 @@ def list_bulk_sends(
                 recipient=row.recipient,
                 packet_doc_id=row.packet_doc_id,
                 state=_packet_state(session, row.packet_doc_id),
+                portal_url=_portal_url(session, row.packet_doc_id, row.recipient),
             )
         )
     return BulkSendListResponse(source_doc_id=doc_id, batches=list(batches.values()))

@@ -64,6 +64,9 @@ async function json<T>(res: Response): Promise<T> {
     if (res.status === 501) {
       throw new Error(`501: ${detail ?? "This feature isn't available in this deployment."}`);
     }
+    if (res.status === 402) {
+      throw new Error(`402: ${detail ?? "Upgrade required for this feature — see /pricing."}`);
+    }
     throw new Error(`${res.status}: ${detail ?? fallback}`);
   }
   if (!contentType.includes("application/json")) {
@@ -1662,7 +1665,7 @@ export async function bulkSend(
   message?: string,
 ): Promise<BulkSendBatch> {
   return json<BulkSendBatch>(
-    await fetch(`${BASE}/documents/${docId}/bulk-send`, {
+    await apiFetch(`/documents/${docId}/bulk-send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recipients, message: message ?? null }),
@@ -1672,7 +1675,7 @@ export async function bulkSend(
 
 export async function listBulkSends(docId: string): Promise<BulkSendBatch[]> {
   const res = await json<{ source_doc_id: string; batches: BulkSendBatch[] }>(
-    await fetch(`${BASE}/documents/${docId}/bulk-send`),
+    await apiFetch(`/documents/${docId}/bulk-send`),
   );
   return res.batches;
 }
@@ -1755,6 +1758,10 @@ export async function listShares(docId: string): Promise<{ doc_id: string; share
   return json(await apiFetch(`/documents/${docId}/shares`));
 }
 
+export async function revokeShare(docId: string, shareId: string): Promise<{ ok: boolean }> {
+  return json(await apiFetch(`/documents/${docId}/shares/${shareId}`, { method: "DELETE" }));
+}
+
 export async function fetchPortalInfo(token: string, pin?: string): Promise<ShareView> {
   const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
   return json(await apiFetch(`/portal/${token}${q}`));
@@ -1826,6 +1833,18 @@ export function downloadReadinessReport(docId: string, report: ReadinessResponse
   const a = document.createElement("a");
   a.href = url;
   a.download = `${docId}-readiness-report.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadPortalReadinessReport(token: string, report: ReadinessResponse): void {
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `portal-${token.slice(0, 8)}-readiness-report.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

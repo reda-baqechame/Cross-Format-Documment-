@@ -24,6 +24,7 @@ def test_bulk_send_creates_independent_packets(client):
 
     # Each packet is its own document with its own pending approval workflow.
     for p in batch["packets"]:
+        assert p.get("portal_url", "").startswith("/portal/")
         wf = client.get(f"/documents/{p['packet_doc_id']}/approvals").json()
         assert wf["state"] == "in_progress"
         assert wf["current_approvers"] == [p["recipient"]]
@@ -42,6 +43,10 @@ def test_one_recipient_decision_does_not_affect_others(client):
     )
 
     listed = client.get(f"/documents/{doc_id}/bulk-send").json()
+    assert len(listed["batches"]) == 1
+    for packet in listed["batches"][0]["packets"]:
+        assert packet.get("portal_url"), f"missing portal_url for {packet['recipient']}"
+        assert packet["portal_url"].startswith("/portal/")
     states = {
         p["recipient"]: p["state"] for b in listed["batches"] for p in b["packets"]
     }

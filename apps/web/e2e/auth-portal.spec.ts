@@ -33,3 +33,25 @@ test("invalid portal token shows error", async ({ page }) => {
   await page.goto("/portal/not-a-valid-token");
   await expect(page.getByText(/not found|expired|404/i)).toBeVisible();
 });
+
+test("bulk send portal link opens for recipient", async ({ page }) => {
+  await page.goto("/");
+  const portalPath = await page.evaluate(async () => {
+    const fd = new FormData();
+    fd.append("file", new Blob(["Client packet for review."], { type: "text/plain" }), "packet.txt");
+    const upload = await fetch("/api/documents", { method: "POST", body: fd, credentials: "include" });
+    const { doc_id: docId } = await upload.json();
+    const batch = await fetch(`/api/documents/${docId}/bulk-send`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipients: ["client@example.com"] }),
+    });
+    const body = await batch.json();
+    return body.packets[0]?.portal_url as string;
+  });
+  expect(portalPath).toMatch(/^\/portal\//);
+  await page.goto(portalPath);
+  await expect(page.getByText(/Client packet portal/i)).toBeVisible();
+  await expect(page.getByText(/Client packet for review/i)).toBeVisible({ timeout: 15_000 });
+});

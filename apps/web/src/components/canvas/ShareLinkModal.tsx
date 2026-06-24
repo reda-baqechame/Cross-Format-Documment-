@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
-import { createShare, fetchBillingStatus, listShares } from "@/lib/api";
+import { createShare, fetchBillingStatus, listShares, revokeShare } from "@/lib/api";
 
 export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -28,10 +28,18 @@ export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () 
     },
     onError: (e) => {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      if (msg.includes("402") || msg.toLowerCase().includes("upgrade")) {
+      if (msg.startsWith("402:")) {
         setError("Client portal links require Pro. Upgrade on the pricing page.");
+      } else {
+        setError(msg);
       }
+    },
+  });
+
+  const revoke = useMutation({
+    mutationFn: (shareId: string) => revokeShare(docId, shareId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["shares", docId] });
     },
   });
 
@@ -106,10 +114,22 @@ export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () 
         {shares.data && shares.data.shares.length > 0 && (
           <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-600">
             {shares.data.shares.map((s) => (
-              <li key={s.id}>
-                {s.permission} · {origin}
-                {s.portal_url}
-                {s.revoked ? " (revoked)" : ""}
+              <li key={s.id} className="flex items-center justify-between gap-2">
+                <span className="min-w-0 break-all">
+                  {s.permission} · {origin}
+                  {s.portal_url}
+                  {s.revoked ? " (revoked)" : ""}
+                </span>
+                {!s.revoked && (
+                  <button
+                    type="button"
+                    onClick={() => revoke.mutate(s.id)}
+                    disabled={revoke.isPending}
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    Revoke
+                  </button>
+                )}
               </li>
             ))}
           </ul>

@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
+import { BulkSendPanel } from "@/components/workflows/BulkSendPanel";
 import { AskPanel } from "@/components/canvas/AskPanel";
 import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
 import { ClausesPanel } from "@/components/canvas/ClausesPanel";
@@ -187,7 +188,14 @@ function RightPanel({
   if (tab === "forms") return <FormsPanel docId={docId} />;
   if (tab === "clauses") return <ClausesPanel doc={doc} docId={docId} />;
   if (tab === "comments") return <CommentsPanel docId={docId} />;
-  if (tab === "approvals") return <ApprovalsPanel docId={docId} />;
+  if (tab === "approvals") {
+    return (
+      <div className="flex h-full flex-col overflow-auto">
+        <ApprovalsPanel docId={docId} />
+        <BulkSendPanel docId={docId} />
+      </div>
+    );
+  }
   if (tab === "trust") {
     if (health.isError) {
       return (

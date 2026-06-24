@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
 import {
+  downloadPortalReadinessReport,
   fetchPortalApprovals,
   fetchPortalInfo,
   fetchPortalModel,
@@ -98,7 +99,16 @@ export default function PortalPage() {
           <>
             {readiness.data && (
               <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-                <p className="text-sm font-medium text-slate-800">Packet readiness</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-slate-800">Packet readiness</p>
+                  <button
+                    type="button"
+                    onClick={() => downloadPortalReadinessReport(token, readiness.data!)}
+                    className="text-xs text-brand-600 hover:underline"
+                  >
+                    Download report
+                  </button>
+                </div>
                 <p className="mt-1 text-sm text-slate-600">{readiness.data.report.summary}</p>
               </div>
             )}
