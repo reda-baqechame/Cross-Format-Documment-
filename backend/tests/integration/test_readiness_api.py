@@ -32,3 +32,17 @@ def test_readiness_flips_to_ready_after_redacting(client):
     assert client.get(f"/documents/{doc_id}/readiness").json()["report"]["verdict"] == "needs_fixes"
     client.post(f"/documents/{doc_id}/redact-sensitive")
     assert client.get(f"/documents/{doc_id}/readiness").json()["report"]["verdict"] == "ready"
+
+
+def test_client_packet_business_readiness_checks_surface_through_api(client):
+    doc_id = _upload(client, "Proposal for client website service. We can start after approval.")
+    report = client.get(f"/documents/{doc_id}/readiness").json()["report"]
+    checks = {check["id"]: check for check in report["checks"]}
+
+    assert report["verdict"] == "needs_fixes"
+    assert checks["scope_clarity"]["status"] == "warn"
+    assert checks["payment_terms"]["status"] == "warn"
+    assert checks["signature_acceptance"]["status"] == "warn"
+    assert checks["client_onboarding"]["status"] == "warn"
+    assert checks["scope_change_control"]["status"] == "warn"
+    assert checks["payment_terms"]["fixable"] is False

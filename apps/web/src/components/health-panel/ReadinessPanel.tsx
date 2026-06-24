@@ -66,12 +66,17 @@ export function ReadinessPanel({ docId }: { docId: string }) {
 
   const report = readiness.data.report;
   const tone = VERDICT_TONE[report.verdict];
+  const hasCleanableIssues = report.checks.some(
+    (check) =>
+      check.status !== "pass" &&
+      (check.fix_action === "redact_pii" || check.fix_action === "sanitize_metadata"),
+  );
 
   return (
     <section className="flex flex-col gap-3 border-b border-slate-200 bg-white p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Send-Ready Check
+          Client Packet Readiness
         </h2>
         <button
           type="button"
@@ -101,7 +106,7 @@ export function ReadinessPanel({ docId }: { docId: string }) {
         <p className="text-xs text-green-700">✓ Un-Redact Test passed — no text recoverable under any cover.</p>
       )}
 
-      {report.verdict !== "ready" && (
+      {report.verdict !== "ready" && hasCleanableIssues && (
         <button
           type="button"
           onClick={() => clean.mutate()}
@@ -110,6 +115,12 @@ export function ReadinessPanel({ docId }: { docId: string }) {
         >
           {clean.isPending ? "Cleaning & verifying…" : "Clean before you send"}
         </button>
+      )}
+
+      {report.verdict !== "ready" && !hasCleanableIssues && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          Review the non-automatic readiness checks below before sending this client packet.
+        </p>
       )}
 
       {cleaned && cleaned.validation.ok && (

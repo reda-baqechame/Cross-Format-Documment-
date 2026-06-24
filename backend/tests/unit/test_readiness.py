@@ -42,6 +42,7 @@ def test_clean_document_is_ready():
     report = readiness.build_report(_doc(["A perfectly ordinary sentence."]))
     assert report.verdict == "ready"
     assert all(c.status == "pass" for c in report.checks)
+    assert "scope_clarity" not in {c.id for c in report.checks}
 
 
 def test_exposed_pii_flags_needs_fixes_with_redact_fix():
@@ -95,3 +96,42 @@ def test_blocked_outranks_warn():
     doc.meta.custom["author"] = "Jane Doe"
     report = readiness.build_report(doc)
     assert report.verdict == "blocked"  # fail outranks the warnings
+
+
+def test_client_packet_flags_business_gaps():
+    report = readiness.build_report(
+        _doc(["Proposal for client website service. We can start after approval."])
+    )
+
+    assert report.verdict == "needs_fixes"
+    assert _check(report, "scope_clarity").status == "warn"
+    assert _check(report, "payment_terms").status == "warn"
+    assert _check(report, "signature_acceptance").status == "warn"
+    assert _check(report, "client_onboarding").status == "warn"
+    assert _check(report, "scope_change_control").status == "warn"
+    assert _check(report, "payment_terms").fixable is False
+
+
+def test_complete_client_packet_is_ready():
+    report = readiness.build_report(
+        _doc(
+            [
+                (
+                    "Statement of Work for client service. Scope of work: deliverables, "
+                    "timeline, included items, exclusions, two revision rounds, and milestones. "
+                    "Payment terms: 50 percent deposit by card or ACH, then Net 15 with a late "
+                    "fee. Signature and client approval are required before kickoff. Next steps "
+                    "include onboarding, access, brand assets, stakeholder contacts, and uploads "
+                    "to the client portal. Out of scope work requires a change request and "
+                    "additional fees; cancellation, renewal, and termination terms apply."
+                )
+            ]
+        )
+    )
+
+    assert report.verdict == "ready"
+    assert _check(report, "scope_clarity").status == "pass"
+    assert _check(report, "payment_terms").status == "pass"
+    assert _check(report, "signature_acceptance").status == "pass"
+    assert _check(report, "client_onboarding").status == "pass"
+    assert _check(report, "scope_change_control").status == "pass"

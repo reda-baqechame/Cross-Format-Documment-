@@ -237,10 +237,82 @@ daily friction, turned into our headline.
 
 ---
 
+## 9. SMB and agency client-packet wedge vs PandaDoc, HoneyBook, and Bonsai
+
+**What these buyers already do instead of using us:** agency operators and small service
+businesses stitch together Google Docs or Word, Canva or Figma, PDF export, PandaDoc or
+DocuSign, HoneyBook, Bonsai, QuickBooks or Stripe, email, and a project tool. The painful
+job is not "make a document." It is "send a client packet that gets approved, signed,
+paid, and starts the project without a mess." That packet can contain a proposal, SOW,
+quote, estimate, invoice, contract, intake form, onboarding checklist, file request,
+brand-asset request, access request, project timeline, proof pack, change order, renewal,
+cancellation notice, or handoff report.
+
+### PandaDoc
+
+PandaDoc is the closest document-first competitor. It leads with creation -> signature ->
+payment, drag-and-drop document editing, collaboration/redlining, approvals, tracking, and
+paid proposal workflows. Its pricing positions Free for eSign, Starter at $19/user/month
+annually, and Business at $49/user/month annually. This works for sales teams that already
+know the packet is ready and want document generation plus signature/payment.
+
+**Opening for us:** PandaDoc helps assemble and send; it does not act like an operator
+sitting next to the owner asking whether the scope is specific enough, payment terms are
+missing, deposit terms are unclear, client onboarding is absent, or change-control language
+is weak. Our cross-format readiness check should become the pre-send layer before
+PandaDoc-style execution.
+
+### HoneyBook
+
+HoneyBook is the strongest clientflow/CRM story for independent service businesses. It
+promises one place for proposals, contracts, invoices, payments, projects, automations,
+and AI meeting notes, and claims strong usage proof such as 100K+ small businesses, $12B+
+processed, and invoices paid on time or early. Its buyer wants fewer tools and a smoother
+lead-to-payment workflow.
+
+**Opening for us:** HoneyBook is a system of record and workflow layer. It is not a
+universal document inspection engine. The operator still brings messy imported PDFs, Word
+docs, old contracts, Canva proposals, scanned intake packets, and spreadsheet estimates.
+Our advantage is to accept the real documents they already have and tell them what is
+missing or risky before they send.
+
+### Bonsai
+
+Bonsai is strongest for freelancers, consultants, and small teams that want projects,
+clients, billing, proposals, contracts, forms, scheduling, time tracking, and a client
+portal in one platform. Its official pricing puts Basic at $15/user/month, Essentials at
+$25/user/month monthly or $19/user/month annually for invoices/payments/proposals/
+contracts/forms/scheduling/client portal, Premium at $39/$29, and Elite at $59/$49 with a
+3-user minimum.
+
+**Opening for us:** Bonsai is useful after the business has chosen Bonsai as its home.
+But many agencies do not want to migrate their whole business system just to make client
+documents safer and clearer. We can win as the no-migration layer: upload what you already
+use, catch business and trust gaps, then export/send through your existing stack.
+
+### Product move shipped from this analysis
+
+The app now keeps its full cross-format document engine and adds an SMB/agency-specific
+**Client Packet Readiness** layer. For service packets, the readiness report checks:
+
+- Scope and deliverables: scope, outcomes, timeline, exclusions, revisions, milestones.
+- Payment and deposit terms: deposit, due date, method, net terms, retainer, late fee.
+- Signature and acceptance: approval/signature language.
+- Client onboarding handoff: kickoff, intake, access, assets, contacts, next steps.
+- Change control and revisions: out-of-scope work, change requests, cancellation, renewal,
+  termination, additional fees.
+
+This deliberately avoids becoming another generic proposal builder or CRM. The strategy is
+to make our app the trust and readiness layer for the messy documents agencies already
+create in many tools.
+
+---
+
 ## Sources
 - PDF/editors: [techradar](https://www.techradar.com/best/pdf-editors), [guideflow](https://www.guideflow.com/blog/pdf-editors), [gonitro redaction](https://www.gonitro.com/best-pdf-redaction-tools), [smallpdf tools](https://smallpdf.com/pdf-tools), [iLovePDF vs Smallpdf](https://www.pdftechno.com/blogs/ilovepdf-vs-smallpdf-vs-pdftechno-which-one-makes-the-most-sense), [Stirling PDF](https://webnestify.cloud/insights/open-source-solutions/stirling-pdf-self-hosted-document-toolkit/)
 - Authoring AI: [Copilot vs Gemini](https://tactiq.io/learn/gemini-vs-copilot), [tech-insider 2026](https://tech-insider.org/copilot-vs-gemini-2026/), [rohitprabhakar](https://www.rohitprabhakar.com/blog/copilot-vs-gemini/)
 - E‑signature/CLM/forms: [pandadoc compare](https://www.pandadoc.com/blog/docusign-vs-adobe-sign-vs-hellosign/), [DocuSign Iris](https://www.docusign.com/blog/docusign-iris-agreement-ai), [DocuSign IAM](https://www.docusign.com/intelligent-agreement-management), [Adobe pricing](https://www.adobe.com/acrobat/business/pricing-plans.html), [Ironclad AI CLM](https://ironcladapp.com/product/ai-based-contract-management), [Juro reviews](https://signeasy.com/blog/business/juro-reviews), [Jotform vs Adobe](https://www.jotform.com/products/sign/pandadoc-vs-adobe-sign/), [Dropbox Sign features](https://sign.dropbox.com/features)
+- SMB/agency clientflow competitors: [PandaDoc](https://www.pandadoc.com/), [PandaDoc pricing](https://www.pandadoc.com/pricing/), [HoneyBook](https://www.honeybook.com/), [HoneyBook pricing](https://www.honeybook.com/pricing), [Bonsai](https://www.hellobonsai.com/), [Bonsai pricing](https://www.hellobonsai.com/pricing), [Bonsai client portal](https://help.hellobonsai.com/en/articles/4409019-how-to-use-the-client-portal)
 - OCR/IDP: [Kognitos 2026](https://www.kognitos.com/blog/top-ai-document-processing-platforms-enterprise-2026/), [Gartner IDP](https://www.gartner.com/reviews/market/intelligent-document-processing-solutions), [ABBYY vs Nanonets](https://www.gartner.com/reviews/market/intelligent-document-processing-solutions/compare/abbyy-vs-nanonets)
 - AI‑chat‑docs: [denser alternatives](https://denser.ai/blog/chatpdf-alternative/), [paperguide](https://paperguide.ai/blog/ai-tools-to-chat-with-pdf/)
 - Redaction/metadata: [Litera Metadact](https://www.litera.com/products/metadact), [Office Document Inspector](https://support.microsoft.com/en-us/office/remove-hidden-data-and-personal-information-by-inspecting-documents-presentations-or-workbooks-356b7b5d-77af-44fe-a07f-9aa4d085966f), [Document Inspector limits](https://www.digitalconfidence.com/Document-Inspector-Limitations-and-a-Solution.html), [iScrub/RPost](https://rpost.com/news/rpost-esquire-innovations-team-deliver-total-email-attachment-security)
