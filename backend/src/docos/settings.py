@@ -28,6 +28,26 @@ TtsProvider = Literal["none", "external"]
 DrmProvider = Literal["none", "external"]
 CollabBackend = Literal["memory", "redis"]
 
+# Built-in upload catalog — merged back when ALLOWED_MIME_TYPES is a partial override (common on Railway).
+_CATALOG_MIME_TYPES = (
+    "text/plain,"
+    "text/markdown,"
+    "text/x-markdown,"
+    "text/csv,"
+    "application/csv,"
+    "text/html,"
+    "application/xhtml+xml,"
+    "application/pdf,"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
+    "application/rtf,"
+    "image/png,"
+    "image/jpeg,"
+    "image/tiff"
+)
+_CATALOG_MIMES = frozenset(m.strip() for m in _CATALOG_MIME_TYPES.split(",") if m.strip())
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -161,23 +181,7 @@ class Settings(BaseSettings):
     # Hard cap on pages scanned by per-page analyses (table detection, un-redact test) so a
     # pathological many-page PDF can't exhaust CPU. Content beyond the cap is left as-is.
     max_scan_pages: int = 200
-    allowed_mime_types: str = (
-        "text/plain,"
-        "text/markdown,"
-        "text/x-markdown,"
-        "text/csv,"
-        "application/csv,"
-        "text/html,"
-        "application/xhtml+xml,"
-        "application/pdf,"
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
-        "application/rtf,"
-        "image/png,"
-        "image/jpeg,"
-        "image/tiff"
-    )
+    allowed_mime_types: str = _CATALOG_MIME_TYPES
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -189,7 +193,11 @@ class Settings(BaseSettings):
 
     @property
     def allowed_mimes(self) -> set[str]:
-        return {m.strip() for m in self.allowed_mime_types.split(",") if m.strip()}
+        configured = {m.strip() for m in self.allowed_mime_types.split(",") if m.strip()}
+        # Partial ALLOWED_MIME_TYPES env overrides drop formats (e.g. HTML); merge the catalog back.
+        if not _CATALOG_MIMES.issubset(configured):
+            return configured | _CATALOG_MIMES
+        return configured
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -36,3 +36,16 @@ def test_anthropic_preferred_when_both_keys_present():
 def test_explicit_provider_wins_over_autodetect():
     s = Settings(llm_provider="openai", anthropic_api_key="a", openai_api_key="o")
     assert s.effective_llm_provider == "openai"
+
+
+def test_partial_allowed_mime_types_merges_catalog():
+    """Railway sometimes sets a partial ALLOWED_MIME_TYPES — HTML must stay accepted."""
+    s = Settings(allowed_mime_types="text/plain,application/pdf")
+    assert "text/html" in s.allowed_mimes
+    assert "application/pdf" in s.allowed_mimes
+
+
+def test_full_allowed_mime_types_unchanged():
+    s = Settings()
+    assert "text/html" in s.allowed_mimes
+    assert "image/png" in s.allowed_mimes
