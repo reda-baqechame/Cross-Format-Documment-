@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("signup and pricing pages render", async ({ page }) => {
   await page.goto("/signup");
   await expect(page.getByRole("heading", { name: /Create your DocOS account/i })).toBeVisible();
-  await expect(page.getByLabel(/Email/i)).toBeVisible();
+  await expect(page.getByPlaceholder("Email")).toBeVisible();
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: /Sign in to DocOS/i })).toBeVisible();
