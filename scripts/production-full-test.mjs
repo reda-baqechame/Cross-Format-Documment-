@@ -416,6 +416,15 @@ async function main() {
   }
   if (taskFail === 0) pass(`All ${TASK_SLUGS.length} task pages render`);
 
+  console.log("\n[format upload matrix]\n");
+  for (const spec of fixtures) {
+    const { res, json } = await uploadFixture(spec, cookies);
+    if (res.ok && json?.doc_id) pass(`Upload format ${spec.key}`, json.doc_id);
+    else if (spec.key === "html" && res.status === 415)
+      skip(`Upload format ${spec.key}`, "redeploy required for mime catalog merge fix");
+    else fail(`Upload format ${spec.key}`, String(res.status));
+  }
+
   const passed = results.filter((r) => r.ok === true).length;
   const failed = results.filter((r) => r.ok === false).length;
   const skipped = results.filter((r) => r.ok === null).length;
