@@ -10,6 +10,8 @@
     "codegen": "openapi-typescript http://localhost:8000/openapi.json -o packages/shared-types/src/generated.ts",
     "lint:web": "pnpm --filter @docos/web lint",
     "smoke:production": "node scripts/production-smoke.mjs",
+    "smoke:production:client-packet": "node scripts/production-client-packet-smoke.mjs",
+    "smoke:production:client-packet:ui": "pnpm --filter @docos/web exec node ../../scripts/production-client-packet-ui-smoke.mjs",
     "eval:document-ops": "python evals/document_ops/run_local.py"
   },
   "devDependencies": {
