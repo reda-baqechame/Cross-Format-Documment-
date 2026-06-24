@@ -173,8 +173,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
 - ✅ Approval workflows (ordered / parallel sign-off, audited) — `routes_approvals.py`
 - 🟡 Real-time presence (single-node) wired (see §C); multi-node presence remains 🔒 collaboration infra
-- ✅ **Shareable client portal** — token-based `/portal/{token}` read + readiness; create/revoke
-  links on owned docs; bulk-send creates per-recipient portal URLs — `document_shares` migration
+- ✅ **Shareable client portal** — token-based `/portal/{token}` read + readiness + sign-off;
+  create/revoke links on owned docs; bulk-send creates per-recipient portal URLs — `document_shares` migration
   `0011`, `api/routes_share.py`, `api/access.py`, `components/canvas/ShareLinkModal.tsx`,
   `app/portal/[token]/page.tsx`. Pro plan required to create ad-hoc share links (402 on free tier).
 

@@ -110,6 +110,39 @@ def test_auth_rejects_weak_password(client):
     ).status_code == 422
 
 
+def test_portal_sign_off(make_client, db):
+    owner = make_client()
+    email = f"sign_{uuid.uuid4().hex[:8]}@example.com"
+    reg = _register(owner, email)
+    user_id = reg["user"]["id"]
+    doc_id = _upload(owner, "Contract for Alice Client.")
+
+    owner.post(
+        f"/documents/{doc_id}/approvals",
+        json={"approvers": ["Alice Client"], "ordered": True},
+    )
+
+    sub = db.scalar(select(Subscription).where(Subscription.user_id == user_id))
+    sub.plan = "pro"
+    db.commit()
+
+    share = owner.post(
+        f"/documents/{doc_id}/shares",
+        json={"permission": "sign", "recipient_label": "Alice Client"},
+    )
+    assert share.status_code == 200, share.text
+    token = share.json()["token"]
+
+    portal = make_client()
+    pending = portal.get(f"/portal/{token}/approvals")
+    assert pending.status_code == 200
+    assert pending.json()["state"] == "in_progress"
+
+    approved = portal.post(f"/portal/{token}/approve")
+    assert approved.status_code == 200
+    assert approved.json()["state"] == "approved"
+
+
 def test_billing_status_offline(make_client):
     client = make_client()
     res = client.get("/billing/status")

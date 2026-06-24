@@ -20,6 +20,15 @@ test("home page shows wired marketing sections", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Platform capabilities/i })).toBeVisible();
 });
 
+test("signup shows account email in header", async ({ page }) => {
+  const email = `e2e_${Date.now()}@example.com`;
+  await page.goto("/signup");
+  await page.getByPlaceholder("Email").fill(email);
+  await page.getByPlaceholder("Password (8+ characters)").fill("password123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText(email)).toBeVisible({ timeout: 15_000 });
+});
+
 test("invalid portal token shows error", async ({ page }) => {
   await page.goto("/portal/not-a-valid-token");
   await expect(page.getByText(/not found|expired|404/i)).toBeVisible();

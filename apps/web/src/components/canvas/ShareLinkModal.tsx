@@ -11,11 +11,16 @@ export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () 
   const billing = useQuery({ queryKey: ["billing"], queryFn: fetchBillingStatus });
   const shares = useQuery({ queryKey: ["shares", docId], queryFn: () => listShares(docId) });
   const [permission, setPermission] = useState("view");
+  const [recipientLabel, setRecipientLabel] = useState("");
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: () => createShare(docId, { permission }),
+    mutationFn: () =>
+      createShare(docId, {
+        permission,
+        recipient_label: permission === "sign" ? recipientLabel.trim() || undefined : undefined,
+      }),
     onSuccess: (share) => {
       setCreatedUrl(share.portal_url);
       void queryClient.invalidateQueries({ queryKey: ["shares", docId] });
@@ -63,6 +68,19 @@ export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () 
           <option value="comment">View + comment</option>
           <option value="sign">View + sign off</option>
         </select>
+        {permission === "sign" && (
+          <>
+            <label className="mt-3 block text-xs font-medium uppercase text-slate-500">
+              Recipient name (must match approver on the packet)
+            </label>
+            <input
+              value={recipientLabel}
+              onChange={(e) => setRecipientLabel(e.target.value)}
+              placeholder="e.g. client@agency.com"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </>
+        )}
         <button
           type="button"
           onClick={() => create.mutate()}

@@ -35,6 +35,10 @@ export interface BackendHealth {
   billing_configured?: boolean;
 }
 
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE}${path}`, { credentials: "include", ...init });
+}
+
 /** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */
 function errorDetail(body: string): string | null {
   try {
@@ -1691,7 +1695,7 @@ export async function registerUser(
   name?: string,
 ): Promise<AuthResponse> {
   return json<AuthResponse>(
-    await fetch(`${BASE}/auth/register`, {
+    await apiFetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, name: name ?? null }),
@@ -1701,7 +1705,7 @@ export async function registerUser(
 
 export async function loginUser(email: string, password: string): Promise<AuthResponse> {
   return json<AuthResponse>(
-    await fetch(`${BASE}/auth/login`, {
+    await apiFetch("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -1710,11 +1714,11 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 }
 
 export async function logoutUser(): Promise<{ ok: boolean }> {
-  return json(await fetch(`${BASE}/auth/logout`, { method: "POST" }));
+  return json(await apiFetch("/auth/logout", { method: "POST" }));
 }
 
 export async function fetchMe(): Promise<UserView | null> {
-  const res = await fetch(`${BASE}/auth/me`);
+  const res = await apiFetch("/auth/me");
   if (res.status === 204) return null;
   const body = await res.text();
   if (!body || body === "null") return null;
@@ -1739,7 +1743,7 @@ export async function createShare(
   opts: { permission?: string; expires_in_days?: number; pin?: string; recipient_label?: string },
 ): Promise<ShareView> {
   return json<ShareView>(
-    await fetch(`${BASE}/documents/${docId}/shares`, {
+    await apiFetch(`/documents/${docId}/shares`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(opts),
@@ -1748,22 +1752,43 @@ export async function createShare(
 }
 
 export async function listShares(docId: string): Promise<{ doc_id: string; shares: ShareView[] }> {
-  return json(await fetch(`${BASE}/documents/${docId}/shares`));
+  return json(await apiFetch(`/documents/${docId}/shares`));
 }
 
 export async function fetchPortalInfo(token: string, pin?: string): Promise<ShareView> {
   const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
-  return json(await fetch(`${BASE}/portal/${token}${q}`));
+  return json(await apiFetch(`/portal/${token}${q}`));
 }
 
 export async function fetchPortalModel(token: string, pin?: string): Promise<DocumentModelResponse> {
   const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
-  return json(await fetch(`${BASE}/portal/${token}/model${q}`));
+  return json(await apiFetch(`/portal/${token}/model${q}`));
 }
 
 export async function fetchPortalReadiness(token: string, pin?: string): Promise<ReadinessResponse> {
   const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
-  return json(await fetch(`${BASE}/portal/${token}/readiness${q}`));
+  return json(await apiFetch(`/portal/${token}/readiness${q}`));
+}
+
+export async function fetchPortalApprovals(token: string, pin?: string): Promise<WorkflowStatus> {
+  const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
+  return json(await apiFetch(`/portal/${token}/approvals${q}`));
+}
+
+export async function portalApprove(
+  token: string,
+  opts?: { note?: string; pin?: string },
+): Promise<WorkflowStatus> {
+  const params = new URLSearchParams();
+  if (opts?.pin) params.set("pin", opts.pin);
+  const q = params.toString() ? `?${params}` : "";
+  return json(
+    await apiFetch(`/portal/${token}/approve${q}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: opts?.note ?? null }),
+    }),
+  );
 }
 
 // Billing
@@ -1782,12 +1807,12 @@ export interface BillingStatus {
 }
 
 export async function fetchBillingStatus(): Promise<BillingStatus> {
-  return json(await fetch(`${BASE}/billing/status`));
+  return json(await apiFetch("/billing/status"));
 }
 
 export async function startCheckout(plan: "pro" | "team"): Promise<{ checkout_url: string }> {
   return json(
-    await fetch(`${BASE}/billing/checkout`, {
+    await apiFetch("/billing/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan }),

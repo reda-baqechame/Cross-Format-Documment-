@@ -15,11 +15,12 @@ from docos.api.access import get_owned_document, get_valid_share, owner_clause
 from docos.api.ratelimit import enforce_portal_rate
 from docos.api.schemas import DocumentModelResponse, ReadinessResponse
 from docos.api.session import Actor, get_actor
-from docos.db.models import DocumentShare, DocumentVersion
+from docos.db.models import ApprovalStep, DocumentShare, DocumentVersion
 from docos.deps import db_session, get_provenance
 from docos.model.serialize import from_dict
 from docos.services.auth.passwords import hash_password
 from docos.services.billing.plans import require_portal_access
+from docos.services.collab import approvals
 from docos.services.provenance import readiness
 
 router = APIRouter(tags=["share"])
@@ -47,6 +48,36 @@ class ShareView(BaseModel):
 class ShareListResponse(BaseModel):
     doc_id: str
     shares: list[ShareView]
+
+
+class PortalApproveRequest(BaseModel):
+    note: str | None = None
+
+
+def _approval_steps(session: Session, doc_id: str) -> list[ApprovalStep]:
+    return list(
+        session.scalars(
+            select(ApprovalStep)
+            .where(ApprovalStep.document_id == doc_id)
+            .order_by(ApprovalStep.order_index)
+        ).all()
+    )
+
+
+def _workflow_status(doc_id: str, steps: list[ApprovalStep]) -> approvals.WorkflowStatus:
+    return approvals.WorkflowStatus(
+        doc_id=doc_id,
+        workflow_id=steps[0].workflow_id if steps else None,
+        state=approvals.overall_state(steps),
+        ordered=steps[0].ordered if steps else True,
+        steps=[
+            approvals.StepView(
+                approver=s.approver, order_index=s.order_index, status=s.status, note=s.note
+            )
+            for s in steps
+        ],
+        current_approvers=approvals.actionable_approvers(steps),
+    )
 
 
 def _portal_path(token: str) -> str:
@@ -190,6 +221,74 @@ def portal_readiness(
     doc = from_dict(version.model)
     report = readiness.build_report(doc)
     return ReadinessResponse(doc_id=access.document.id, report=report)
+
+
+@router.get(
+    "/portal/{token}/approvals",
+    response_model=approvals.WorkflowStatus,
+    dependencies=_PORTAL_RATE,
+)
+def portal_approvals(
+    token: str,
+    pin: str | None = Query(default=None),
+    session: Session = Depends(db_session),
+) -> approvals.WorkflowStatus:
+    access = get_valid_share(session, token, pin=pin)
+    if access.share.permission not in ("sign", "comment"):
+        raise HTTPException(status_code=403, detail="this link cannot view approvals")
+    steps = _approval_steps(session, access.document.id)
+    return _workflow_status(access.document.id, steps)
+
+
+@router.post(
+    "/portal/{token}/approve",
+    response_model=approvals.WorkflowStatus,
+    dependencies=_PORTAL_RATE,
+)
+def portal_approve(
+    token: str,
+    body: PortalApproveRequest = PortalApproveRequest(),
+    pin: str | None = Query(default=None),
+    session: Session = Depends(db_session),
+) -> approvals.WorkflowStatus:
+    access = get_valid_share(session, token, pin=pin)
+    if access.share.permission != "sign":
+        raise HTTPException(status_code=403, detail="this link is view-only")
+    approver = (access.share.recipient_label or "").strip()
+    if not approver:
+        raise HTTPException(status_code=422, detail="recipient identity missing on this link")
+
+    steps = _approval_steps(session, access.document.id)
+    state = approvals.overall_state(steps)
+    if state in ("none", "approved", "rejected"):
+        raise HTTPException(status_code=409, detail="no approval workflow is awaiting a decision")
+    if not approvals.can_act(steps, approver):
+        raise HTTPException(status_code=409, detail=f"{approver} cannot sign off yet")
+
+    step = next(s for s in steps if s.approver == approver and s.status == approvals.PENDING)
+    step.status = approvals.APPROVED
+    step.note = body.note
+    step.decided_at = datetime.now(UTC)
+    provenance = get_provenance(session)
+    provenance.record_event(
+        access.document.id,
+        "approval.approved",
+        actor=f"portal:{token[:8]}",
+        detail={"workflow_id": step.workflow_id, "approver": approver, "via": "share"},
+    )
+    session.commit()
+
+    steps = _approval_steps(session, access.document.id)
+    final = approvals.overall_state(steps)
+    if final == "approved":
+        provenance.record_event(
+            access.document.id,
+            "approval.workflow_approved",
+            actor=f"portal:{token[:8]}",
+            detail={"workflow_id": steps[0].workflow_id},
+        )
+        session.commit()
+    return _workflow_status(access.document.id, steps)
 
 
 def create_recipient_share(
