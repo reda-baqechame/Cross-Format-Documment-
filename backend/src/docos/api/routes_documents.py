@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from docos.api.access import get_owned_document
+from docos.api.access import get_owned_document, owner_clause
 from docos.api.ratelimit import enforce_upload_rate
 from docos.api.schemas import (
     AssetUploadResponse,
@@ -296,7 +296,7 @@ def list_documents(
 ) -> DocumentListResponse:
     records = session.scalars(
         select(Document)
-        .where(Document.owner_session_id == actor.session_id)
+        .where(owner_clause(Document.owner_session_id, Document.owner_user_id, actor))
         .order_by(Document.created_at.desc())
     ).all()
     owned_ids = {r.id for r in records}

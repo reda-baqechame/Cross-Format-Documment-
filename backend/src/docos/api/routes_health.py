@@ -55,6 +55,7 @@ def health(
         tts_configured=settings.tts_configured,
         drm_configured=settings.drm_configured,
         cloud_integrations=settings.configured_integrations,
+        billing_configured=settings.billing_configured,
     )
 
 

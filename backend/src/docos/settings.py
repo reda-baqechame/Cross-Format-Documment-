@@ -136,6 +136,13 @@ class Settings(BaseSettings):
     slack_client_id: str | None = None
     slack_client_secret: str | None = None
 
+    # Stripe billing (optional — checkout returns 501 when unset).
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_pro: str | None = None
+    stripe_price_team: str | None = None
+    billing_return_url: str | None = None  # e.g. https://app.example.com/pricing?success=1
+
     # archive (OOXML/zip) safety limits — defense against zip bombs.
     zip_max_entries: int = 2000
     zip_max_uncompressed_mb: int = 200
@@ -266,6 +273,10 @@ class Settings(BaseSettings):
             "slack": (self.slack_client_id, self.slack_client_secret),
         }
         return [name for name, (cid, secret) in pairs.items() if cid and secret]
+
+    @property
+    def billing_configured(self) -> bool:
+        return bool(self.stripe_secret_key and self.stripe_price_pro)
 
     @property
     def database_kind(self) -> str:

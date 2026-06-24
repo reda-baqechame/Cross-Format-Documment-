@@ -29,6 +29,7 @@ import { DownloadMenu } from "@/components/canvas/DownloadMenu";
 import { FindReplaceModal } from "@/components/canvas/FindReplaceModal";
 import { FormatToolbar } from "@/components/canvas/FormatToolbar";
 import { PresenceIndicator } from "@/components/canvas/PresenceIndicator";
+import { ShareLinkModal } from "@/components/canvas/ShareLinkModal";
 import { ToolsMenu } from "@/components/canvas/ToolsMenu";
 import { redoDocument, undoDocument } from "@/lib/api";
 import type { CanonicalDocument } from "@docos/shared-types";
@@ -84,6 +85,7 @@ export function DocumentWorkspaceHeader({
 
   const queryClient = useQueryClient();
   const [findOpen, setFindOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = () => {
@@ -130,7 +132,7 @@ export function DocumentWorkspaceHeader({
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <button type="button" className="studio-btn gap-2">
+          <button type="button" className="studio-btn gap-2" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" />
             Share
           </button>
@@ -261,6 +263,7 @@ export function DocumentWorkspaceHeader({
       {findOpen && doc && (
         <FindReplaceModal doc={doc} docId={docId} onClose={() => setFindOpen(false)} />
       )}
+      {shareOpen && <ShareLinkModal docId={docId} onClose={() => setShareOpen(false)} />}
     </header>
   );
 }

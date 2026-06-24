@@ -32,6 +32,7 @@ export interface BackendHealth {
   drm_configured?: boolean;
   presence_enabled?: boolean;
   cloud_integrations?: string[];
+  billing_configured?: boolean;
 }
 
 /** Pull the FastAPI `{ "detail": ... }` message out of an error body, if present. */
@@ -1641,6 +1642,7 @@ export interface BulkSendPacketView {
   recipient: string;
   packet_doc_id: string;
   state: string;
+  portal_url?: string | null;
 }
 
 export interface BulkSendBatch {
@@ -1669,4 +1671,138 @@ export async function listBulkSends(docId: string): Promise<BulkSendBatch[]> {
     await fetch(`${BASE}/documents/${docId}/bulk-send`),
   );
   return res.batches;
+}
+
+// Auth
+export interface UserView {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+export interface AuthResponse {
+  user: UserView;
+  claimed?: Record<string, number>;
+}
+
+export async function registerUser(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<AuthResponse> {
+  return json<AuthResponse>(
+    await fetch(`${BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name: name ?? null }),
+    }),
+  );
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  return json<AuthResponse>(
+    await fetch(`${BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }),
+  );
+}
+
+export async function logoutUser(): Promise<{ ok: boolean }> {
+  return json(await fetch(`${BASE}/auth/logout`, { method: "POST" }));
+}
+
+export async function fetchMe(): Promise<UserView | null> {
+  const res = await fetch(`${BASE}/auth/me`);
+  if (res.status === 204) return null;
+  const body = await res.text();
+  if (!body || body === "null") return null;
+  if (!res.ok) throw new Error(body);
+  return JSON.parse(body) as UserView | null;
+}
+
+// Share / portal
+export interface ShareView {
+  id: string;
+  token: string;
+  document_id: string;
+  permission: string;
+  recipient_label: string | null;
+  expires_at: string | null;
+  portal_url: string;
+  revoked: boolean;
+}
+
+export async function createShare(
+  docId: string,
+  opts: { permission?: string; expires_in_days?: number; pin?: string; recipient_label?: string },
+): Promise<ShareView> {
+  return json<ShareView>(
+    await fetch(`${BASE}/documents/${docId}/shares`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(opts),
+    }),
+  );
+}
+
+export async function listShares(docId: string): Promise<{ doc_id: string; shares: ShareView[] }> {
+  return json(await fetch(`${BASE}/documents/${docId}/shares`));
+}
+
+export async function fetchPortalInfo(token: string, pin?: string): Promise<ShareView> {
+  const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
+  return json(await fetch(`${BASE}/portal/${token}${q}`));
+}
+
+export async function fetchPortalModel(token: string, pin?: string): Promise<DocumentModelResponse> {
+  const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
+  return json(await fetch(`${BASE}/portal/${token}/model${q}`));
+}
+
+export async function fetchPortalReadiness(token: string, pin?: string): Promise<ReadinessResponse> {
+  const q = pin ? `?pin=${encodeURIComponent(pin)}` : "";
+  return json(await fetch(`${BASE}/portal/${token}/readiness${q}`));
+}
+
+// Billing
+export interface PlanView {
+  id: string;
+  name: string;
+  price_monthly: number;
+  features: string[];
+}
+
+export interface BillingStatus {
+  configured: boolean;
+  plan: string;
+  status: string;
+  plans: PlanView[];
+}
+
+export async function fetchBillingStatus(): Promise<BillingStatus> {
+  return json(await fetch(`${BASE}/billing/status`));
+}
+
+export async function startCheckout(plan: "pro" | "team"): Promise<{ checkout_url: string }> {
+  return json(
+    await fetch(`${BASE}/billing/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    }),
+  );
+}
+
+export function downloadReadinessReport(docId: string, report: ReadinessResponse): void {
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${docId}-readiness-report.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

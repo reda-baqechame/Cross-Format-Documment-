@@ -52,6 +52,7 @@ class HealthCheck(BaseModel):
     drm_configured: bool = False
     presence_enabled: bool = True
     cloud_integrations: list[str] = []
+    billing_configured: bool = False
 
 
 class ReadyCheck(BaseModel):

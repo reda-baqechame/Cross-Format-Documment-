@@ -1,0 +1,86 @@
+"""Integration tests for auth, share portal, and billing seams."""
+
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy import select
+
+from docos.db.models import Subscription
+
+
+def _register(client, email: str, password: str = "password123") -> dict:
+    res = client.post("/auth/register", json={"email": email, "password": password})
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def _upload(client, text: str = "Agency proposal for client.") -> str:
+    res = client.post(
+        "/documents",
+        files={"file": ("prop.txt", text.encode(), "text/plain")},
+    )
+    assert res.status_code == 200, res.text
+    return res.json()["doc_id"]
+
+
+def test_register_login_and_claim(make_client):
+    client_a = make_client()
+    doc_id = _upload(client_a, "Session owned doc")
+
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    reg = _register(client_a, email)
+    assert reg["user"]["email"] == email
+    assert reg["claimed"]["documents"] >= 1
+
+    me = client_a.get("/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == email
+
+    # Same session still sees the doc after claim (user_id path).
+    model = client_a.get(f"/documents/{doc_id}/model")
+    assert model.status_code == 200
+
+    client_a.post("/auth/logout")
+    assert client_a.get("/auth/me").json() is None
+
+
+def test_share_requires_pro_plan(make_client, db):
+    client = make_client()
+    email = f"pro_{uuid.uuid4().hex[:8]}@example.com"
+    reg = _register(client, email)
+    user_id = reg["user"]["id"]
+    doc_id = _upload(client)
+
+    blocked = client.post(
+        f"/documents/{doc_id}/shares",
+        json={"permission": "view"},
+    )
+    assert blocked.status_code == 402
+
+    sub = db.scalar(select(Subscription).where(Subscription.user_id == user_id))
+    assert sub is not None
+    sub.plan = "pro"
+    db.commit()
+
+    ok = client.post(f"/documents/{doc_id}/shares", json={"permission": "view"})
+    assert ok.status_code == 200, ok.text
+    token = ok.json()["token"]
+
+    portal = make_client()
+    info = portal.get(f"/portal/{token}")
+    assert info.status_code == 200
+    model = portal.get(f"/portal/{token}/model")
+    assert model.status_code == 200
+
+
+def test_billing_status_offline(make_client):
+    client = make_client()
+    res = client.get("/billing/status")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["plan"] == "free"
+    assert body["configured"] is False
+
+    checkout = client.post("/billing/checkout", json={"plan": "pro"})
+    assert checkout.status_code in (401, 501)

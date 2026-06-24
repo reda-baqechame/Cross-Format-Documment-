@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api._corpus import load_corpus
-from docos.api.access import get_owned_document
+from docos.api.access import get_owned_document, owner_clause
 from docos.api.schemas import (
     SearchHit,
     SearchResponse,
@@ -83,7 +83,7 @@ def search(
     hits: list[SearchHit] = []
     records = session.scalars(
         select(Document)
-        .where(Document.owner_session_id == actor.session_id)
+        .where(owner_clause(Document.owner_session_id, Document.owner_user_id, actor))
         .order_by(Document.created_at.desc())
     ).all()
     for record in records:
@@ -119,5 +119,9 @@ def semantic_search(
     Unlike substring ``/search``, this ranks whole documents by semantic relevance, so a
     query matches documents that discuss the topic even without the exact word.
     """
-    corpus = load_corpus(session, owner_session_id=actor.session_id)
+    corpus = load_corpus(
+        session,
+        owner_session_id=actor.session_id,
+        owner_user_id=actor.user_id,
+    )
     return corpus_service.semantic_search(corpus, q, limit=limit)

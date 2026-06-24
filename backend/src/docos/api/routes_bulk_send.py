@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from docos.api.access import get_owned_document
 from docos.api.routes_documents import _load_latest
+from docos.api.routes_share import create_recipient_share
 from docos.api.session import Actor, get_actor
 from docos.db.models import ApprovalStep, BulkSendPacket, Document
 from docos.deps import db_session, get_provenance
@@ -35,6 +36,7 @@ class PacketView(BaseModel):
     recipient: str
     packet_doc_id: str
     state: str  # approval state of this recipient's packet
+    portal_url: str | None = None
 
 
 class BulkSendBatch(BaseModel):
@@ -112,6 +114,13 @@ def bulk_send(
                 message=body.message,
             )
         )
+        share = create_recipient_share(
+            session,
+            doc_id=copy.doc_id,
+            actor=actor,
+            recipient=recipient,
+            permission="sign",
+        )
         provenance.record_event(
             copy.doc_id,
             "bulk_send.packet_created",
@@ -119,7 +128,12 @@ def bulk_send(
             detail={"batch_id": batch_id, "recipient": recipient, "source_doc_id": doc_id},
         )
         packets.append(
-            PacketView(recipient=recipient, packet_doc_id=copy.doc_id, state="in_progress")
+            PacketView(
+                recipient=recipient,
+                packet_doc_id=copy.doc_id,
+                state="in_progress",
+                portal_url=f"/portal/{share.token}",
+            )
         )
 
     provenance.record_event(

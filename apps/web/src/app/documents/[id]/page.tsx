@@ -6,10 +6,13 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
+import { AskPanel } from "@/components/canvas/AskPanel";
 import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
 import { ClausesPanel } from "@/components/canvas/ClausesPanel";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
+import { ComparePanel } from "@/components/canvas/ComparePanel";
 import { DocumentCanvas } from "@/components/canvas/DocumentCanvas";
+import { ExtractPanel } from "@/components/canvas/ExtractPanel";
 import {
   DocumentMobileActions,
   DocumentWorkspaceHeader,
@@ -21,6 +24,7 @@ import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { ReadinessPanel } from "@/components/health-panel/ReadinessPanel";
+import { TagsPanel } from "@/components/documents/TagsPanel";
 import { WorkflowRunnerPanel } from "@/components/workflows/WorkflowRunnerPanel";
 import { fetchHealth, fetchModel, type WorkflowPreset } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
@@ -133,6 +137,9 @@ export default function DocumentPage() {
                     </p>
                   </div>
                 )}
+                <div className="mx-auto mb-4 max-w-[816px]">
+                  <TagsPanel docId={docId} />
+                </div>
                 <div
                   style={{
                     transform: `scale(${zoom / 100})`,
@@ -201,7 +208,16 @@ function RightPanel({
   }
   if (tab === "editor") return <EditorSessionPanel docId={docId} sourceFormat={doc.meta.source_format} />;
   if (tab === "modify" || tab === "document") return <ModifyStudio doc={doc} docId={docId} />;
-  if (tab === "insights") return <IntelligencePanel docId={docId} />;
+  if (tab === "insights") {
+    return (
+      <div className="flex flex-col gap-4 overflow-auto p-4">
+        <IntelligencePanel docId={docId} />
+        <AskPanel docId={docId} />
+        <ExtractPanel docId={docId} />
+        <ComparePanel docId={docId} />
+      </div>
+    );
+  }
   return (
     <div className="grid h-full grid-rows-[minmax(320px,1fr)_auto]">
       <WorkflowRunnerPanel docId={docId} initialPreset={initialWorkflow} />

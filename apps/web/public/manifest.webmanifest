@@ -1,7 +1,7 @@
 {
-  "name": "Docframe — open, edit & trust any document",
-  "short_name": "Docframe",
-  "description": "Open, edit, convert, redact, and protect documents. Capture from your phone camera.",
+  "name": "DocOS — client packet readiness",
+  "short_name": "DocOS",
+  "description": "Check client packets, edit documents, redact, and send with proof.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

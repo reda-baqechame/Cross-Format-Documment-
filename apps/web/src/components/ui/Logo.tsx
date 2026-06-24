@@ -1,4 +1,4 @@
-/** Docframe brand mark: a document sheet with a verification check — the product's
+/** DocOS brand mark: a document sheet with a verification check — the product's
  * "trusted document" idea in one glyph. Uses currentColor-friendly fixed brand hues. */
 export function LogoMark({ className = "h-9 w-9" }: { className?: string }) {
   return (
@@ -33,7 +33,7 @@ export function Logo({ subtitle }: { subtitle?: string }) {
       <LogoMark />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold leading-tight text-ink sm:text-base">
-          Docframe
+          DocOS
         </span>
         {subtitle && <span className="block truncate text-xs text-slate-500">{subtitle}</span>}
       </span>

@@ -212,6 +212,7 @@ export interface DocumentSummary {
   source_format: string;
   current_version_id: string | null;
   created_at: string;
+  tags?: string[];
 }
 
 export interface DocumentListResponse {

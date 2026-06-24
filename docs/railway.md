@@ -27,7 +27,21 @@ Because the healthcheck is `/api/ready`, a deploy with no working persistent sto
 
 > ⚠️ **Do NOT set a Custom Start Command in the Railway dashboard.** A leftover `pnpm --filter @docos/web start` overrides the Dockerfile and crashes the container with `The executable 'pnpm' could not be found` (the runtime image has no pnpm). `railway.json` now forces the correct start command, so leave the dashboard field empty. If one was set previously, clear it once: **Settings → Deploy → Custom Start Command → Remove**.
 
-**Turn on AI features:** set **`ANTHROPIC_API_KEY`** (recommended) or `OPENAI_API_KEY` in the service's **Variables**, then redeploy. That single key is enough — the app auto-selects the provider, so you do **not** also need to set `LLM_PROVIDER`. Without a key the app runs fully offline and AI-driven actions (natural-language "modify document", autopilot, Q&A, translation) are no-ops, which is the usual reason "I can open the app but can't change anything." If you use Anthropic, you can optionally pin a cheaper model with `LLM_MODEL=claude-sonnet-4-6` (default is `claude-opus-4-8`); `LLM_MODEL` is ignored for OpenAI deployments.
+> **Turn on AI features:** In Railway → your service → **Variables**, paste **`ANTHROPIC_API_KEY`** (recommended) or **`OPENAI_API_KEY`**, then click **Redeploy**. No other config is required — the backend auto-selects the provider from whichever key is present (`settings.effective_llm_provider`). After redeploy, open the app → **System status** on the home page; **AI provider** should show as connected. Without a key the app runs fully offline and AI-driven actions (natural-language edit, autopilot, Q&A, translation) use deterministic fallbacks only.
+
+Optional model pin for Anthropic: `LLM_MODEL=claude-sonnet-4-6` (default is `claude-opus-4-8`). `LLM_MODEL` is ignored for OpenAI.
+
+> **Turn on billing (Stripe):** set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and price IDs (`STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`) plus `BILLING_RETURN_URL=https://your-app.up.railway.app/pricing`. Without these, `/pricing` and free-tier features work; portal link creation returns 402 until a Pro subscription is active.
+
+> **Scale beyond SQLite:** for production traffic, switch to managed Postgres + object storage instead of a single volume:
+>
+> | Variable | Example |
+> |----------|---------|
+> | `DATABASE_URL` | `postgresql+psycopg://user:pass@host:5432/docos` |
+> | `BLOB_BACKEND=s3` | |
+> | `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Or Railway's S3-compatible bucket vars |
+>
+> Migrations run automatically on boot. Keep the `/app/data` volume as fallback for local blobs when `BLOB_BACKEND` is unset.
 
 > 🛑 **Required for persistence:** mount a Railway **volume** at `/app/data`. The default single-service deploy keeps the SQLite DB at `/app/data/docos.db` and uploaded blobs under `/app/data/blobs`; Railway containers are otherwise ephemeral, so **without the volume every document, version, and upload is lost on the next redeploy or restart** (and, now that the healthcheck is `/api/ready`, the deploy will fail rather than come up broken). For higher-scale production, switch to Postgres + S3-compatible object storage (see the two-service section below) instead of SQLite + local disk.
 

@@ -73,7 +73,12 @@ function rows(h: BackendHealth): Row[] {
       tone: h.cloud_integrations && h.cloud_integrations.length > 0 ? "ok" : "muted",
     },
     {
-      label: "Live presence",
+      label: "Billing (Stripe)",
+      value: h.billing_configured ? "Configured" : "Not configured — upgrade links offline",
+      tone: h.billing_configured ? "ok" : "muted",
+    },
+    {
+      label: "Real-time presence",
       value: h.presence_enabled === false ? "Off" : "On (single-node)",
       tone: "ok",
     },

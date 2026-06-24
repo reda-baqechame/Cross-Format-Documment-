@@ -16,16 +16,23 @@ def load_corpus(
     doc_ids: list[str] | None = None,
     *,
     owner_session_id: str | None = None,
+    owner_user_id: str | None = None,
 ) -> list[CorpusDoc]:
     """Every document's current model (newest first), optionally filtered to ``doc_ids``.
 
-    When ``owner_session_id`` is given, only that session's documents are loaded — corpus
-    search and the notebook must never reach across owners.
+    When ``owner_session_id`` / ``owner_user_id`` are given, only that owner's documents load.
     """
+    from sqlalchemy import or_
+
     wanted = set(doc_ids) if doc_ids else None
     stmt = select(Document)
-    if owner_session_id is not None:
-        stmt = stmt.where(Document.owner_session_id == owner_session_id)
+    if owner_session_id is not None or owner_user_id is not None:
+        clauses = []
+        if owner_session_id is not None:
+            clauses.append(Document.owner_session_id == owner_session_id)
+        if owner_user_id is not None:
+            clauses.append(Document.owner_user_id == owner_user_id)
+        stmt = stmt.where(or_(*clauses))
     records = session.scalars(stmt.order_by(Document.created_at.desc())).all()
     corpus: list[CorpusDoc] = []
     for record in records:

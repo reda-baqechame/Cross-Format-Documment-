@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({
@@ -17,14 +18,12 @@ export function AppShell({
           <Link href="/" className="flex min-w-0 items-center gap-3 rounded-lg">
             <Logo subtitle={subtitle} />
           </Link>
-          <a
-            href="https://github.com/reda-baqechame/cross-format-documment-/tree/HEAD/docs"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden text-sm font-medium text-slate-500 transition-colors hover:text-slate-800 sm:block"
-          >
-            Docs
-          </a>
+          <div className="flex items-center gap-4">
+            <Link href="/pricing" className="hidden text-sm font-medium text-slate-500 hover:text-slate-800 sm:block">
+              Pricing
+            </Link>
+            <AccountMenu />
+          </div>
         </div>
       </header>
       {children}

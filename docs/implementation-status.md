@@ -137,7 +137,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
   PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
-  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx`
+  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` (downloadable report)
 - ✅ Clean Before You Send — `POST /documents/{id}/clean` applies the auto-fixes (strip hidden
   metadata + true-redact PII) as one reversible patch, re-checks, and returns the post-clean
   verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
@@ -172,8 +172,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
 - ✅ Approval workflows (ordered / parallel sign-off, audited) — `routes_approvals.py`
-- 🟡 Real-time presence (single-node) wired (see §C); shareable links with live perms + multi-node
-  presence remain 🔒 collaboration infra
+- 🟡 Real-time presence (single-node) wired (see §C); multi-node presence remains 🔒 collaboration infra
+- ✅ **Shareable client portal** — token-based `/portal/{token}` read + readiness; create/revoke
+  links on owned docs; bulk-send creates per-recipient portal URLs — `document_shares` migration
+  `0011`, `api/routes_share.py`, `api/access.py`, `components/canvas/ShareLinkModal.tsx`,
+  `app/portal/[token]/page.tsx`. Pro plan required to create ad-hoc share links (402 on free tier).
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
@@ -184,9 +187,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
   redaction-aware audio when `TTS_PROVIDER_URL` is set, else an honest 501. No offline TTS engine.
 
 ## I. Store, find & manage
+- ✅ **Registered accounts** — email/password register/login/logout/me; signed `docos_uid` cookie;
+  anonymous-session docs/templates/clauses/fill-profiles claimed on login — `users` table migration
+  `0011`, `api/routes_auth.py`, `services/auth/`, `app/login`, `app/signup`,
+  `components/auth/AccountMenu.tsx`. List queries use session **or** user ownership.
 - ✅ Per-session document ownership — every document is owned by a signed anonymous-session
   cookie; cross-session access 404s (no IDOR). One authz chokepoint — `api/access.py`,
-  `api/session.py`. Registered-user *claim* seam reserved (`Document.owner_user_id`).
+  `api/session.py`.
 - ✅ Upload hardening — streamed size cap (413), per-session upload rate limit (429),
   ingest `JobRecord` seam — `api/ratelimit.py`, `routes_documents.py`
 - ✅ Verifiable deletion — failed blob deletes recorded as `BlobTombstone` + audited (not
@@ -195,7 +202,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Encryption-at-rest — opt-in AES-256-GCM blob wrapper (offline default plaintext;
   transparent to callers, legacy-plaintext safe) — `storage/encrypted.py`
 - ✅ Document list / CRUD · ✅ Blob storage (local/S3)
-- ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`
+- ✅ Tags + full-text search across all docs (redaction-aware) — `routes_library.py`; tags UI on
+  document workspace + library list — `TagsPanel.tsx`, `DocumentList.tsx`
+- ✅ **Monetization seam** — `/pricing`, Stripe Checkout + webhook when `STRIPE_*` keys set,
+  `subscriptions` table, plan gating (portal links = Pro) — `api/routes_billing.py`,
+  `services/billing/`, `app/pricing`. Honest 501 when billing not configured.
 - ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`
 - 🟡 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth seam wired (see §A)
 - 🔒 Mobile **apps** (native clients) — PWA capture is wired (see §A); native apps still need clients
@@ -215,7 +226,8 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
   writable → 503 otherwise; Railway healthcheck points here so a broken/volumeless deploy fails
   fast). `/health` stays a 200 status summary the UI reads — `api/routes_health.py`.
 - ✅ Provider/storage truthing in `/health` (AI provider, Office/PDF native-editor state, storage,
-  SQLite vs Postgres) surfaced by the home page **System status** panel — `components/system/SystemStatusPanel.tsx`.
+  SQLite vs Postgres, billing, e-sign/IDP/TTS/DRM/cloud) surfaced by the home page **System status**
+  panel — `components/system/SystemStatusPanel.tsx`.
 - ✅ Enterprise hardening: per-session+IP rate limiting on expensive ops (clean / redaction-audit /
   autofill) via `enforce_op_rate`; input bounds on the Fill-Once profile (entry count + key/value
   length → 422); page-scan caps (`max_scan_pages`) so a many-page PDF can't exhaust CPU during table
@@ -231,7 +243,10 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
   required with `DOCOS_REQUIRE_HARDENING_OPENAPI=1` after a fresh deploy.
 - ✅ Stress test lane: `pytest -m stress` covers primary uploads, malformed/oversized files,
   patch/undo loops, editor sessions, destructive-action planning, and template variables.
-- ✅ Browser E2E lane: Playwright smoke covers the task grid and template workflow entry.
+- ✅ Browser E2E lane: Playwright smoke covers the task grid, template workflow entry, signup/login/pricing
+  pages, and wired marketing sections — `e2e/task-grid.spec.ts`, `e2e/auth-portal.spec.ts`.
+- ✅ Production smokes: read-only home/health/OpenAPI (`smoke:production`), client-packet API/UI,
+  editor smoke, auth/billing/portal OpenAPI seam (`smoke:production:auth`).
 - ✅ Embedded editor session APIs: `/documents/{id}/editor/session`,
   `/documents/{id}/editor/session/{session_id}`, `/save`, and `/sync` create auditable
   native-editor sessions. DOCX/XLSX/PPTX use an ONLYOFFICE-compatible provider only when

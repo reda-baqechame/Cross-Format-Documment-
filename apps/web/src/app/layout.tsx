@@ -12,14 +12,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Docframe — open, edit & trust any document",
+  title: "DocOS — client packet readiness & document trust",
   description:
-    "Open PDF, Word, Excel, and more in one workspace. Edit, redact, convert, and sign with trust controls built in.",
+    "Upload proposals, SOWs, contracts, and invoices. DocOS checks scope, payment, signature, and export risks before you send.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg" },
   appleWebApp: {
     capable: true,
-    title: "Docframe",
+    title: "DocOS",
   },
 };
 

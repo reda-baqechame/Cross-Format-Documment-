@@ -14,7 +14,7 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const task = getTask(params.slug);
   if (!task) return {};
-  const title = `${task.title} — free, no login | Docframe`;
+  const title = `${task.title} — free, no login | DocOS`;
   return {
     title,
     description: task.blurb,

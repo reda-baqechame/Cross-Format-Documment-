@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import {
   cleanDocument,
+  downloadReadinessReport,
   exportUrl,
   fetchReadiness,
   fetchRedactionAudit,
@@ -74,17 +75,28 @@ export function ReadinessPanel({ docId }: { docId: string }) {
 
   return (
     <section className="flex flex-col gap-3 border-b border-slate-200 bg-white p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Client Packet Readiness
         </h2>
-        <button
-          type="button"
-          onClick={() => readiness.refetch()}
-          className="text-xs text-slate-400 hover:text-slate-600"
-        >
-          Re-check
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => readiness.refetch()}
+            className="text-xs text-slate-400 hover:text-slate-600"
+          >
+            Re-check
+          </button>
+          {readiness.data && (
+            <button
+              type="button"
+              onClick={() => downloadReadinessReport(docId, readiness.data!)}
+              className="text-xs text-brand-600 hover:underline"
+            >
+              Download report
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={`rounded-lg border px-4 py-3 ${tone.box}`}>

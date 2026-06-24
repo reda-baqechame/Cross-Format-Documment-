@@ -13,9 +13,13 @@ import {
 } from "lucide-react";
 
 import { DocumentList } from "@/components/documents/DocumentList";
+import { NotebookPanel } from "@/components/documents/NotebookPanel";
 import { RenewalsSection } from "@/components/clm/RenewalsSection";
 import { CloudImportPanel } from "@/components/integrations/CloudImportPanel";
 import { FreeBadge } from "@/components/marketing/FreeBadge";
+import { CapabilityGrid } from "@/components/marketing/CapabilityGrid";
+import { JobTiles } from "@/components/marketing/JobTiles";
+import { WorkflowStrip } from "@/components/marketing/WorkflowStrip";
 import { SearchBar } from "@/components/documents/SearchBar";
 import { AppShell, Section } from "@/components/layout/AppShell";
 import { BackendStatus } from "@/components/system/BackendStatus";
@@ -127,6 +131,18 @@ export default function HomePage() {
             <SystemStatusPanel className="mt-5 border-t border-line pt-4" />
             <PrivacyPanel className="mt-5 border-t border-line pt-4" />
           </div>
+        </section>
+
+        <section className="scroll-mt-20">
+          <JobTiles />
+        </section>
+
+        <section className="scroll-mt-20">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold tracking-tight text-ink sm:text-xl">How it works</h2>
+            <p className="mt-1 text-sm text-slate-600">Open, check trust, export safely — one canonical model.</p>
+          </div>
+          <WorkflowStrip />
         </section>
 
         <section id="featured" className="scroll-mt-20">
@@ -246,6 +262,23 @@ export default function HomePage() {
 
           <CloudImportPanel />
         </section>
+
+        <Section
+          id="research"
+          title="Ask across your library"
+          description="Multi-document Q&A with citations — works offline unless AI is connected."
+          className="card scroll-mt-20 p-5"
+        >
+          <NotebookPanel />
+        </Section>
+
+        <Section
+          title="Platform capabilities"
+          description="Every major document workflow in one trust-grade engine."
+          className="card p-5"
+        >
+          <CapabilityGrid />
+        </Section>
 
         <Section
           id="tools"

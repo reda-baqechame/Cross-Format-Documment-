@@ -44,7 +44,12 @@ async def notebook_ask(
     if not question:
         raise HTTPException(status_code=422, detail="question is required")
 
-    docs = load_corpus(session, body.doc_ids, owner_session_id=actor.session_id)
+    docs = load_corpus(
+        session,
+        body.doc_ids,
+        owner_session_id=actor.session_id,
+        owner_user_id=actor.user_id,
+    )
     use_llm = get_settings().effective_llm_provider != "noop"
     result = await corpus_service.notebook_answer(docs, question, get_llm_client(), use_llm=use_llm)
     return NotebookResponse(

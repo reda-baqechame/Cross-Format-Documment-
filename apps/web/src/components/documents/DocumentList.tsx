@@ -59,6 +59,14 @@ export function DocumentList() {
                 {d.source_format}
               </span>
               <DocTypeBadge docId={d.doc_id} />
+              {(d.tags ?? []).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                >
+                  {tag}
+                </span>
+              ))}
               <span className="text-sm">{d.title ?? `Document ${d.doc_id.slice(0, 10)}…`}</span>
             </Link>
             <button
