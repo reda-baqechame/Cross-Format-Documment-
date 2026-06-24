@@ -14,9 +14,9 @@ export interface WorkflowDefinition {
 export const WORKFLOWS: WorkflowDefinition[] = [
   {
     preset: "contract_packet",
-    title: "Contract packet",
-    blurb: "Review clauses, prepare reusable fields, route approval, and validate export.",
-    audience: "Legal and sales ops",
+    title: "Client contract packet",
+    blurb: "Review scope, clauses, reusable fields, approvals, and export proof before sending.",
+    audience: "SMB and agency ops",
     uploadLabel: "contract, SOW, proposal, or agreement",
     revenueSignal: "Replaces Acrobat plus manual legal handoffs",
     defaultApprovers: ["Legal Review", "Finance Approval", "Security Review"],
@@ -24,9 +24,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   },
   {
     preset: "invoice_approval",
-    title: "Invoice approval",
-    blurb: "Extract totals, flag risks, run trust checks, and route finance approval.",
-    audience: "Finance ops",
+    title: "Invoice and deposit review",
+    blurb: "Check invoice fields, totals, payment terms, red flags, and approval routing.",
+    audience: "SMB finance ops",
     uploadLabel: "invoice, quote, receipt, or statement",
     revenueSignal: "Cuts invoice review and payment delays",
     defaultApprovers: ["AP Review", "Finance Approval"],
@@ -55,8 +55,8 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   {
     preset: "proposal_to_signature",
     title: "Proposal to signature",
-    blurb: "Check SOW details, add signature form fields, route for approval, apply an integrity seal, and validate a sendable copy. (Internal approval + tamper-evident seal — not a legally-binding e-signature.)",
-    audience: "Sales and legal",
+    blurb: "Check SOW details, add signature form fields, route for approval, apply an integrity seal, and validate a sendable copy. (Internal approval + tamper-evident seal - not a legally-binding e-signature.)",
+    audience: "Agency sales ops",
     uploadLabel: "proposal, SOW, pitch, or agreement",
     revenueSignal: "Speeds proposal-to-close workflows",
     defaultApprovers: ["Sales Lead", "Legal Review"],

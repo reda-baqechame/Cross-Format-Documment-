@@ -1,9 +1,8 @@
 /**
  * Resolve the backend URL for the server-side /api proxy.
  *
- * Railway: set on the **web** service —
- *   API_PROXY_TARGET=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}
- * (replace `api` with your backend service name.)
+ * Single-service Railway and local dev: the API runs beside the web server, so localhost is valid.
+ * Split-service Railway: set API_PROXY_TARGET to the private API service URL.
  */
 
 function stripTrailingSlash(url: string): string {

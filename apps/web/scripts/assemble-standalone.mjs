@@ -14,7 +14,12 @@ const webRoot = dirname(fileURLToPath(import.meta.url)) + "/..";
 const standaloneWeb = join(webRoot, ".next/standalone/apps/web");
 
 if (!existsSync(standaloneWeb)) {
-  console.warn("[assemble-standalone] no standalone output — skipping (is output:'standalone' set?)");
+  const intentionalWindowsBuild =
+    process.platform === "win32" && process.env.DOCOS_NEXT_STANDALONE !== "1";
+  const message = intentionalWindowsBuild
+    ? "[assemble-standalone] standalone output disabled for local Windows build"
+    : "[assemble-standalone] no standalone output - skipping (is output:'standalone' set?)";
+  (intentionalWindowsBuild ? console.log : console.warn)(message);
   process.exit(0);
 }
 

@@ -22,10 +22,11 @@ export const dynamic = "force-dynamic";
 const TARGET = resolveApiProxyTarget();
 const UPSTREAM_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS ?? 60_000);
 
-// Fail loudly in logs if prod is about to proxy to localhost (the #1 Railway misconfig).
+// In split-service Railway, fail loudly if prod is about to proxy to localhost.
+// In the recommended single-service container, localhost/127.0.0.1 is the correct in-container API.
 if (
   process.env.NODE_ENV === "production" &&
-  process.env.DOCOS_RAILWAY_SINGLE_SERVICE !== "1" &&
+  process.env.DOCOS_RAILWAY_TOPOLOGY === "split" &&
   /^https?:\/\/(localhost|127\.0\.0\.1)\b/.test(TARGET)
 ) {
   console.warn(

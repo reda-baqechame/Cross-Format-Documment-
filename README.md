@@ -72,11 +72,13 @@ canvas, editable, and scored in the document-health panel.
 
 ## Production deployment
 
-See **[docs/railway.md](docs/railway.md)** for Railway (two services: API + Web, phone-ready).
+See **[docs/railway.md](docs/railway.md)** for Railway. The recommended deploy is now a
+single service from the repo root: one container starts the API on `127.0.0.1:8000` and the web
+server on Railway's `$PORT`, with `/api/*` proxied internally.
 
 ```bash
 cp .env.example .env          # set APP_ENV=production, SIGNING_SECRET, POSTGRES_PASSWORD,
-                              # S3 creds, and API_PROXY_TARGET (the web→backend URL)
+                              # S3 creds, and API_PROXY_TARGET if you split web/API services
 make prod-up                  # builds prod images; the API runs `alembic upgrade head` on start
 make prod-down
 ```
@@ -87,9 +89,10 @@ The API **refuses to start** in `staging`/`production` if `SIGNING_SECRET` is le
 default.
 
 **Topology:** the browser only talks to the web app, which proxies `/api/*` to the backend
-server-side (`app/api/[...path]/route.ts`). So the backend can stay private (no public URL, no
-CORS), and the only web→backend wiring is the `API_PROXY_TARGET` env var on the web service —
-e.g. on Railway, `http://<backend-service>.railway.internal:8000`. CI (`.github/workflows/ci.yml`) runs ruff + pytest, verifies migrations apply with no
+server-side (`app/api/[...path]/route.ts`). In the recommended single-service Railway deploy, the
+web server reaches the in-container API at `http://127.0.0.1:8000`. In the optional two-service
+split, set `API_PROXY_TARGET` on the web service to the API service's private Railway URL, e.g.
+`http://<backend-service>.railway.internal:8000`. CI (`.github/workflows/ci.yml`) runs ruff + pytest, verifies migrations apply with no
 drift, and typechecks/builds the web app on every push.
 
 ## Capabilities

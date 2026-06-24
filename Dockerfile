@@ -5,6 +5,7 @@
 FROM node:20-bookworm-slim AS web-build
 
 ENV DOCOS_RAILWAY_SINGLE_SERVICE=1 \
+    DOCOS_RAILWAY_TOPOLOGY=single \
     API_PROXY_TARGET=http://127.0.0.1:8000
 
 RUN corepack enable
@@ -34,6 +35,7 @@ ENV PYTHONUNBUFFERED=1 \
     NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     DOCOS_RAILWAY_SINGLE_SERVICE=1 \
+    DOCOS_RAILWAY_TOPOLOGY=single \
     API_PORT=8000 \
     API_PROXY_TARGET=http://127.0.0.1:8000 \
     DATABASE_URL=sqlite:////app/data/docos.db \

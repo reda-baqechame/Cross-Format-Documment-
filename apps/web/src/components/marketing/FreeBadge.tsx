@@ -1,15 +1,14 @@
 /**
- * The wedge headline. The single biggest documented frustration with iLovePDF/Smallpdf is task
- * caps + file-size limits + forced login. We have none of those, so we say it loudly — on the
- * hero and atop every tool page. Keep this honest: it must stay true (no caps, no login).
+ * The wedge headline. Keep this honest: every claim here must match the actual deployed limits
+ * because it appears on the hero and every task page.
  */
-const POINTS = ["Free", "Unlimited", "No login", "No file-size caps"];
+const POINTS = ["Free", "No login", "50 MB files", "Private session"];
 
 export function FreeBadge({ className = "" }: { className?: string }) {
   return (
     <div
       className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-600 ${className}`}
-      aria-label="Free, unlimited, no login, no file-size caps"
+      aria-label="Free, no login, 50 MB files, private session"
     >
       {POINTS.map((point, i) => (
         <span key={point} className="inline-flex items-center gap-2">

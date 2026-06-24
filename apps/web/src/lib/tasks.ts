@@ -144,7 +144,7 @@ const VERB_TASKS: TaskDef[] = [
   convertTask({
     slug: "pdf-to-word",
     title: "PDF to Word",
-    blurb: "Turn a PDF into an editable Word (.docx) document. Free, unlimited, no login.",
+    blurb: "Turn a PDF into an editable Word (.docx) document. Free, no login, 50 MB files.",
     emoji: "📄",
     accept: PDF,
     acceptLabel: "a PDF",
@@ -164,7 +164,7 @@ const VERB_TASKS: TaskDef[] = [
   convertTask({
     slug: "jpg-to-pdf",
     title: "JPG to PDF",
-    blurb: "Turn a JPG or PNG image into a PDF. Free, unlimited, no login, no file-size caps.",
+    blurb: "Turn a JPG or PNG image into a PDF. Free, no login, 50 MB files.",
     emoji: "🖼️",
     accept: IMAGE,
     acceptLabel: "a JPG, PNG, or TIFF image",
@@ -184,7 +184,7 @@ const VERB_TASKS: TaskDef[] = [
   convertTask({
     slug: "excel-to-pdf",
     title: "Excel to PDF",
-    blurb: "Convert an Excel (.xlsx) spreadsheet into a PDF. Free, unlimited, no login.",
+    blurb: "Convert an Excel (.xlsx) spreadsheet into a PDF. Free, no login, 50 MB files.",
     emoji: "📈",
     accept: XLSX,
     acceptLabel: "an Excel (.xlsx) file",
@@ -214,7 +214,7 @@ const VERB_TASKS: TaskDef[] = [
   convertTask({
     slug: "html-to-pdf",
     title: "HTML to PDF",
-    blurb: "Convert an HTML page into a PDF. Free, unlimited, no login.",
+    blurb: "Convert an HTML page into a PDF. Free, no login, 50 MB files.",
     emoji: "🌐",
     accept: HTML,
     acceptLabel: "an HTML (.html) file",
@@ -274,6 +274,21 @@ export const TASKS: TaskDef[] = [
     run: async () => ({ kind: "navigate", href: "/#templates" }),
   },
 
+  {
+    slug: "client-packet-readiness",
+    title: "Client Packet Readiness",
+    blurb:
+      "Check a proposal, SOW, contract, invoice, or onboarding packet for missing scope, payment, signature, safety, and export risks.",
+    category: "Workflow",
+    emoji: "CP",
+    accept: ANY,
+    acceptLabel: "proposal, SOW, contract, invoice, or onboarding packet",
+    cta: "Check packet",
+    run: async ({ docIds }) => ({
+      kind: "navigate",
+      href: `/documents/${docIds[0]}?tab=autopilot&workflow=proposal_to_signature`,
+    }),
+  },
   {
     slug: "create-contract-packet",
     title: "Create contract packet",

@@ -16,38 +16,49 @@ async function requireOk(path, check) {
   console.log(`[production-smoke] ok ${path}`);
 }
 
-await requireOk("/", (text) => {
-  for (const needle of ["All document tools", "Build a form", "Contract packet"]) {
-    if (!text.includes(needle)) throw new Error(`home page missing "${needle}"`);
-  }
-  if (requireHardeningOpenApi && !text.includes("Invoice approval")) {
-    throw new Error('home page missing "Invoice approval"');
-  }
-});
-
-await requireOk("/api/health", (text) => {
-  const health = JSON.parse(text);
-  if (health.status !== "ok" || health.db !== "ok") {
-    throw new Error(`health not ok: ${text}`);
-  }
-});
-
-await requireOk("/api/openapi.json", (text) => {
-  const schema = JSON.parse(text);
-  const paths = schema.paths || {};
-  for (const path of [
-    "/documents/{doc_id}/editor/session",
-    "/documents/{doc_id}/ops-agent/plan",
-    "/documents/{doc_id}/fields/detect",
-    "/documents/{doc_id}/workflows/preview",
-    "/documents/{doc_id}/workflows/execute",
-  ]) {
-    if (!paths[path]) {
-      const message = `OpenAPI missing ${path}`;
-      if (requireHardeningOpenApi) throw new Error(message);
-      console.warn(`[production-smoke] warn ${message}`);
+async function main() {
+  await requireOk("/", (text) => {
+    for (const needle of [
+      "All document tools",
+      "Client Packet Readiness",
+      "Client contract packet",
+    ]) {
+      if (!text.includes(needle)) throw new Error(`home page missing "${needle}"`);
     }
-  }
-});
+    if (requireHardeningOpenApi && !text.includes("Invoice and deposit review")) {
+      throw new Error('home page missing "Invoice and deposit review"');
+    }
+  });
 
-console.log(`[production-smoke] ${base} passed read-only smoke checks`);
+  await requireOk("/api/health", (text) => {
+    const health = JSON.parse(text);
+    if (health.status !== "ok" || health.db !== "ok") {
+      throw new Error(`health not ok: ${text}`);
+    }
+  });
+
+  await requireOk("/api/openapi.json", (text) => {
+    const schema = JSON.parse(text);
+    const paths = schema.paths || {};
+    for (const path of [
+      "/documents/{doc_id}/editor/session",
+      "/documents/{doc_id}/ops-agent/plan",
+      "/documents/{doc_id}/fields/detect",
+      "/documents/{doc_id}/workflows/preview",
+      "/documents/{doc_id}/workflows/execute",
+    ]) {
+      if (!paths[path]) {
+        const message = `OpenAPI missing ${path}`;
+        if (requireHardeningOpenApi) throw new Error(message);
+        console.warn(`[production-smoke] warn ${message}`);
+      }
+    }
+  });
+
+  console.log(`[production-smoke] ${base} passed read-only smoke checks`);
+}
+
+main().catch((err) => {
+  console.error(`[production-smoke] failed: ${err instanceof Error ? err.message : String(err)}`);
+  process.exitCode = 1;
+});

@@ -1,15 +1,15 @@
 import Link from "next/link";
 import {
-  BadgeCheck,
   Building2,
+  ClipboardCheck,
   FileCheck2,
   FileSignature,
   Files,
   Landmark,
-  Layers3,
   ShieldCheck,
   Sparkles,
   UserRoundCheck,
+  WalletCards,
 } from "lucide-react";
 
 import { DocumentList } from "@/components/documents/DocumentList";
@@ -45,37 +45,44 @@ const WORKFLOW_ICONS = {
 };
 
 const TRUST_ITEMS = [
-  { label: "Export validation", detail: "Proof before download", icon: BadgeCheck },
-  { label: "True redaction", detail: "Removed, not hidden", icon: ShieldCheck },
-  { label: "Approval routes", detail: "Audited handoffs", icon: Layers3 },
-  { label: "Reusable templates", detail: "Repeatable packets", icon: Sparkles },
+  { label: "Scope checks", detail: "Find missing terms", icon: ClipboardCheck },
+  { label: "Payment terms", detail: "Catch invoice gaps", icon: WalletCards },
+  { label: "Send-safe proof", detail: "Clean hidden risks", icon: ShieldCheck },
+  { label: "Reusable packets", detail: "Save the workflow", icon: Sparkles },
+];
+
+const PACKET_STEPS = [
+  "Proposal / SOW",
+  "Contract terms",
+  "Deposit invoice",
+  "Onboarding packet",
 ];
 
 export default function HomePage() {
   return (
-    <AppShell subtitle="Open, edit, convert & protect common document formats">
+    <AppShell subtitle="Client packet readiness for SMB and agency operators">
       <BackendStatus />
 
       <main className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-8">
         <section className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,0.85fr)]">
           <div className="flex flex-col justify-center py-2">
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-trust-200 bg-trust-50 px-3 py-1 text-xs font-medium text-trust-700">
-              <ShieldCheck className="h-3.5 w-3.5" /> Private to your session
+              <ShieldCheck className="h-3.5 w-3.5" /> Built for SMB and agency operators
             </span>
             <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-              Open common formats.
+              Get client packets ready.
               <br />
-              <span className="text-brand-600">Edit with proof.</span>
+              <span className="text-brand-600">Send with proof.</span>
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
-              Drop in a PDF, Word file, spreadsheet, deck, or scan — extract structured content,
-              apply audited edits, redact, fill forms, and export validated copies. Native layout
-              fidelity varies by format.
+              Upload a proposal, SOW, contract, invoice, onboarding form, deck, spreadsheet, or
+              scan. DocOS checks scope, signature, payment, hidden data, and export risks, then
+              routes the packet through the right workflow.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a href="#upload" className="btn-primary">
-                Upload a document
-              </a>
+              <Link href="/tasks/client-packet-readiness" className="btn-primary">
+                Check a client packet
+              </Link>
               <Link href="#tools" className="btn-secondary">
                 Browse all tools
               </Link>
@@ -100,10 +107,20 @@ export default function HomePage() {
           </div>
 
           <div id="upload" className="card scroll-mt-20 p-5 sm:p-6">
-            <h2 className="text-base font-semibold text-ink">Start here</h2>
+            <h2 className="text-base font-semibold text-ink">Start with the packet</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Drop a contract, invoice, form, spreadsheet, deck, or scan.
+              Drop the documents you send before money changes hands.
             </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {PACKET_STEPS.map((step) => (
+                <span
+                  key={step}
+                  className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700"
+                >
+                  {step}
+                </span>
+              ))}
+            </div>
             <div className="mt-4">
               <UploadDropzone />
             </div>
@@ -115,19 +132,19 @@ export default function HomePage() {
         <section id="featured" className="scroll-mt-20">
           <div className="grid gap-4 md:grid-cols-3">
             <Link
-              href="/tasks/pdf-to-excel"
-              className="group rounded-2xl border border-amber-200 bg-amber-50 p-5 transition-colors hover:bg-amber-100"
+              href="/tasks/client-packet-readiness"
+              className="group rounded-2xl border border-brand-200 bg-brand-50 p-5 transition-colors hover:bg-brand-100"
             >
-              <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                Free · no login
+              <span className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+                SMB / agency front door
               </span>
-              <h3 className="mt-2 text-lg font-semibold text-ink">📊 PDF → Excel</h3>
+              <h3 className="mt-2 text-lg font-semibold text-ink">Client Packet Readiness</h3>
               <p className="mt-1 text-sm leading-6 text-slate-700">
-                Pull tables and data out of a PDF or scan straight into a spreadsheet. Stop paying
-                someone to retype it by hand.
+                Check proposals, SOWs, contracts, invoices, and onboarding docs for missing scope,
+                payment, signature, hidden data, and export risks.
               </p>
-              <span className="mt-3 inline-block text-sm font-medium text-amber-800 group-hover:underline">
-                Get my spreadsheet →
+              <span className="mt-3 inline-block text-sm font-medium text-brand-700 group-hover:underline">
+                Check my packet
               </span>
             </Link>
             <Link
