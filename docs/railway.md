@@ -33,6 +33,8 @@ Optional model pin for Anthropic: `LLM_MODEL=claude-sonnet-4-6` (default is `cla
 
 > **Turn on billing (Stripe):** set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and price IDs (`STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`) plus `BILLING_RETURN_URL=https://your-app.up.railway.app/pricing`. Without these, `/pricing` and free-tier features work; portal link creation returns 402 until a Pro subscription is active.
 
+> **Upload formats:** If you set `ALLOWED_MIME_TYPES` manually, use the full list from [`.env.example`](../.env.example). Partial values are auto-merged with the built-in catalog on boot (so HTML/RTF/images are not dropped accidentally).
+
 > **Scale beyond SQLite:** for production traffic, switch to managed Postgres + object storage instead of a single volume:
 >
 > | Variable | Example |
