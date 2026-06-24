@@ -12,6 +12,7 @@
     "smoke:production": "node scripts/production-smoke.mjs",
     "smoke:production:client-packet": "node scripts/production-client-packet-smoke.mjs",
     "smoke:production:client-packet:ui": "pnpm --filter @docos/web exec node ../../scripts/production-client-packet-ui-smoke.mjs",
+    "smoke:production:editor": "pnpm --filter @docos/web exec node ../../scripts/production-editor-smoke.mjs",
     "eval:document-ops": "python evals/document_ops/run_local.py"
   },
   "devDependencies": {

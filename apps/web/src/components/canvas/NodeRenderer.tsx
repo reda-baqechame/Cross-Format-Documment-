@@ -261,6 +261,8 @@ function RunSpan({
         // toolbar's changes are visible on the canvas, not just stored in the model.
         color: node.color ?? undefined,
         fontSize: typeof node.size === "number" ? `${node.size}px` : undefined,
+        fontFamily: node.font ?? undefined,
+        whiteSpace: "pre-wrap",
       }}
       title={canEdit ? "Double-click or long-press to edit" : undefined}
     >
@@ -279,20 +281,32 @@ function InlineEditor({
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(initial);
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => ref.current?.focus(), []);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }, []);
   return (
-    <input
+    <textarea
       ref={ref}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => onCommit(value)}
       onKeyDown={(e) => {
-        if (e.key === "Enter") onCommit(value);
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) onCommit(value);
         if (e.key === "Escape") onCancel();
       }}
-      className="rounded border border-blue-400 bg-blue-50 px-1 outline-none"
-      style={{ width: `${Math.max(value.length + 1, 4)}ch` }}
+      rows={Math.max(value.split("\n").length, 1)}
+      className="min-h-[32px] min-w-[12ch] resize rounded border border-blue-400 bg-blue-50 px-2 py-1 align-top leading-relaxed outline-none"
+      style={{
+        width: `${Math.min(
+          Math.max(...value.split("\n").map((line) => line.length), 12) + 2,
+          72,
+        )}ch`,
+      }}
+      aria-label="Inline document text editor"
     />
   );
 }

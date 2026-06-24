@@ -326,6 +326,7 @@ export function formatRun(
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
+    font?: string | null;
     size?: number | null;
     color?: string | null;
   },
