@@ -28,7 +28,7 @@ TtsProvider = Literal["none", "external"]
 DrmProvider = Literal["none", "external"]
 CollabBackend = Literal["memory", "redis"]
 
-# Built-in upload catalog — merged back when ALLOWED_MIME_TYPES is a partial override (common on Railway).
+# Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
     "text/plain,"
     "text/markdown,"
