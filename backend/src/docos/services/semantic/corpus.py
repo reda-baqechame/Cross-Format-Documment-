@@ -156,9 +156,7 @@ async def notebook_answer(
         )
 
     if use_llm:
-        context = "\n".join(
-            f"[{c.title or c.doc_id} · {nid}] {text}" for c, nid, text, _ in hits
-        )
+        context = "\n".join(f"[{c.title or c.doc_id} · {nid}] {text}" for c, nid, text, _ in hits)
         resp = await llm.complete(
             system=ANSWER_SYSTEM, user=f"Question: {question}\n\nExcerpts:\n{context}"
         )

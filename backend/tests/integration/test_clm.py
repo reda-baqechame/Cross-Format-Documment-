@@ -15,8 +15,11 @@ def test_clause_crud_and_insert_is_versioned(client):
 
     clause = client.post(
         "/clauses",
-        json={"title": "Confidentiality", "body": "Each party keeps the other's data secret.",
-              "category": "contract"},
+        json={
+            "title": "Confidentiality",
+            "body": "Each party keeps the other's data secret.",
+            "category": "contract",
+        },
     ).json()
     assert clause["title"] == "Confidentiality"
 

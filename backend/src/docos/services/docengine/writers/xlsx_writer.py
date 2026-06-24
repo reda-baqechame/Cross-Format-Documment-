@@ -19,7 +19,7 @@ from docos.model.nodes import AnyNode
 from docos.services.docengine.writers.redaction import run_text, spreadsheet_text
 
 # openpyxl rejects sheet titles over 31 chars or containing []:*?/\
-_BAD_TITLE = set('[]:*?/\\')
+_BAD_TITLE = set("[]:*?/\\")
 
 
 def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:

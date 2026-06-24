@@ -26,5 +26,4 @@ class LLMClient(ABC):
         user: str,
         *,
         tools: list[dict] | None = None,
-    ) -> LLMResponse:
-        ...
+    ) -> LLMResponse: ...

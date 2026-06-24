@@ -88,7 +88,8 @@ def test_form_builder_detect_create_update_delete(client):
     )
     assert created.status_code == 200 and created.json()["applied"] is True
     signature = next(
-        f for f in client.get(f"/documents/{doc_id}/fields").json()["fields"]
+        f
+        for f in client.get(f"/documents/{doc_id}/fields").json()["fields"]
         if f["field_name"] == "Signature"
     )
 

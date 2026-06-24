@@ -86,9 +86,7 @@ def list_integrations(
 
 
 @router.get("/{name}/connect", response_model=ConnectResponse)
-def connect(
-    name: str, actor: Actor = Depends(get_actor)
-) -> ConnectResponse:
+def connect(name: str, actor: Actor = Depends(get_actor)) -> ConnectResponse:
     settings = get_settings()
     if integrations.get_spec(name) is None:
         raise HTTPException(status_code=404, detail="unknown integration")

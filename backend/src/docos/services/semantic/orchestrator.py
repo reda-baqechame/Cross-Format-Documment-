@@ -262,9 +262,7 @@ class SemanticOrchestratorImpl(SemanticOrchestrator):
             return Patch(op="redact", target_id=tid)
 
         if op.op == "sanitize_metadata":
-            before = {
-                k: doc.meta.custom[k] for k in RISKY_META_KEYS if doc.meta.custom.get(k)
-            }
+            before = {k: doc.meta.custom[k] for k in RISKY_META_KEYS if doc.meta.custom.get(k)}
             was_sanitized = doc.redaction.metadata_sanitized
             for k in before:
                 doc.meta.custom.pop(k, None)

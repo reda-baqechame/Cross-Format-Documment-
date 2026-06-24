@@ -4,9 +4,7 @@ from __future__ import annotations
 
 
 def _upload(client, body=b"Template body line one.\n\nSecond paragraph."):
-    return client.post("/documents", files={"file": ("t.txt", body, "text/plain")}).json()[
-        "doc_id"
-    ]
+    return client.post("/documents", files={"file": ("t.txt", body, "text/plain")}).json()["doc_id"]
 
 
 def test_save_list_and_instantiate_template(client):
@@ -54,9 +52,9 @@ def test_instantiated_document_is_editable_and_exportable(client):
 
 def test_delete_and_missing_template(client):
     doc_id = _upload(client)
-    template_id = client.post(
-        f"/documents/{doc_id}/save-as-template", json={"name": "X"}
-    ).json()["id"]
+    template_id = client.post(f"/documents/{doc_id}/save-as-template", json={"name": "X"}).json()[
+        "id"
+    ]
 
     assert client.delete(f"/templates/{template_id}").status_code == 204
     assert client.post(f"/templates/{template_id}/instantiate", json={}).status_code == 404
@@ -81,6 +79,4 @@ def test_validation_errors(client):
     doc_id = _upload(client)
     blank = client.post(f"/documents/{doc_id}/save-as-template", json={"name": "  "})
     assert blank.status_code == 422
-    assert (
-        client.post("/documents/nope/save-as-template", json={"name": "n"}).status_code == 404
-    )
+    assert client.post("/documents/nope/save-as-template", json={"name": "n"}).status_code == 404

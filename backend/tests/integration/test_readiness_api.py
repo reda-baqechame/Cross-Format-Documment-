@@ -4,9 +4,9 @@ from __future__ import annotations
 
 
 def _upload(client, text: str) -> str:
-    return client.post(
-        "/documents", files={"file": ("d.txt", text.encode(), "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": ("d.txt", text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_clean_document_reads_ready(client):
@@ -46,3 +46,14 @@ def test_client_packet_business_readiness_checks_surface_through_api(client):
     assert checks["client_onboarding"]["status"] == "warn"
     assert checks["scope_change_control"]["status"] == "warn"
     assert checks["payment_terms"]["fixable"] is False
+
+
+def test_readiness_html_report_download(client):
+    doc_id = _upload(client, "Proposal for Acme. Payment net-30 upon signature.")
+    res = client.get(f"/documents/{doc_id}/readiness/report?format=html")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    body = res.text
+    assert "Client Packet Readiness Report" in body
+    assert "Recommended next steps" in body
+    assert "jane@example.com" not in body

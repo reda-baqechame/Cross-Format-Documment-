@@ -78,9 +78,7 @@ def test_hidden_metadata_warns_with_sanitize_fix():
 
 def test_unfilled_required_field_warns_but_is_not_auto_fixable():
     doc = _doc(["Form:"])
-    doc.add_node(
-        FieldNode(id="f0", parent_id="p0", field_name="Name", required=True, value=None)
-    )
+    doc.add_node(FieldNode(id="f0", parent_id="p0", field_name="Name", required=True, value=None))
     doc.nodes["p0"].children.append("f0")
     report = readiness.build_report(doc)
     field = _check(report, "unfilled_fields")

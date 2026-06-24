@@ -140,7 +140,6 @@ def blank_lines(doc: CanonicalDocument) -> list[tuple[str, str]]:
     return out
 
 
-
 _AMOUNT = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 

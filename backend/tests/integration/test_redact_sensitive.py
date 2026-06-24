@@ -4,9 +4,9 @@ from __future__ import annotations
 
 
 def _upload(client, text: str) -> str:
-    return client.post(
-        "/documents", files={"file": ("d.txt", text.encode(), "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": ("d.txt", text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_scan_then_redact_removes_pii_from_export(client):

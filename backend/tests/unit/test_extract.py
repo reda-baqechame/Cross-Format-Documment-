@@ -13,9 +13,15 @@ def _doc(texts: list[str]) -> CanonicalDocument:
     now = datetime.now(UTC)
     root = RootNode(id="root")
     d = CanonicalDocument(
-        doc_id="d", root_id=root.id,
-        meta=DocumentMeta(source_format="txt", source_mime="text/plain", created_at=now,
-                          modified_at=now, page_count=1),
+        doc_id="d",
+        root_id=root.id,
+        meta=DocumentMeta(
+            source_format="txt",
+            source_mime="text/plain",
+            created_at=now,
+            modified_at=now,
+            page_count=1,
+        ),
     )
     d.add_node(root)
     for i, t in enumerate(texts):

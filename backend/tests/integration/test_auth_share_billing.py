@@ -104,10 +104,13 @@ def test_share_portal_with_pin_and_revoke(make_client, db):
 
 def test_auth_rejects_weak_password(client):
     email = f"weak_{uuid.uuid4().hex[:8]}@example.com"
-    assert client.post(
-        "/auth/register",
-        json={"email": email, "password": "short"},
-    ).status_code == 422
+    assert (
+        client.post(
+            "/auth/register",
+            json={"email": email, "password": "short"},
+        ).status_code
+        == 422
+    )
 
 
 def test_portal_sign_off(make_client, db):

@@ -48,9 +48,9 @@ def test_document_level_comment_has_no_target(client):
 
 def test_resolve_and_reopen(client):
     doc_id = _upload(client)
-    comment_id = client.post(
-        f"/documents/{doc_id}/comments", json={"text": "fix"}
-    ).json()["comment_id"]
+    comment_id = client.post(f"/documents/{doc_id}/comments", json={"text": "fix"}).json()[
+        "comment_id"
+    ]
 
     client.post(f"/documents/{doc_id}/comments/{comment_id}/resolve", json={"resolved": True})
     threads = client.get(f"/documents/{doc_id}/comments").json()["threads"]
@@ -63,9 +63,9 @@ def test_resolve_and_reopen(client):
 
 def test_delete_thread_removes_replies(client):
     doc_id = _upload(client)
-    comment_id = client.post(
-        f"/documents/{doc_id}/comments", json={"text": "top"}
-    ).json()["comment_id"]
+    comment_id = client.post(f"/documents/{doc_id}/comments", json={"text": "top"}).json()[
+        "comment_id"
+    ]
     client.post(f"/documents/{doc_id}/comments/{comment_id}/replies", json={"text": "child"})
 
     client.delete(f"/documents/{doc_id}/comments/{comment_id}")
@@ -85,9 +85,7 @@ def test_comment_is_undoable(client):
 
 def test_errors(client):
     doc_id = _upload(client)
-    assert (
-        client.post(f"/documents/{doc_id}/comments", json={"text": "  "}).status_code == 422
-    )
+    assert client.post(f"/documents/{doc_id}/comments", json={"text": "  "}).status_code == 422
     assert (
         client.post(
             f"/documents/{doc_id}/comments", json={"text": "x", "target_id": "nope"}

@@ -31,9 +31,7 @@ def document_text(doc: CanonicalDocument) -> str:
         if node.type in ("heading", "paragraph", "list_item"):
             # Aggregate the block's run children (each run honors redaction).
             text = "".join(
-                run_text(doc, child)
-                for child in doc.children_of(node.id)
-                if child.type == "run"
+                run_text(doc, child) for child in doc.children_of(node.id) if child.type == "run"
             ).strip()
             if text:
                 lines.append(text)

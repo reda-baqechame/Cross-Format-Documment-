@@ -27,12 +27,6 @@ _FONTSIZE = 11.0
 _INVISIBLE = 3  # PDF text render mode: neither fill nor stroke (OCR text layer)
 
 
-def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(
-        run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run"
-    ).strip()
-
-
 def _lines_under(doc: CanonicalDocument, start_id: str) -> list[str]:
     """Visible text lines (reading order) for everything under ``start_id``."""
     lines: list[str] = []
@@ -50,6 +44,26 @@ def _lines_under(doc: CanonicalDocument, start_id: str) -> list[str]:
             value = getattr(node, "value", "") or ""
             lines.append(f"{name}: {value}")
     return lines
+
+
+def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
+    return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run").strip()
+
+
+# Pages with substantial extracted text use born-digital rendering; raster is only for scans.
+_MIN_RASTER_TEXT_CHARS = 10
+
+
+def pages_needing_raster(doc: CanonicalDocument, page_nodes: list[AnyNode]) -> list[int]:
+    """0-based page indices that need a raster backdrop (image scan / empty OCR page)."""
+    indices: list[int] = []
+    for idx, pnode in enumerate(page_nodes):
+        lines = _lines_under(doc, pnode.id)
+        text_len = sum(len(line) for line in lines)
+        has_image = any(n.type == "image" for n in doc.children_of(pnode.id))
+        if has_image or text_len < _MIN_RASTER_TEXT_CHARS:
+            indices.append(idx)
+    return indices
 
 
 def _write_text(page: fitz.Page, lines: list[str], *, invisible: bool) -> None:

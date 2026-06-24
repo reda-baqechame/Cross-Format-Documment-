@@ -13,8 +13,10 @@ the existing ``GET /export`` (which already carries the ``X-DocOS-Validation`` h
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from docos.api._apply import apply_and_commit
@@ -29,6 +31,7 @@ from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.provenance import readiness, redaction_audit, sensitive, validation
+from docos.services.provenance.readiness_html import render_readiness_html
 from docos.services.provenance.redaction_audit import RedactionAuditReport
 from docos.settings import get_settings
 from docos.storage.blob import BlobStore
@@ -58,6 +61,38 @@ def document_readiness(
     _record, doc = _load_latest(session, doc_id, actor)
     report = readiness.build_report(doc)
     return ReadinessResponse(doc_id=doc_id, report=report)
+
+
+@router.get("/{doc_id}/readiness/report")
+def readiness_report_download(
+    doc_id: str,
+    format: Literal["html", "json"] = Query("html"),
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> Response:
+    """Download a client-facing readiness report (HTML for print/PDF, or JSON)."""
+    record, doc = _load_latest(session, doc_id, actor)
+    report = readiness.build_report(doc)
+    title = record.title or doc_id
+
+    if format == "json":
+        import json
+
+        payload = json.dumps({"doc_id": doc_id, "title": title, "report": report.model_dump()})
+        return Response(
+            content=payload,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="{title}-readiness-report.json"'
+            },
+        )
+
+    html = render_readiness_html(title=title, doc_id=doc_id, report=report)
+    return Response(
+        content=html,
+        media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{title}-readiness-report.html"'},
+    )
 
 
 @router.get("/{doc_id}/redaction-audit", response_model=RedactionAuditResponse)
@@ -97,9 +132,7 @@ async def clean_document(
     # Gather the auto-fixes the report flagged. Unfilled fields (need user input) and applying
     # pending redactions (happens at export) are intentionally not auto-fixed here.
     ops: list[Patch] = []
-    needs_sanitize = any(
-        c.id == "hidden_metadata" and c.status != "pass" for c in report.checks
-    )
+    needs_sanitize = any(c.id == "hidden_metadata" and c.status != "pass" for c in report.checks)
     if needs_sanitize:
         ops.append(Patch(op="sanitize_metadata"))
     for node_id in sensitive.redaction_node_ids(sensitive.scan_document(doc)):

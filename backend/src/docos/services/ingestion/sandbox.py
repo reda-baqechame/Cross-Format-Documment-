@@ -15,8 +15,7 @@ class Sandbox(ABC):
     @abstractmethod
     async def run(
         self, fn: Callable[..., Any], *args: Any, timeout_s: int = 30, mem_mb: int = 512
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class SubprocessSandbox(Sandbox):

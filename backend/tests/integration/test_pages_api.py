@@ -94,9 +94,9 @@ def test_merge_endpoint(client):
 
 
 def test_page_ops_reject_non_pdf(client):
-    doc_id = client.post(
-        "/documents", files={"file": ("n.txt", b"hi", "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("n.txt", b"hi", "text/plain")}).json()[
+        "doc_id"
+    ]
     assert client.post(f"/documents/{doc_id}/pages/delete", json={"pages": [0]}).status_code == 400
 
 

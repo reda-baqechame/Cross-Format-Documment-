@@ -33,6 +33,7 @@ def _upload(c, name: str = "d.txt") -> str:
 
 # ── cross-session isolation (tenant boundary) ───────────────────────────────────────────
 
+
 def test_other_session_cannot_clean_or_audit_or_autofill(client):
     doc_id = _upload(client)
     other = _new_session_client(client)
@@ -60,6 +61,7 @@ def test_fill_profile_is_per_session(client):
 
 # ── input bounds ────────────────────────────────────────────────────────────────────────
 
+
 def test_fill_profile_rejects_oversized_value(client):
     res = client.put("/fill-profile", json={"data": {"x": "A" * 5000}})
     assert res.status_code == 422
@@ -71,6 +73,7 @@ def test_fill_profile_rejects_too_many_entries(client):
 
 
 # ── rate limiting on expensive ops ──────────────────────────────────────────────────────
+
 
 def test_op_rate_limit_eventually_429s(client, monkeypatch):
     settings = get_settings()

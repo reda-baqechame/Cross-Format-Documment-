@@ -234,14 +234,49 @@ class PdfAdapter(FormatAdapter):
             "PdfAdapter.render_preview needs source bytes — use render_preview_bytes(data, page)"
         )
 
-    def render_preview_bytes(self, data: bytes, page: int = 0, *, scale: float = 1.5) -> bytes:
+    def render_preview_bytes(
+        self, data: bytes, page: int = 0, *, scale: float | None = None
+    ) -> bytes:
         """Rasterise a page to PNG bytes for the canvas backdrop."""
+        pages = self.rasterize_pages(data, [page], scale=scale)
+        if page not in pages:
+            raise IndexError(f"page {page} out of range")
+        return pages[page]
+
+    def rasterize_pages(
+        self,
+        data: bytes,
+        page_indices: list[int],
+        *,
+        scale: float | None = None,
+        max_pages: int | None = None,
+    ) -> dict[int, bytes]:
+        """Rasterise pages in one ``fitz.open`` call — avoids OOM from reopening huge PDFs."""
+        from docos.settings import get_settings
+
+        settings = get_settings()
+        scale = settings.pdf_raster_scale if scale is None else scale
+        cap = settings.max_searchable_raster_pages if max_pages is None else max_pages
+        max_side = settings.pdf_raster_max_side_px
+        indices = [i for i in page_indices if i >= 0][:cap]
+
         pdf = fitz.open(stream=data, filetype="pdf")
+        out: dict[int, bytes] = {}
         try:
-            pixmap = pdf[page].get_pixmap(matrix=fitz.Matrix(scale, scale))
-            return pixmap.tobytes("png")
+            for i in indices:
+                if i >= pdf.page_count:
+                    continue
+                page = pdf[i]
+                mat = fitz.Matrix(scale, scale)
+                pix = page.get_pixmap(matrix=mat)
+                if max_side and max(pix.width, pix.height) > max_side:
+                    ratio = max_side / float(max(pix.width, pix.height))
+                    mat = fitz.Matrix(scale * ratio, scale * ratio)
+                    pix = page.get_pixmap(matrix=mat)
+                out[i] = pix.tobytes("png")
         finally:
             pdf.close()
+        return out
 
     def export(self, doc: CanonicalDocument, *, target_mime: str) -> bytes:
         raise NotImplementedError("PdfAdapter.export — write-back via incremental save is deferred")

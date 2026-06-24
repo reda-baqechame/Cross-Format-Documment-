@@ -35,3 +35,10 @@ def test_title_sets_accessibility_flag(sample_pdf_bytes):
 def test_render_preview_returns_png(sample_pdf_bytes):
     png = PdfAdapter().render_preview_bytes(sample_pdf_bytes, 0)
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_rasterize_pages_batch(sample_pdf_bytes):
+    adapter = PdfAdapter()
+    pages = adapter.rasterize_pages(sample_pdf_bytes, [0, 0, 0], max_pages=1)
+    assert set(pages) == {0}
+    assert pages[0][:8] == b"\x89PNG\r\n\x1a\n"

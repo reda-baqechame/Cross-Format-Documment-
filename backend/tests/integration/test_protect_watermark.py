@@ -40,7 +40,7 @@ def test_watermark_text_appears_on_page(client, sample_pdf_bytes):
 
 
 def test_protect_requires_pdf(client):
-    doc_id = client.post(
-        "/documents", files={"file": ("n.txt", b"hi", "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("n.txt", b"hi", "text/plain")}).json()[
+        "doc_id"
+    ]
     assert client.post(f"/documents/{doc_id}/protect", json={"password": "x"}).status_code == 400

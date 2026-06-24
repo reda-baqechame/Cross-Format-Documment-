@@ -9,6 +9,8 @@ WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
 export PORT
 export API_PORT
 export API_PROXY_TARGET="${API_PROXY_TARGET:-http://127.0.0.1:${API_PORT}}"
+# Single container runs Node (Next) + Python (uvicorn). Cap Node heap so PDF/OCR work cannot OOM the pod.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=384}"
 export DATABASE_URL="${DATABASE_URL:-sqlite:////app/data/docos.db}"
 export BLOB_BACKEND="${BLOB_BACKEND:-local}"
 export LOCAL_BLOB_DIR="${LOCAL_BLOB_DIR:-/app/data/blobs}"

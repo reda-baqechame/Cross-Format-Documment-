@@ -32,6 +32,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH" \
     NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=384" \
     HOSTNAME=0.0.0.0 \
     DOCOS_RAILWAY_SINGLE_SERVICE=1 \
     API_PORT=8000 \

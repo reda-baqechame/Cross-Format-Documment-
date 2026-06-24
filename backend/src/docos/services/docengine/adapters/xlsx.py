@@ -56,9 +56,7 @@ class XlsxAdapter(FormatAdapter):
 
         order = 0
         for sheet in wb.worksheets:
-            heading = HeadingNode(
-                id=new_node_id(), parent_id=root.id, level=2, reading_order=order
-            )
+            heading = HeadingNode(id=new_node_id(), parent_id=root.id, level=2, reading_order=order)
             heading.tags.append("H2")
             htext = RunNode(id=new_node_id(), parent_id=heading.id, text=sheet.title, bold=True)
             heading.children.append(htext.id)

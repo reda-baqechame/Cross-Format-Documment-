@@ -27,9 +27,7 @@ def test_txt_export_removes_redacted_run_text():
 def test_docx_export_removes_redacted_run_text(sample_docx_bytes):
     doc = DocxAdapter().parse(sample_docx_bytes)
     run = next(
-        n
-        for n in doc.nodes.values()
-        if n.type == "run" and "normal paragraph" in (n.text or "")
+        n for n in doc.nodes.values() if n.type == "run" and "normal paragraph" in (n.text or "")
     )
     doc.redaction.redacted_node_ids.append(run.id)
 
@@ -42,9 +40,9 @@ def test_docx_export_removes_redacted_run_text(sample_docx_bytes):
 def test_ancestor_redaction_hides_child_runs():
     doc = TxtAdapter().parse(b"keep me\n\nhide this block")
     para = next(
-        n for n in doc.nodes.values()
-        if n.type == "paragraph"
-        and any("hide" in (doc.nodes[c].text or "") for c in n.children)
+        n
+        for n in doc.nodes.values()
+        if n.type == "paragraph" and any("hide" in (doc.nodes[c].text or "") for c in n.children)
     )
     doc.redaction.redacted_node_ids.append(para.id)  # redact the paragraph, not the run
 

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 
 def _upload(client, name: str) -> str:
-    return client.post(
-        "/documents", files={"file": (name, b"hello", "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": (name, b"hello", "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_purge_deletes_all_my_documents(client):

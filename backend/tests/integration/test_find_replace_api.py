@@ -4,16 +4,14 @@ from __future__ import annotations
 
 
 def _upload(client, body: bytes) -> str:
-    return client.post(
-        "/documents", files={"file": ("note.txt", body, "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": ("note.txt", body, "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def _text(client, doc_id: str) -> str:
     model = client.get(f"/documents/{doc_id}/model").json()["document"]
-    return "\n\n".join(
-        n["text"] for n in model["nodes"].values() if n["type"] == "run"
-    )
+    return "\n\n".join(n["text"] for n in model["nodes"].values() if n["type"] == "run")
 
 
 def test_replace_all_updates_document_and_reports_counts(client):

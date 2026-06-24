@@ -44,9 +44,7 @@ def test_model_to_docx_keeps_run_formatting():
     )
     doc.add_node(root)
     para = ParagraphNode(id=new_node_id(), parent_id=root.id)
-    run = RunNode(
-        id=new_node_id(), parent_id=para.id, text="bold words", bold=True, italic=True
-    )
+    run = RunNode(id=new_node_id(), parent_id=para.id, text="bold words", bold=True, italic=True)
     para.children.append(run.id)
     root.children.append(para.id)
     doc.add_node(para)

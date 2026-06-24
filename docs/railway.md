@@ -66,6 +66,11 @@ Optional model pin for Anthropic: `LLM_MODEL=claude-sonnet-4-6` (default is `cla
 | `LOG_FORMAT` | `human` | Set `json` for structured, aggregatable logs (one JSON object per line, with `request_id`). |
 | `SENTRY_DSN` | _(unset)_ | Set to enable error tracking. Requires installing the `[sentry]` extra; **completely inert when unset**. |
 | `API_PROXY_TIMEOUT_MS` | `60000` | Web→API upstream timeout (a hung backend yields a clean 504). |
+| `WEB_CONCURRENCY` | `1` | Uvicorn workers in the single-service container — **keep at 1** on Railway starter plans to avoid OOM. |
+| `NODE_OPTIONS` | `--max-old-space-size=384` | Caps the Next.js heap so Python PDF/OCR work has RAM headroom in the same pod. |
+| `MAX_SEARCHABLE_RASTER_PAGES` | `20` | OCR/searchable-PDF raster cap (prevents multi‑hundred‑page pixmap OOM). |
+| `MAX_SEARCHABLE_PDF_MB` | `30` | Refuses searchable-PDF when the source blob is too large — use TXT/DOCX export instead. |
+| `PDF_RASTER_SCALE` | `1.0` | Page raster scale (1.5 looks sharper but doubles memory). |
 | `RATE_LIMIT_OPS_PER_MIN` | `60` | Per-session+IP **burst** guard on costly ops (AI, export, page ops). Not a daily/total cap. |
 | `RATE_LIMIT_UPLOADS_PER_MIN` | `30` | Per-session+IP upload burst guard. |
 | `MAX_UPLOAD_MB` | `50` | Streamed upload size cap (413 over the limit). |
@@ -78,6 +83,25 @@ Optional model pin for Anthropic: `LLM_MODEL=claude-sonnet-4-6` (default is `cla
 2. `GET /api/health` shows the expected provider/storage/database (e.g. `database: postgres`, AI provider connected).
 3. Upload a file → open it → **export** it back out (round-trips the canonical model + blob storage).
 4. Responses carry an `X-Request-ID` header; with `LOG_FORMAT=json`, logs show one correlated line per request.
+
+### Out-of-memory (OOM) on Railway
+
+The single-service container runs **Next.js + Python + PyMuPDF + Tesseract** in one pod. OOM kills (`status 137` in logs) usually come from:
+
+1. **Searchable PDF / OCR** rasterizing many large pages — now capped via `MAX_SEARCHABLE_RASTER_PAGES` and born-digital PDFs skip raster when text is already extracted.
+2. **PNG export** of very long documents — capped via `MAX_PNG_EXPORT_LINES`.
+3. **Multiple uvicorn workers** — keep `WEB_CONCURRENCY=1` unless you upgrade RAM (each worker duplicates Python memory).
+
+**Recommended Railway settings**
+
+| Setting | Value |
+|---------|--------|
+| Service memory | **≥ 2 GB** for production traffic with 50 MB uploads |
+| `WEB_CONCURRENCY` | `1` |
+| `NODE_OPTIONS` | `--max-old-space-size=384` (set automatically in the Dockerfile) |
+| Volume at `/app/data` | Required for SQLite + local blobs |
+
+If OOM persists after deploy, check deploy logs for `[railway] FATAL: API process exited with status 137` and reduce concurrent heavy exports (compress/OCR/clean) or raise the service memory limit.
 
 ---
 

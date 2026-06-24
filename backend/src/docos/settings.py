@@ -181,6 +181,13 @@ class Settings(BaseSettings):
     # Hard cap on pages scanned by per-page analyses (table detection, un-redact test) so a
     # pathological many-page PDF can't exhaust CPU. Content beyond the cap is left as-is.
     max_scan_pages: int = 200
+    # Memory-safe production limits (Railway OOM guardrails).
+    max_searchable_raster_pages: int = 20  # OCR overlay: raster at most this many PDF pages
+    max_searchable_pdf_mb: int = 30  # refuse searchable-PDF when source blob exceeds this
+    pdf_raster_scale: float = 1.0  # 1.5 looks nicer but doubles pixmap memory
+    pdf_raster_max_side_px: int = 2400  # cap longest raster edge (~letter at ~200dpi)
+    max_validation_pdf_pages: int = 80  # redaction proof scan cap on exported PDFs
+    max_png_export_lines: int = 450  # PNG writer line cap (~9000px tall)
     allowed_mime_types: str = _CATALOG_MIME_TYPES
 
     @field_validator("database_url", mode="before")

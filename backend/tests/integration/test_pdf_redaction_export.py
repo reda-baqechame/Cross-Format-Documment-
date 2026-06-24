@@ -65,7 +65,7 @@ def test_pdf_export_writes_back_edited_text(client, sample_pdf_bytes):
 
 
 def test_pdf_export_rejected_for_non_pdf(client):
-    doc_id = client.post(
-        "/documents", files={"file": ("n.txt", b"hi", "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("n.txt", b"hi", "text/plain")}).json()[
+        "doc_id"
+    ]
     assert client.get(f"/documents/{doc_id}/export", params={"format": "pdf"}).status_code == 400

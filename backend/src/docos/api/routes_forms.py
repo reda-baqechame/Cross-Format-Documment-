@@ -221,9 +221,7 @@ def update_field(
     if node is None or node.type != "field":
         raise HTTPException(status_code=404, detail="field not found")
     payload = {
-        key: value
-        for key in _FIELD_UPDATE_KEYS
-        if (value := getattr(body, key)) is not None
+        key: value for key in _FIELD_UPDATE_KEYS if (value := getattr(body, key)) is not None
     }
     patch = ReversiblePatch(
         id=new_patch_id(),

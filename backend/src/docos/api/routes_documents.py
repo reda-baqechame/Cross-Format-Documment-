@@ -238,9 +238,7 @@ async def upload_document(
         registry=registry,
         blob_store=blob_store,
     )
-    return UploadResponse(
-        doc_id=record.id, version_id=version_id, detected_format=detected_format
-    )
+    return UploadResponse(doc_id=record.id, version_id=version_id, detected_format=detected_format)
 
 
 @router.post("/{doc_id}/assets", response_model=AssetUploadResponse)
@@ -368,14 +366,18 @@ def redo(
     if record.current_version_id is None:
         raise HTTPException(status_code=404, detail="document not found")
     # The newest version whose parent is the current one is the edit we last undid.
-    child = session.execute(
-        select(DocumentVersion)
-        .where(
-            DocumentVersion.document_id == doc_id,
-            DocumentVersion.parent_id == record.current_version_id,
+    child = (
+        session.execute(
+            select(DocumentVersion)
+            .where(
+                DocumentVersion.document_id == doc_id,
+                DocumentVersion.parent_id == record.current_version_id,
+            )
+            .order_by(DocumentVersion.created_at.desc())
         )
-        .order_by(DocumentVersion.created_at.desc())
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if child is None:
         raise HTTPException(status_code=409, detail="nothing to redo")
 

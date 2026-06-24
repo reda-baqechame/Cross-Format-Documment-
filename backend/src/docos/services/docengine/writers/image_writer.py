@@ -84,6 +84,9 @@ def _collect_lines(doc: CanonicalDocument, root_id: str | None = None) -> list[t
 
 def model_to_png(doc: CanonicalDocument, *, root_id: str | None = None) -> bytes:
     """Render the document — or a single subtree (``root_id``, e.g. one slide) — to PNG."""
+    from docos.settings import get_settings
+
+    max_lines = get_settings().max_png_export_lines
     font = ImageFont.load_default()
     max_w = _WIDTH - 2 * _MARGIN
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
@@ -97,6 +100,10 @@ def model_to_png(doc: CanonicalDocument, *, root_id: str | None = None) -> bytes
         for ln in _wrap(measure, text, font, max_w):
             wrapped.append((ln, is_heading))
         wrapped.append(("", False))  # paragraph gap
+
+    if len(wrapped) > max_lines:
+        wrapped = wrapped[: max_lines - 1]
+        wrapped.append(("… export truncated — use TXT or DOCX for full document", False))
 
     height = min(_MARGIN * 2 + len(wrapped) * _LINE_H, _MAX_HEIGHT)
     img = Image.new("RGB", (_WIDTH, max(height, 120)), "white")

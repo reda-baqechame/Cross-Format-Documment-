@@ -254,8 +254,7 @@ def _business_readiness_checks(doc: CanonicalDocument) -> list[ReadinessCheck]:
                     label="Scope and deliverables",
                     status="pass",
                     detail=(
-                        "Scope, deliverables, timeline, exclusions or revision "
-                        "language is present."
+                        "Scope, deliverables, timeline, exclusions or revision language is present."
                     ),
                 )
             )
@@ -331,8 +330,7 @@ def _business_readiness_checks(doc: CanonicalDocument) -> list[ReadinessCheck]:
                     label="Client onboarding handoff",
                     status="pass",
                     detail=(
-                        "Kickoff, intake, access, asset, contact or next-step "
-                        "language is present."
+                        "Kickoff, intake, access, asset, contact or next-step language is present."
                     ),
                 )
             )

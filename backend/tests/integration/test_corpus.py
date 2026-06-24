@@ -4,9 +4,9 @@ from __future__ import annotations
 
 
 def _upload(client, name, text):
-    return client.post(
-        "/documents", files={"file": (name, text.encode(), "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": (name, text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_semantic_search_ranks_relevant_doc_first(client):

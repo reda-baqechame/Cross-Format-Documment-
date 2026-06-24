@@ -48,13 +48,19 @@ def test_external_provider_path_with_stub(client, make_client, sample_pdf_bytes)
         def create_request(self, *, document, filename, signers, subject) -> SignatureResult:
             assert document  # the route rendered + passed the PDF bytes
             return SignatureResult(
-                provider="external", status="sent", external_id="ext-123",
-                signing_url="https://sign.example/x", detail="sent", legally_binding=True,
+                provider="external",
+                status="sent",
+                external_id="ext-123",
+                signing_url="https://sign.example/x",
+                detail="sent",
+                legally_binding=True,
             )
 
         def status(self, external_id) -> SignatureResult:
             return SignatureResult(
-                provider="external", status="completed", external_id=external_id,
+                provider="external",
+                status="completed",
+                external_id=external_id,
                 legally_binding=True,
             )
 

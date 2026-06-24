@@ -1827,16 +1827,13 @@ export async function startCheckout(plan: "pro" | "team"): Promise<{ checkout_ur
   );
 }
 
-export function downloadReadinessReport(docId: string, report: ReadinessResponse): void {
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+export function downloadReadinessReport(docId: string, _report?: ReadinessResponse): void {
   const a = document.createElement("a");
-  a.href = url;
-  a.download = `${docId}-readiness-report.json`;
+  a.href = `${BASE}/documents/${docId}/readiness/report?format=html`;
+  a.download = `${docId}-readiness-report.html`;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
 }
 
 export function downloadPortalReadinessReport(token: string, report: ReadinessResponse): void {

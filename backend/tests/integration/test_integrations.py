@@ -58,9 +58,11 @@ def test_import_downloads_and_ingests_with_stub(client, monkeypatch):
     import docos.api.routes_integrations as routes
 
     monkeypatch.setattr(
-        routes, "_token_for", lambda session, actor, name: IntegrationToken(
+        routes,
+        "_token_for",
+        lambda session, actor, name: IntegrationToken(
             id="itok_test", provider=name, access_token="tok"
-        )
+        ),
     )
     res = client.post(
         "/integrations/dropbox/import",

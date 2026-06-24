@@ -134,7 +134,5 @@ def _write_table(out: DocxDocument, doc: CanonicalDocument, tnode: AnyNode) -> N
         for ci, cell in enumerate(cells):
             if ci >= ncols:
                 break
-            text = "".join(
-                run_text(doc, rn) for rn in doc.children_of(cell.id) if rn.type == "run"
-            )
+            text = "".join(run_text(doc, rn) for rn in doc.children_of(cell.id) if rn.type == "run")
             table.cell(ri, ci).text = text

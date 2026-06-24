@@ -4,9 +4,7 @@ from __future__ import annotations
 
 
 def _upload(client, body: bytes = b"agreement text") -> str:
-    return client.post(
-        "/documents", files={"file": ("c.txt", body, "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": ("c.txt", body, "text/plain")}).json()["doc_id"]
 
 
 def _first_run_id(client, doc_id: str) -> str:

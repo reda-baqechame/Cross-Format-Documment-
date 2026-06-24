@@ -15,8 +15,13 @@ def _doc_with_runs(texts: list[str]) -> CanonicalDocument:
     doc = CanonicalDocument(
         doc_id="d1",
         root_id=root.id,
-        meta=DocumentMeta(source_format="txt", source_mime="text/plain", created_at=now,
-                          modified_at=now, page_count=1),
+        meta=DocumentMeta(
+            source_format="txt",
+            source_mime="text/plain",
+            created_at=now,
+            modified_at=now,
+            page_count=1,
+        ),
     )
     doc.add_node(root)
     for i, t in enumerate(texts):

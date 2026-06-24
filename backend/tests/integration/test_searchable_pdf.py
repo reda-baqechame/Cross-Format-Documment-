@@ -46,6 +46,18 @@ def test_redacted_text_is_excluded(client):
     assert "SECRET" not in text  # true removal carries through to the searchable PDF
 
 
+def test_born_digital_pdf_skips_raster(client, sample_pdf_bytes):
+    doc_id = client.post(
+        "/documents", files={"file": ("contract.pdf", sample_pdf_bytes, "application/pdf")}
+    ).json()["doc_id"]
+
+    res = client.get(f"/documents/{doc_id}/searchable-pdf")
+    assert res.status_code == 200
+    assert res.content[:5] == b"%PDF-"
+    # Born-digital PDFs should still expose extracted text without rasterizing every page.
+    assert len(_pdf_text(res.content).strip()) > 0
+
+
 def test_image_document_returns_valid_pdf(client, sample_image_bytes):
     doc_id = client.post(
         "/documents", files={"file": ("scan.png", sample_image_bytes, "image/png")}

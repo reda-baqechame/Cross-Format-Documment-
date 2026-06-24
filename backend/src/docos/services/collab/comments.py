@@ -76,9 +76,7 @@ def reply_patch(
 
 def resolve_patch(doc: CanonicalDocument, comment_id: str, resolved: bool) -> ReversiblePatch:
     """Mark a thread resolved (or reopen it). Replies inherit the thread's state."""
-    ids = [comment_id] + [
-        c.id for c in doc.children_of(comment_id) if c.type == "comment"
-    ]
+    ids = [comment_id] + [c.id for c in doc.children_of(comment_id) if c.type == "comment"]
     return ReversiblePatch(
         id=new_patch_id(),
         patches=[Patch(op="update_node", target_id=i, payload={"resolved": resolved}) for i in ids],

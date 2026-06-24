@@ -93,9 +93,7 @@ def test_update_node_apply_then_revert_restores_fields():
     orch = _orchestrator()
     patch = ReversiblePatch(
         id=new_patch_id(),
-        patches=[
-            Patch(op="update_node", target_id=run.id, payload={"bold": True, "italic": True})
-        ],
+        patches=[Patch(op="update_node", target_id=run.id, payload={"bold": True, "italic": True})],
         created_at=datetime.now(UTC),
     )
     applied = orch.apply(doc, patch)
@@ -156,9 +154,7 @@ def test_remove_node_then_revert_restores_node_and_position():
     reverted = orch.revert(applied, patch)
     assert middle_para.id in reverted.nodes
     # restored to its original index among the root's children
-    assert [n.id for n in reverted.children_of(doc.root_id)] == [
-        n.id for n in root_children_before
-    ]
+    assert [n.id for n in reverted.children_of(doc.root_id)] == [n.id for n in root_children_before]
 
 
 def test_move_node_reorders_and_revert_restores():

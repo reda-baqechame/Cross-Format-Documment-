@@ -96,8 +96,15 @@ def _output_text(fmt: str, output: bytes) -> str:
     if fmt in _PDF_FORMATS:
         import fitz
 
+        from docos.settings import get_settings
+
+        limit = get_settings().max_validation_pdf_pages
         doc = fitz.open(stream=output, filetype="pdf")
-        return "\n".join(page.get_text() for page in doc)
+        try:
+            count = doc.page_count if limit is None else min(doc.page_count, limit)
+            return "\n".join(doc[i].get_text() for i in range(count))
+        finally:
+            doc.close()
     if fmt in _OOXML_FORMATS:
         # Scan the decompressed package parts directly — catches any text the high-level
         # reader would skip, so a "removed" string can't hide in an unread part.

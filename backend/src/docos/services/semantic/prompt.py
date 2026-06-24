@@ -90,9 +90,7 @@ def build_user_prompt(doc: CanonicalDocument, instruction: str) -> str:
     return f"Instruction: {instruction}\n\nDocument nodes:\n{digest}"
 
 
-def ops_from_tool_calls(
-    doc: CanonicalDocument, tool_calls: list[dict]
-) -> list[Patch]:
+def ops_from_tool_calls(doc: CanonicalDocument, tool_calls: list[dict]) -> list[Patch]:
     """Validate the model's emit_patch output into concrete, safe patch ops."""
     patches: list[Patch] = []
     for call in tool_calls:

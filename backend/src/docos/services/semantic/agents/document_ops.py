@@ -68,8 +68,7 @@ def plan_document_ops(
                 label="Prepare approval route",
                 requires_approval=True,
                 reason=(
-                    "Routing documents to people is a workflow side effect and must be "
-                    "confirmed."
+                    "Routing documents to people is a workflow side effect and must be confirmed."
                 ),
             )
         )
@@ -86,8 +85,7 @@ def plan_document_ops(
                 destructive=True,
                 requires_approval=True,
                 reason=(
-                    "Redaction changes document content and must stay explicitly "
-                    "approval-gated."
+                    "Redaction changes document content and must stay explicitly approval-gated."
                 ),
             )
         )

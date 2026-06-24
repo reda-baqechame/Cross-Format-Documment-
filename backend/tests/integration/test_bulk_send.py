@@ -47,23 +47,16 @@ def test_one_recipient_decision_does_not_affect_others(client):
     for packet in listed["batches"][0]["packets"]:
         assert packet.get("portal_url"), f"missing portal_url for {packet['recipient']}"
         assert packet["portal_url"].startswith("/portal/")
-    states = {
-        p["recipient"]: p["state"] for b in listed["batches"] for p in b["packets"]
-    }
+    states = {p["recipient"]: p["state"] for b in listed["batches"] for p in b["packets"]}
     assert states["alice"] == "approved"
     assert states["bob"] == "in_progress"  # unaffected by alice's decision
 
 
 def test_validation_errors(client):
     doc_id = _upload(client)
+    assert client.post(f"/documents/{doc_id}/bulk-send", json={"recipients": []}).status_code == 422
     assert (
-        client.post(f"/documents/{doc_id}/bulk-send", json={"recipients": []}).status_code
-        == 422
-    )
-    assert (
-        client.post(
-            f"/documents/{doc_id}/bulk-send", json={"recipients": ["a", "a"]}
-        ).status_code
+        client.post(f"/documents/{doc_id}/bulk-send", json={"recipients": ["a", "a"]}).status_code
         == 422
     )
     assert client.post("/documents/nope/bulk-send", json={"recipients": ["a"]}).status_code == 404

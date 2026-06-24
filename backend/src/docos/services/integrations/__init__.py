@@ -29,31 +29,36 @@ class ProviderSpec:
 # OAuth endpoints per provider. Credentials come from settings (per-provider client id/secret).
 _PROVIDERS: dict[str, ProviderSpec] = {
     "gdrive": ProviderSpec(
-        "gdrive", "Google Drive",
+        "gdrive",
+        "Google Drive",
         "https://accounts.google.com/o/oauth2/v2/auth",
         "https://oauth2.googleapis.com/token",
         "https://www.googleapis.com/auth/drive.readonly",
     ),
     "dropbox": ProviderSpec(
-        "dropbox", "Dropbox",
+        "dropbox",
+        "Dropbox",
         "https://www.dropbox.com/oauth2/authorize",
         "https://api.dropboxapi.com/oauth2/token",
         "files.content.read",
     ),
     "box": ProviderSpec(
-        "box", "Box",
+        "box",
+        "Box",
         "https://account.box.com/api/oauth2/authorize",
         "https://api.box.com/oauth2/token",
         "root_readonly",
     ),
     "onedrive": ProviderSpec(
-        "onedrive", "OneDrive",
+        "onedrive",
+        "OneDrive",
         "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
         "https://login.microsoftonline.com/common/oauth2/v2.0/token",
         "Files.Read offline_access",
     ),
     "slack": ProviderSpec(
-        "slack", "Slack",
+        "slack",
+        "Slack",
         "https://slack.com/oauth/v2/authorize",
         "https://slack.com/api/oauth.v2.access",
         "files:read",
@@ -124,7 +129,9 @@ def exchange_code(settings: Settings, name: str, code: str) -> dict:
 def download(file_url: str, access_token: str) -> bytes:
     """Token-authenticated download of a provider content URL. Raises on error."""
     resp = httpx.get(
-        file_url, headers={"Authorization": f"Bearer {access_token}"}, timeout=_TIMEOUT_S,
+        file_url,
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=_TIMEOUT_S,
         follow_redirects=True,
     )
     resp.raise_for_status()

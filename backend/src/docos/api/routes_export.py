@@ -37,7 +37,10 @@ from docos.services.docengine.writers.markup import (
 )
 from docos.services.docengine.writers.pptx_writer import model_to_pptx
 from docos.services.docengine.writers.redaction import is_redacted
-from docos.services.docengine.writers.searchable_pdf import model_to_searchable_pdf
+from docos.services.docengine.writers.searchable_pdf import (
+    model_to_searchable_pdf,
+    pages_needing_raster,
+)
 from docos.services.docengine.writers.xlsx_writer import model_to_xlsx
 from docos.services.provenance import validation
 from docos.settings import get_settings
@@ -199,18 +202,25 @@ async def searchable_pdf(
     image; every other format becomes a clean, born-digital selectable-text PDF."""
     record, doc = _load_latest(session, doc_id, actor)
     page_images: dict[int, bytes] = {}
+    settings = get_settings()
 
     if record.source_format == "image" and record.blob_key:
         page_images[0] = await blob_store.get(record.blob_key)
     elif record.source_format == "pdf" and record.blob_key:
         original = await blob_store.get(record.blob_key)
-        adapter = registry.resolve_by_format("pdf")
-        page_count = sum(1 for n in doc.children_of(doc.root_id) if n.type == "page")
-        for i in range(page_count):
-            try:
-                page_images[i] = adapter.render_preview_bytes(original, page=i)  # type: ignore[attr-defined]
-            except Exception:  # noqa: BLE001 - fall back to born-digital text for that page
-                continue
+        if len(original) > settings.max_searchable_pdf_mb * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Source PDF exceeds {settings.max_searchable_pdf_mb} MB — "
+                    "export as TXT/DOCX or split the file before OCR/searchable PDF."
+                ),
+            )
+        page_nodes = [n for n in doc.children_of(doc.root_id) if n.type == "page"]
+        raster_indices = pages_needing_raster(doc, page_nodes)
+        if raster_indices:
+            adapter = registry.resolve_by_format("pdf")
+            page_images = adapter.rasterize_pages(original, raster_indices)  # type: ignore[attr-defined]
 
     data = model_to_searchable_pdf(doc, page_images)
     report = validation.validate_export(

@@ -94,6 +94,4 @@ def test_validation_errors(client):
     )
     assert bad.status_code == 422
     assert client.get("/documents/missing/suggestions").status_code == 404
-    assert (
-        client.post(f"/documents/{doc_id}/suggestions/missing/accept").status_code == 404
-    )
+    assert client.post(f"/documents/{doc_id}/suggestions/missing/accept").status_code == 404

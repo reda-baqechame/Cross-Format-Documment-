@@ -38,8 +38,14 @@ from docos.storage.blob import BlobStore
 router = APIRouter(tags=["esign"])
 
 
-def _to_response(doc_id: str, row: SignatureRequest, *, signing_url: str | None, detail: str,
-                 legally_binding: bool) -> SignatureRequestResponse:
+def _to_response(
+    doc_id: str,
+    row: SignatureRequest,
+    *,
+    signing_url: str | None,
+    detail: str,
+    legally_binding: bool,
+) -> SignatureRequestResponse:
     return SignatureRequestResponse(
         id=row.id,
         doc_id=doc_id,
@@ -111,12 +117,17 @@ async def create_signature_request(
     )
     session.add(row)
     get_provenance(session).record_event(
-        doc_id, "esign.requested", actor="api",
+        doc_id,
+        "esign.requested",
+        actor="api",
         detail={"provider": result.provider, "status": result.status},
     )
     session.commit()
     return _to_response(
-        doc_id, row, signing_url=result.signing_url, detail=result.detail,
+        doc_id,
+        row,
+        signing_url=result.signing_url,
+        detail=result.detail,
         legally_binding=result.legally_binding,
     )
 

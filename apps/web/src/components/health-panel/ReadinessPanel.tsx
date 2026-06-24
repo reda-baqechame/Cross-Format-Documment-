@@ -90,10 +90,10 @@ export function ReadinessPanel({ docId }: { docId: string }) {
           {readiness.data && (
             <button
               type="button"
-              onClick={() => downloadReadinessReport(docId, readiness.data!)}
+              onClick={() => downloadReadinessReport(docId)}
               className="text-xs text-brand-600 hover:underline"
             >
-              Download report
+              Download client report
             </button>
           )}
         </div>

@@ -106,7 +106,7 @@ def _extractive_summary(doc: CanonicalDocument) -> tuple[str, list[tuple[str, st
     nodes = _text_nodes(doc)
     if not nodes:
         return "This document has no extractable text.", []
-    lead = nodes[: _MAX_CITATIONS]
+    lead = nodes[:_MAX_CITATIONS]
     sentences = [_SENTENCE.split(text)[0] for _, text in lead]
     return " ".join(sentences), lead
 
