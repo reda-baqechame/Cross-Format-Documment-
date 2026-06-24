@@ -66,10 +66,10 @@ export function ShareLinkModal({ docId, onClose }: { docId: string; onClose: () 
         <button
           type="button"
           onClick={() => create.mutate()}
-          disabled={create.isPending}
+          disabled={create.isPending || billing.data?.plan === "free"}
           className="mt-4 w-full rounded-lg bg-brand-600 py-2.5 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
         >
-          {create.isPending ? "Creating…" : "Create link"}
+          {create.isPending ? "Creating…" : billing.data?.plan === "free" ? "Upgrade to create links" : "Create link"}
         </button>
         {createdUrl && (
           <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm">

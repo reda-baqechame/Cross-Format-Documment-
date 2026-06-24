@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api.access import get_owned_document, get_valid_share, owner_clause
+from docos.api.ratelimit import enforce_portal_rate
 from docos.api.schemas import DocumentModelResponse, ReadinessResponse
 from docos.api.session import Actor, get_actor
 from docos.db.models import DocumentShare, DocumentVersion
@@ -22,6 +23,7 @@ from docos.services.billing.plans import require_portal_access
 from docos.services.provenance import readiness
 
 router = APIRouter(tags=["share"])
+_PORTAL_RATE = [Depends(enforce_portal_rate)]
 
 
 class CreateShareRequest(BaseModel):
@@ -130,12 +132,21 @@ def revoke_share(
     share = session.get(DocumentShare, share_id)
     if share is None or share.document_id != doc_id:
         raise HTTPException(status_code=404, detail="share not found")
+    if not (
+        (share.owner_session_id is not None and share.owner_session_id == actor.session_id)
+        or (
+            share.owner_user_id is not None
+            and actor.user_id is not None
+            and share.owner_user_id == actor.user_id
+        )
+    ):
+        raise HTTPException(status_code=404, detail="share not found")
     share.revoked = True
     session.commit()
     return {"ok": True}
 
 
-@router.get("/portal/{token}", response_model=ShareView)
+@router.get("/portal/{token}", response_model=ShareView, dependencies=_PORTAL_RATE)
 def portal_info(
     token: str,
     pin: str | None = Query(default=None),
@@ -145,7 +156,11 @@ def portal_info(
     return _share_view(access.share)
 
 
-@router.get("/portal/{token}/model", response_model=DocumentModelResponse)
+@router.get(
+    "/portal/{token}/model",
+    response_model=DocumentModelResponse,
+    dependencies=_PORTAL_RATE,
+)
 def portal_model(
     token: str,
     pin: str | None = Query(default=None),
@@ -158,7 +173,11 @@ def portal_model(
     return DocumentModelResponse(document=from_dict(version.model), version_id=version.id)
 
 
-@router.get("/portal/{token}/readiness", response_model=ReadinessResponse)
+@router.get(
+    "/portal/{token}/readiness",
+    response_model=ReadinessResponse,
+    dependencies=_PORTAL_RATE,
+)
 def portal_readiness(
     token: str,
     pin: str | None = Query(default=None),

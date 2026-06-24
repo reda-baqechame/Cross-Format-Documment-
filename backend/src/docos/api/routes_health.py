@@ -76,7 +76,7 @@ async def ready(
     gates: list[bool] = []
 
     # Core tables must exist (proves migrations created the schema, not just that the DB opens).
-    for table in ("documents", "document_versions"):
+    for table in ("documents", "document_versions", "users", "document_shares", "subscriptions"):
         try:
             session.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
             checks[f"table:{table}"] = "ok"

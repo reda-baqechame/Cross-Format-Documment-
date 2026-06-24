@@ -69,7 +69,7 @@ export default function PortalPage() {
                 <p className="mt-1 text-sm text-slate-600">{readiness.data.report.summary}</p>
               </div>
             )}
-            <DocumentCanvas doc={model.data.document} docId={model.data.document.doc_id} />
+            <DocumentCanvas doc={model.data.document} docId={model.data.document.doc_id} readOnly />
           </>
         )}
       </main>

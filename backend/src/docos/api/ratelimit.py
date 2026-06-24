@@ -71,3 +71,25 @@ def enforce_op_rate(request: Request, actor: Actor = Depends(get_actor)) -> None
     client_allowed = _allow(f"op:client:{_client_key(request)}", rate, burst=burst)
     if not session_allowed or not client_allowed:
         raise HTTPException(status_code=429, detail="too many requests — please slow down")
+
+
+def enforce_auth_rate(request: Request) -> None:
+    """Dependency: throttle register/login attempts per client address."""
+    settings = get_settings()
+    if not settings.rate_limit_enabled:
+        return
+    rate = settings.rate_limit_auth_per_min
+    burst = max(rate, 1)
+    if not _allow(f"auth:client:{_client_key(request)}", rate, burst=burst):
+        raise HTTPException(status_code=429, detail="too many auth attempts — please slow down")
+
+
+def enforce_portal_rate(request: Request) -> None:
+    """Dependency: throttle portal token lookups per client (PIN/token brute-force guard)."""
+    settings = get_settings()
+    if not settings.rate_limit_enabled:
+        return
+    rate = settings.rate_limit_portal_per_min
+    burst = max(rate, 1)
+    if not _allow(f"portal:client:{_client_key(request)}", rate, burst=burst):
+        raise HTTPException(status_code=429, detail="too many portal requests — please slow down")

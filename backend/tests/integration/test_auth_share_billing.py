@@ -74,6 +74,42 @@ def test_share_requires_pro_plan(make_client, db):
     assert model.status_code == 200
 
 
+def test_share_portal_with_pin_and_revoke(make_client, db):
+    owner = make_client()
+    other = make_client()
+    email = f"pin_{uuid.uuid4().hex[:8]}@example.com"
+    reg = _register(owner, email)
+    user_id = reg["user"]["id"]
+    doc_id = _upload(owner)
+    sub = db.scalar(select(Subscription).where(Subscription.user_id == user_id))
+    sub.plan = "pro"
+    db.commit()
+
+    created = owner.post(
+        f"/documents/{doc_id}/shares",
+        json={"permission": "view", "pin": "1234"},
+    )
+    assert created.status_code == 200, created.text
+    token = created.json()["token"]
+
+    portal = make_client()
+    assert portal.get(f"/portal/{token}/model").status_code == 401
+    model = portal.get(f"/portal/{token}/model", params={"pin": "1234"})
+    assert model.status_code == 200
+
+    share_id = created.json()["id"]
+    assert other.delete(f"/documents/{doc_id}/shares/{share_id}").status_code == 404
+    assert owner.delete(f"/documents/{doc_id}/shares/{share_id}").status_code == 200
+
+
+def test_auth_rejects_weak_password(client):
+    email = f"weak_{uuid.uuid4().hex[:8]}@example.com"
+    assert client.post(
+        "/auth/register",
+        json={"email": email, "password": "short"},
+    ).status_code == 422
+
+
 def test_billing_status_offline(make_client):
     client = make_client()
     res = client.get("/billing/status")

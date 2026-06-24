@@ -153,6 +153,8 @@ class Settings(BaseSettings):
     rate_limit_uploads_per_min: int = 30
     # rate limit for expensive non-upload operations (clean, redaction-audit, autofill, …).
     rate_limit_ops_per_min: int = 60
+    rate_limit_auth_per_min: int = 20
+    rate_limit_portal_per_min: int = 120
 
     # ingestion limits
     max_upload_mb: int = 50

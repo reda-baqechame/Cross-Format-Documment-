@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import time
 import uuid
 
 import httpx
@@ -88,6 +89,12 @@ def _verify_webhook(payload: bytes, signature: str) -> dict:
     v1 = parts.get("v1")
     if not timestamp or not v1:
         raise HTTPException(status_code=400, detail="invalid stripe signature")
+    try:
+        age = abs(time.time() - int(timestamp))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid stripe signature") from exc
+    if age > 300:
+        raise HTTPException(status_code=400, detail="stale stripe webhook")
     signed = f"{timestamp}.{payload.decode()}"
     expected = hmac.new(secret.encode(), signed.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, v1):

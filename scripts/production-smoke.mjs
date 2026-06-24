@@ -30,6 +30,14 @@ async function main() {
     }
   });
 
+  await requireOk("/login", (text) => {
+    if (!text.includes("Sign in to DocOS")) throw new Error("login page missing branding");
+  });
+
+  await requireOk("/pricing", (text) => {
+    if (!text.includes("Pricing")) throw new Error("pricing page missing heading");
+  });
+
   await requireOk("/api/health", (text) => {
     const health = JSON.parse(text);
     if (health.status !== "ok" || health.db !== "ok") {

@@ -19,3 +19,8 @@ test("home page shows wired marketing sections", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Ask across your library/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Platform capabilities/i })).toBeVisible();
 });
+
+test("invalid portal token shows error", async ({ page }) => {
+  await page.goto("/portal/not-a-valid-token");
+  await expect(page.getByText(/not found|expired|404/i)).toBeVisible();
+});

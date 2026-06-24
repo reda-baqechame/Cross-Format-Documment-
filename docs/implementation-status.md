@@ -272,4 +272,5 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
 - ✅ Burst rate-limiting extended to all costly endpoints (AI ask/summarize/translate, notebook,
   ops-agent, export/searchable-pdf, page ops) via `enforce_op_rate` — a generous per-minute
   session+IP burst guard (not a total/daily cap, so the "unlimited" promise holds); preview +
-  slide-thumbnail stay unlimited for the canvas. — `api/ratelimit.py`.
+  slide-thumbnail stay unlimited for the canvas. Auth register/login and portal token lookups
+  have dedicated per-IP buckets — `api/ratelimit.py`.
