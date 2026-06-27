@@ -50,6 +50,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
     path (shared `persist_document` core runs inline when eager, or on a Celery worker); client polls
     `GET /jobs/{job_id}`. Sync stays the default (no Redis needed offline). — `api/routes_documents.py`,
     `queue/tasks.py`, `api/routes_jobs.py`
+- ✅ **AI orchestration: retrieve → plan → dry-run preview → commit** — BM25 relevance retrieval picks
+  the nodes the model sees on large docs (`services/semantic/retrieval.py`); `POST /documents/{id}/patches/plan`
+  returns a validated, non-committed before/after preview (`services/semantic/preview.py`) the UI approves
+  before applying (`AiEditBar`). `set_table_cell` added to the AI op set. — `api/routes_patches.py`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by

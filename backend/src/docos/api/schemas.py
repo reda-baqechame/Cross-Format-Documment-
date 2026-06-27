@@ -24,6 +24,7 @@ from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.intelligence import DocumentInsight
+from docos.services.semantic.preview import PatchPreview
 from docos.services.semantic.reader import Citation
 from docos.services.semantic.skills.autopilot import AutopilotReport
 
@@ -349,6 +350,19 @@ class PatchResponse(BaseModel):
     applied: bool
     new_version_id: str | None
     intent: str | None
+
+
+class PatchPlanResponse(BaseModel):
+    """A validated, **non-committed** edit plan: the concrete ops + a before/after preview.
+
+    The client shows the preview, then re-submits ``ops`` to ``POST /documents/{id}/patches`` to
+    actually apply them. Nothing is mutated or versioned by requesting a plan.
+    """
+
+    doc_id: str
+    intent: str | None = None
+    ops: list[PatchOpDTO]
+    preview: PatchPreview
 
 
 class FindReplaceRequest(BaseModel):

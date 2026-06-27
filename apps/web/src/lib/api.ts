@@ -4,6 +4,7 @@ import type {
   DocumentHealthResponse,
   DocumentListResponse,
   DocumentModelResponse,
+  PatchOpDTO,
   PatchRequest,
   PatchResponse,
   SignatureResponse,
@@ -1122,6 +1123,45 @@ export async function fetchAutopilot(docId: string): Promise<AutopilotReport> {
 /** Natural-language AI edit: routed through the LLM when a provider is configured. */
 export function instructEdit(docId: string, instruction: string): Promise<PatchResponse> {
   return submitPatch(docId, { instruction });
+}
+
+// Dry-run AI/edit planning. Defined inline (like ReadinessCheck) so the surface doesn't depend on a
+// codegen run; the backend shapes live in services/semantic/preview.py + api/schemas.PatchPlanResponse.
+export interface PatchChange {
+  op: string;
+  target_id?: string | null;
+  label: string;
+  before?: string | null;
+  after?: string | null;
+}
+
+export interface PatchPreview {
+  change_count: number;
+  summary: string;
+  changes: PatchChange[];
+}
+
+export interface PatchPlan {
+  doc_id: string;
+  intent?: string | null;
+  ops: PatchOpDTO[];
+  preview: PatchPreview;
+}
+
+/** Preview an edit without committing it: returns the concrete ops + a before/after summary. */
+export async function planEdit(docId: string, body: PatchRequest): Promise<PatchPlan> {
+  return json<PatchPlan>(
+    await fetch(`${BASE}/documents/${docId}/patches/plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/** Apply a previously-previewed plan's ops through the standard reversible-patch path. */
+export function applyPlan(docId: string, plan: PatchPlan): Promise<PatchResponse> {
+  return submitPatch(docId, { ops: plan.ops });
 }
 
 export async function listDocuments(): Promise<DocumentListResponse> {

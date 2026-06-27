@@ -39,12 +39,15 @@ built-in default that always works offline). Nothing fakes a capability that nee
   the existing Trust Score and before/after proof front-and-center.
 - ⬜ **AI command bar** — promote `AiEditBar` to a persistent palette (`cmdk`, MIT) over `lib/api.ts`.
 
-## Next — AI power layer (depth, not provider count)
+## AI power layer (depth, not provider count)
 
-- ⬜ Orchestration: intent classifier → retrieve relevant pages/nodes/tables → patch **plan** →
-  validate → **dry-run preview** → commit. Today's prompt exposes only 6 ops with a 400-node digest
-  (`services/semantic/prompt.py`), though the executor already supports table/image/move ops — widen
-  the allowed set toward the executor's real capability.
+- ✅ **Retrieval + plan + dry-run preview** — large documents now narrow the model's digest to the
+  BM25-relevant nodes for the instruction (`services/semantic/retrieval.py`, pure-Python, no deps)
+  instead of the first N. A new `POST /documents/{id}/patches/plan` returns a validated, **non-committed**
+  before/after preview (`services/semantic/preview.py`); the UI shows it and applies only on approval
+  (`AiEditBar` Preview → Apply). Allowed ops widened with `set_table_cell` (pairs with the sheet editor).
+- ⬜ Widen the allowed-op set further toward the executor's real capability (table rows/cols, image,
+  move) — `services/semantic/prompt.py` `_ALLOWED_OPS` + `_coerce_op`.
 - ⬜ Specialized chains: contract analyzer, invoice extractor, redaction detector, accessibility fixer,
   format-repair, spreadsheet-formula explainer, comparison agent.
 - ⬜ Provider routing: `AI_PRIMARY/FALLBACK/CHEAP/REASONING/VISION_PROVIDER` env model selection
