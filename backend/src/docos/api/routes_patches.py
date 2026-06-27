@@ -33,7 +33,7 @@ from docos.deps import db_session, get_orchestrator, get_provenance, get_setting
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.find_replace import plan_find_replace
-from docos.services.provenance import accessibility, sensitive, signing
+from docos.services.provenance import accessibility, pii, sensitive, signing
 from docos.services.semantic.preview import build_preview
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
@@ -269,7 +269,7 @@ def scan_sensitive(
 ) -> SensitiveScanResponse:
     """Detect PII/secrets in the document without changing it (preview for redaction)."""
     _record, doc = _load_latest(session, doc_id, actor)
-    findings = sensitive.scan_document(doc)
+    findings = pii.scan(doc)
     return SensitiveScanResponse(
         doc_id=doc_id,
         findings=findings,
@@ -292,7 +292,7 @@ def redact_sensitive(
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
-    findings = sensitive.scan_document(doc)
+    findings = pii.scan(doc)
     node_ids = sensitive.redaction_node_ids(findings)
 
     patch = ReversiblePatch(

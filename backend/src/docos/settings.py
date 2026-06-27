@@ -33,6 +33,7 @@ CollabBackend = Literal["memory", "redis"]
 ParserEngine = Literal["native", "docling"]
 OcrEngine = Literal["tesseract", "paddle"]
 IngestMode = Literal["sync", "async"]
+PiiEngine = Literal["regex", "presidio"]
 
 # Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
@@ -125,6 +126,11 @@ class Settings(BaseSettings):
     # worker is needed; set CELERY_EAGER=false and run a worker for true off-request execution.
     ingest_mode: IngestMode = "sync"
     celery_eager: bool = True
+    # PII detection engine. ``regex`` (default) is the always-present high-precision detector
+    # (emails/SSNs/cards/phones/IPs). ``presidio`` additionally runs Microsoft Presidio (MIT) for
+    # NER entities (names, locations, dates, …) when it is installed, augmenting — never replacing —
+    # the regex hits; falls back to regex-only when Presidio isn't importable.
+    pii_engine: PiiEngine = "regex"
 
     # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
     # configure provider URLs to activate real embedded editors.

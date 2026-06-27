@@ -158,6 +158,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
+  (high-precision regex) with an activatable **Presidio** NER seam (`PII_ENGINE=presidio`) for names/
+  locations/dates, merged without double-counting — `services/provenance/presidio.py`, `pii.py`
 - ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
   PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,

@@ -28,6 +28,10 @@ built-in default that always works offline). Nothing fakes a capability that nee
   `CELERY_EAGER=false`).
 - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics + CI gate.
   `evals/document_fidelity/`.
+- ✅ **Presidio PII seam** (MIT) — `PII_ENGINE=presidio` augments the regex detector with NER entities
+  (names, locations, dates, …) for "redact all personal information"; merges without double-counting and
+  falls back to regex-only when not installed. `services/provenance/presidio.py` + `pii.py`. Install with
+  `pip install presidio-analyzer` + a spaCy model (e.g. `python -m spacy download en_core_web_lg`).
 
 ## Next — Universal Workspace (the visible 100x)
 
