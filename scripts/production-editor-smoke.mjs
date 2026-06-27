@@ -34,7 +34,12 @@ async function main() {
     docId = (await upload.json()).doc_id;
     if (!docId) throw new Error("upload did not return doc_id");
 
-    browser = await chromium.launch({ headless: true });
+    // PW_EXECUTABLE_PATH lets this run against a pre-installed Chromium when the pinned browser
+    // build isn't downloaded (e.g. sandboxes); CI downloads the pinned browser so it stays unset.
+    browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.PW_EXECUTABLE_PATH || undefined,
+    });
     const context = await browser.newContext({
       storageState: await api.storageState(),
       viewport: { width: 1280, height: 760 },
