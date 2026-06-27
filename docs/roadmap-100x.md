@@ -40,11 +40,14 @@ built-in default that always works offline). Nothing fakes a capability that nee
   falls back to regex-only when not installed. `services/provenance/presidio.py` + `pii.py`. Install with
   `pip install presidio-analyzer` + a spaCy model (e.g. `python -m spacy download en_core_web_lg`).
 
-## Next — Universal Workspace (the visible 100x)
+## Universal Workspace (the visible 100x)
 
-- ⬜ **Univer editor** (Apache-2.0) — embed a real spreadsheet/doc/slide editing surface; seed it from
-  the canonical model and diff edits back into reversible patch ops (reuse `submitPatch`/`setTableCell`).
-  Start with sheets (clean 1:1 with `TableNode`); docs/slides render + light-edit first.
+- ✅ **Univer Sheets editor** (Apache-2.0) — XLSX/CSV documents open in a real Excel-grade grid (ribbon,
+  formula bar, 450+ functions, sort/filter) seeded from the canonical `TableNode`s; cell edits commit
+  through the existing `setTableCell` reversible-patch path. Lazy-loaded client-only (`ssr:false`); the
+  plain `SheetEditor` stays as a "Simple" fallback. Verified rendering in a real browser (Chromium).
+  `components/canvas/UniverSheet.tsx`, e2e `apps/web/e2e/universal-workspace.spec.ts`.
+- ⬜ **Univer Docs/Slides** for DOCX/PPTX (render + light-edit; structural ops via `ModifyStudio`).
 - ⬜ **PDF.js viewer** (Apache-2.0) — page rendering with the existing redaction/annotation overlay.
 - ⬜ **Command center first screen** — one dropzone + visible action cards + no-login sample docs, with
   the existing Trust Score and before/after proof front-and-center.
