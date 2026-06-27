@@ -89,6 +89,22 @@ def _mask(value: str) -> str:
     return "".join(reversed(out))
 
 
+def _phone_ok(value: str) -> bool:
+    """Validate a phone candidate with the ``phonenumbers`` library to cut false positives.
+
+    Defaults to the US region (the regex is US-shaped). If ``phonenumbers`` isn't importable the
+    candidate is accepted, so the detector never regresses to *fewer* hits than before.
+    """
+    try:
+        import phonenumbers
+    except Exception:  # noqa: BLE001 - optional hardening; absence keeps the regex behaviour
+        return True
+    try:
+        return phonenumbers.is_valid_number(phonenumbers.parse(value, "US"))
+    except Exception:  # noqa: BLE001 - an unparseable candidate simply isn't a valid number
+        return False
+
+
 def _scan_text(text: str) -> Iterator[tuple[str, str]]:
     """Yield ``(category, matched_value)`` for non-overlapping detections in ``text``."""
     claimed: list[tuple[int, int]] = []  # spans already taken by a higher-priority detector
@@ -104,6 +120,8 @@ def _scan_text(text: str) -> Iterator[tuple[str, str]]:
             value = m.group()
             if category == "credit_card" and not _luhn_ok(re.sub(r"\D", "", value)):
                 continue  # digit run that isn't a real card — leave the span free
+            if category == "phone" and not _phone_ok(value):
+                continue  # regex-shaped but not a valid number — leave the span free
             claimed.append((start, end))
             yield category, value
 

@@ -19,6 +19,8 @@ from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     FindReplaceRequest,
     FindReplaceResponse,
+    PatchOpDTO,
+    PatchPlanResponse,
     PatchRequest,
     PatchResponse,
     SensitiveScanResponse,
@@ -31,7 +33,8 @@ from docos.deps import db_session, get_orchestrator, get_provenance, get_setting
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.find_replace import plan_find_replace
-from docos.services.provenance import accessibility, sensitive, signing
+from docos.services.provenance import accessibility, pii, sensitive, signing
+from docos.services.semantic.preview import build_preview
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
 
@@ -134,6 +137,50 @@ async def create_patch(
     )
 
 
+@router.post("/{doc_id}/patches/plan", response_model=PatchPlanResponse)
+async def plan_patch(
+    doc_id: str,
+    body: PatchRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> PatchPlanResponse:
+    """Dry-run an edit: resolve + validate the ops and return a before/after preview, no commit.
+
+    Same input as ``/patches`` (a natural-language ``instruction`` or explicit ``ops``); the client
+    shows the preview, then re-submits the returned ``ops`` to ``/patches`` to apply them. Nothing
+    is mutated or versioned here, so it is safe to call freely.
+    """
+    _record, doc = _load_latest(session, doc_id, actor)
+
+    if body.ops:
+        for op in body.ops:
+            if op.target_id is not None and op.target_id not in doc.nodes:
+                raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
+            if op.op in _TARGETED_OPS and op.target_id is None:
+                raise HTTPException(status_code=422, detail=f"op '{op.op}' requires a target_id")
+        ops = [Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops]
+        intent = body.instruction
+    else:
+        if not get_settings().ai_enabled:
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Natural-language planning needs an AI provider — set ANTHROPIC_API_KEY or "
+                    "OPENAI_API_KEY. You can still preview explicit edit operations offline."
+                ),
+            )
+        patch = await get_orchestrator().interpret(doc, body.instruction or "")
+        ops = patch.patches
+        intent = patch.intent
+
+    return PatchPlanResponse(
+        doc_id=doc_id,
+        intent=intent,
+        ops=[PatchOpDTO(op=o.op, target_id=o.target_id, payload=o.payload) for o in ops],
+        preview=build_preview(doc, ops),
+    )
+
+
 @router.post("/{doc_id}/replace", response_model=FindReplaceResponse)
 async def find_replace(
     doc_id: str,
@@ -222,7 +269,7 @@ def scan_sensitive(
 ) -> SensitiveScanResponse:
     """Detect PII/secrets in the document without changing it (preview for redaction)."""
     _record, doc = _load_latest(session, doc_id, actor)
-    findings = sensitive.scan_document(doc)
+    findings = pii.scan(doc)
     return SensitiveScanResponse(
         doc_id=doc_id,
         findings=findings,
@@ -245,7 +292,7 @@ def redact_sensitive(
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)
 
-    findings = sensitive.scan_document(doc)
+    findings = pii.scan(doc)
     node_ids = sensitive.redaction_node_ids(findings)
 
     patch = ReversiblePatch(

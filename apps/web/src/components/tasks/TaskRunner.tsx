@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { FreeBadge } from "@/components/marketing/FreeBadge";
-import { fetchBackendHealth, uploadDocument } from "@/lib/api";
+import { fetchBackendHealth, resolveUploadDocId, uploadDocument } from "@/lib/api";
 import { getTask, type TaskResult } from "@/lib/tasks";
 import { friendlyApiError, friendlyUploadError, validateFile } from "@/lib/upload";
 
@@ -63,7 +63,8 @@ export function TaskRunner({ slug }: { slug: string }) {
       setPhase({ kind: "uploading", name: file.name });
       try {
         const res = await uploadDocument(file);
-        next.push({ docId: res.doc_id, name: file.name });
+        const docId = await resolveUploadDocId(res); // immediate (sync) or polls the job (async)
+        next.push({ docId, name: file.name });
       } catch (error) {
         setPhase({ kind: "error", message: friendlyUploadError(error) });
         return;

@@ -35,18 +35,43 @@ class AdapterRegistry:
         raise LookupError(f"no adapter registered for format: {format_id}")
 
 
-def default_registry() -> AdapterRegistry:
-    """All adapters registered and functional (image text recovery needs Tesseract)."""
+def default_registry(parser_engine: str = "native") -> AdapterRegistry:
+    """All adapters registered and functional (image text recovery needs Tesseract).
+
+    When ``parser_engine="docling"`` the PDF/DOCX/PPTX/XLSX adapters are swapped for Docling-backed
+    variants that override only ``parse`` (export/preview stay native) and fall back to native when
+    Docling isn't installed — so the registry is identical in shape regardless of engine.
+    """
+    docx: DocxAdapter
+    pdf: PdfAdapter
+    xlsx: XlsxAdapter
+    pptx: PptxAdapter
+    if parser_engine == "docling":
+        from docos.services.docengine.adapters.docling import (
+            DoclingDocxAdapter,
+            DoclingPdfAdapter,
+            DoclingPptxAdapter,
+            DoclingXlsxAdapter,
+        )
+
+        docx, pdf, xlsx, pptx = (
+            DoclingDocxAdapter(),
+            DoclingPdfAdapter(),
+            DoclingXlsxAdapter(),
+            DoclingPptxAdapter(),
+        )
+    else:
+        docx, pdf, xlsx, pptx = DocxAdapter(), PdfAdapter(), XlsxAdapter(), PptxAdapter()
     return AdapterRegistry(
         [
             TxtAdapter(),
             MarkdownAdapter(),
             CsvAdapter(),
             HtmlAdapter(),
-            DocxAdapter(),
-            PdfAdapter(),
-            XlsxAdapter(),
-            PptxAdapter(),
+            docx,
+            pdf,
+            xlsx,
+            pptx,
             RtfAdapter(),
             ImageAdapter(),
         ]

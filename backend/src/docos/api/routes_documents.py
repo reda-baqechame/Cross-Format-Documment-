@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from docos.api.schemas import (
     DocumentListResponse,
     DocumentModelResponse,
     DocumentSummary,
+    DuplicatesResponse,
     HistoryResponse,
     PurgeResponse,
     UploadResponse,
@@ -37,12 +38,15 @@ from docos.deps import (
     get_ingestion_gateway,
     get_provenance,
     get_registry,
+    settings_dep,
 )
 from docos.model.document import CanonicalDocument
 from docos.model.serialize import from_dict
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.ingestion.allowlist import sniff_mime
 from docos.services.ingestion.interface import IngestionGateway
+from docos.services.provenance import duplicates
+from docos.settings import Settings
 from docos.storage.blob import BlobStore
 
 logger = logging.getLogger("docos.documents")
@@ -86,6 +90,25 @@ async def _persist_pending_assets(doc: CanonicalDocument, blob_store: BlobStore)
     pending.clear()
 
 
+def _qpdf_preflight(mime: str, data: bytes) -> bytes:
+    """Repair + linearize a PDF before parsing when QPDF preflight is enabled and installed.
+
+    Best-effort and gated by ``QPDF_PREFLIGHT``: returns the original bytes for non-PDFs, when the
+    binary is absent, or on any qpdf error, so the ingest path is never weakened.
+    """
+    from docos.settings import get_settings
+
+    if mime != "application/pdf" or not get_settings().qpdf_preflight:
+        return data
+    try:
+        from docos.services.ingestion.qpdf import repair_and_linearize
+
+        return repair_and_linearize(data)
+    except Exception:  # noqa: BLE001 - preflight is an optional hardening step, never fatal
+        logger.warning("qpdf preflight failed; ingesting original bytes")
+        return data
+
+
 async def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
     """Read the upload in chunks, aborting as soon as it exceeds ``max_bytes``.
 
@@ -105,21 +128,47 @@ async def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
     return b"".join(chunks)
 
 
-async def ingest_bytes(
+def _finalize_job(
+    session: Session,
+    job_id: str | None,
+    *,
+    status: str,
+    error: str | None,
+    document_id: str | None,
+) -> None:
+    """Update the queued JobRecord (async) or create a finished one (sync), within the session."""
+    if job_id is not None:
+        job = session.get(JobRecord, job_id)
+        if job is not None:
+            job.status = status
+            job.error = error
+            job.document_id = document_id
+            job.finished = True
+            return
+    session.add(
+        JobRecord(
+            id=job_id or uuid.uuid4().hex,
+            kind="ingest",
+            document_id=document_id,
+            status=status,
+            error=error,
+            finished=True,
+        )
+    )
+
+
+async def stage_upload(
     session: Session,
     *,
     filename: str,
     data: bytes,
     actor: Actor,
     gateway: IngestionGateway,
-    registry: AdapterRegistry,
-    blob_store: BlobStore,
-) -> tuple[Document, str, str]:
-    """Validate → scan → parse → stage → version a byte payload into a new document.
+) -> tuple[str, str, str, bytes]:
+    """Validate → scan → (QPDF preflight) → stage. The cheap request-side half of ingest.
 
-    Shared by the upload route and the cloud-integration import route so a file pulled from Drive/
-    Dropbox/… goes through the exact same validation, malware scan, and provenance pipeline as an
-    upload. Returns ``(record, version_id, detected_format)``.
+    Returns ``(blob_key, mime, detected_format, prepared_bytes)``. The prepared bytes (QPDF-repaired
+    for PDFs) are what gets staged, so the worker can re-read the exact bytes it should parse.
     """
     provenance = get_provenance(session)
 
@@ -139,43 +188,49 @@ async def ingest_bytes(
         session.commit()
         raise HTTPException(status_code=422, detail="file failed malware scan")
 
+    prepared = _qpdf_preflight(result.mime, data)
+    blob_key = await gateway.stage(prepared, mime=result.mime)
+    return blob_key, result.mime, result.detected_format, prepared
+
+
+async def persist_document(
+    session: Session,
+    *,
+    data: bytes,
+    mime: str,
+    detected_format: str,
+    owner_session_id: str,
+    blob_key: str,
+    registry: AdapterRegistry,
+    blob_store: BlobStore,
+    job_id: str | None = None,
+) -> tuple[Document, str]:
+    """Parse → persist → version the staged bytes. The heavy half, shared by route and worker.
+
+    When ``job_id`` is given (async path) the existing queued JobRecord is flipped to its terminal
+    state; otherwise (sync path) a finished JobRecord is created. Raises ``HTTPException`` on parse
+    failure after marking the job failed.
+    """
+    provenance = get_provenance(session)
+
     try:
-        adapter = registry.resolve(result.mime)
+        adapter = registry.resolve(mime)
         doc = adapter.parse(data)
     except (LookupError, NotImplementedError) as exc:
-        session.add(
-            JobRecord(
-                id=uuid.uuid4().hex,
-                kind="ingest",
-                document_id=None,
-                status="failed",
-                error=str(exc),
-                finished=True,
-            )
-        )
+        _finalize_job(session, job_id, status="failed", error=str(exc), document_id=None)
         session.commit()
         if isinstance(exc, LookupError):
-            raise HTTPException(status_code=415, detail=f"no adapter for {result.mime}") from exc
+            raise HTTPException(status_code=415, detail=f"no adapter for {mime}") from exc
         raise HTTPException(
             status_code=501,
-            detail=f"format '{result.detected_format}' not yet supported (stubbed adapter)",
+            detail=f"format '{detected_format}' not yet supported (stubbed adapter)",
         ) from exc
     except Exception as exc:  # noqa: BLE001 - hostile files may trigger parser-specific errors
-        logger.warning("document parse failed for %s: %s", filename, exc)
-        session.add(
-            JobRecord(
-                id=uuid.uuid4().hex,
-                kind="ingest",
-                document_id=None,
-                status="failed",
-                error="parse failed",
-                finished=True,
-            )
-        )
+        logger.warning("document parse failed: %s", exc)
+        _finalize_job(session, job_id, status="failed", error="parse failed", document_id=None)
         session.commit()
         raise HTTPException(status_code=422, detail="file could not be parsed safely") from exc
 
-    blob_key = await gateway.stage(data, mime=result.mime)
     # Persist any images the adapter extracted so exporters can embed real bytes (not placeholders).
     await _persist_pending_assets(doc, blob_store)
 
@@ -185,7 +240,7 @@ async def ingest_bytes(
         source_format=doc.meta.source_format,
         source_mime=doc.meta.source_mime,
         blob_key=blob_key,
-        owner_session_id=actor.session_id,
+        owner_session_id=owner_session_id,
     )
     session.add(record)
     session.flush()
@@ -195,31 +250,57 @@ async def ingest_bytes(
     provenance.record_event(
         doc.doc_id,
         "document.ingested",
-        actor=actor.session_id,
+        actor=owner_session_id,
         detail={"format": doc.meta.source_format},
     )
-    session.add(
-        JobRecord(
-            id=uuid.uuid4().hex,
-            kind="ingest",
-            document_id=doc.doc_id,
-            status="succeeded",
-            finished=True,
-        )
-    )
+    _finalize_job(session, job_id, status="succeeded", error=None, document_id=doc.doc_id)
     session.commit()
-    return record, version_id, result.detected_format
+    return record, version_id
+
+
+async def ingest_bytes(
+    session: Session,
+    *,
+    filename: str,
+    data: bytes,
+    actor: Actor,
+    gateway: IngestionGateway,
+    registry: AdapterRegistry,
+    blob_store: BlobStore,
+) -> tuple[Document, str, str]:
+    """Validate → scan → parse → stage → version a byte payload into a new document (synchronous).
+
+    Shared by the upload route and the cloud-integration import route so a file pulled from Drive/
+    Dropbox/… goes through the exact same validation, malware scan, and provenance pipeline as an
+    upload. Returns ``(record, version_id, detected_format)``.
+    """
+    blob_key, mime, detected_format, prepared = await stage_upload(
+        session, filename=filename, data=data, actor=actor, gateway=gateway
+    )
+    record, version_id = await persist_document(
+        session,
+        data=prepared,
+        mime=mime,
+        detected_format=detected_format,
+        owner_session_id=actor.session_id,
+        blob_key=blob_key,
+        registry=registry,
+        blob_store=blob_store,
+    )
+    return record, version_id, detected_format
 
 
 @router.post("", response_model=UploadResponse)
 async def upload_document(
     request: Request,
+    response: Response,
     file: UploadFile = File(...),
     session: Session = Depends(db_session),
     gateway: IngestionGateway = Depends(get_ingestion_gateway),
     registry: AdapterRegistry = Depends(get_registry),
     blob_store: BlobStore = Depends(blob_store_dep),
     actor: Actor = Depends(get_actor),
+    settings: Settings = Depends(settings_dep),
     _rate: None = Depends(enforce_upload_rate),
 ) -> UploadResponse:
     # Reject oversized uploads before buffering anything when the size is declared.
@@ -229,6 +310,20 @@ async def upload_document(
         raise HTTPException(status_code=413, detail=f"the file is too large (max {max_mb} MB)")
 
     data = await _read_capped(file, gateway.max_bytes)
+
+    if settings.ingest_mode == "async":
+        return await _ingest_async(
+            session,
+            response=response,
+            filename=file.filename or "upload",
+            data=data,
+            actor=actor,
+            gateway=gateway,
+            registry=registry,
+            blob_store=blob_store,
+            eager=settings.celery_eager,
+        )
+
     record, version_id, detected_format = await ingest_bytes(
         session,
         filename=file.filename or "upload",
@@ -239,6 +334,58 @@ async def upload_document(
         blob_store=blob_store,
     )
     return UploadResponse(doc_id=record.id, version_id=version_id, detected_format=detected_format)
+
+
+async def _ingest_async(
+    session: Session,
+    *,
+    response: Response,
+    filename: str,
+    data: bytes,
+    actor: Actor,
+    gateway: IngestionGateway,
+    registry: AdapterRegistry,
+    blob_store: BlobStore,
+    eager: bool,
+) -> UploadResponse:
+    """Async ingest: stage now, return a job_id; parse inline (eager) or on a worker (async)."""
+    blob_key, mime, detected_format, prepared = await stage_upload(
+        session, filename=filename, data=data, actor=actor, gateway=gateway
+    )
+    job_id = uuid.uuid4().hex
+    session.add(
+        JobRecord(id=job_id, kind="ingest", document_id=None, status="queued", finished=False)
+    )
+    session.commit()
+
+    if not eager:
+        # Hand the staged blob to a Celery worker; the client polls GET /jobs/{job_id}.
+        from docos.queue.tasks import ingest_document
+
+        ingest_document.delay(blob_key, mime, detected_format, actor.session_id, job_id)
+        response.status_code = 202
+        return UploadResponse(job_id=job_id, status="queued", detected_format=detected_format)
+
+    # Eager/offline (tests, dev, no worker): run the same core inline — never via .delay(), so we
+    # don't call asyncio.run() inside the request's running event loop.
+    record, version_id = await persist_document(
+        session,
+        data=prepared,
+        mime=mime,
+        detected_format=detected_format,
+        owner_session_id=actor.session_id,
+        blob_key=blob_key,
+        registry=registry,
+        blob_store=blob_store,
+        job_id=job_id,
+    )
+    return UploadResponse(
+        doc_id=record.id,
+        version_id=version_id,
+        detected_format=detected_format,
+        job_id=job_id,
+        status="succeeded",
+    )
 
 
 @router.post("/{doc_id}/assets", response_model=AssetUploadResponse)
@@ -317,6 +464,35 @@ def list_documents(
     if tag:
         summaries = [s for s in summaries if tag in s.tags]
     return DocumentListResponse(documents=summaries)
+
+
+@router.get("/duplicates", response_model=DuplicatesResponse)
+def find_duplicates(
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    threshold: float = duplicates.DEFAULT_THRESHOLD,
+) -> DuplicatesResponse:
+    """Find near-duplicate documents in the caller's library (rapidfuzz over document text)."""
+    records = session.scalars(
+        select(Document).where(
+            owner_clause(Document.owner_session_id, Document.owner_user_id, actor)
+        )
+    ).all()
+    titles: dict[str, str | None] = {}
+    items: list[tuple[str, str]] = []
+    for r in records:
+        if r.current_version_id is None:
+            continue
+        version = session.get(DocumentVersion, r.current_version_id)
+        if version is None:
+            continue
+        titles[r.id] = r.title
+        items.append((r.id, duplicates.document_text(from_dict(version.model))))
+
+    groups = duplicates.group_duplicates(items, threshold=max(0.0, min(1.0, threshold)))
+    for g in groups:
+        g.titles = [titles.get(i) or i for i in g.doc_ids]
+    return DuplicatesResponse(groups=groups)
 
 
 @router.get("/{doc_id}/history", response_model=HistoryResponse)

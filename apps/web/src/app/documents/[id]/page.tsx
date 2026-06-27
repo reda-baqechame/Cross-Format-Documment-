@@ -2,8 +2,15 @@
 
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { FileText, Layers3, PanelRightClose, TriangleAlert } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+
+// Univer is heavy + browser-only — load it lazily on the client only.
+const UniverSheet = dynamic(() => import("@/components/canvas/UniverSheet"), {
+  ssr: false,
+  loading: () => <p className="p-6 text-sm text-slate-500">Loading spreadsheet editor…</p>,
+});
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { BulkSendPanel } from "@/components/workflows/BulkSendPanel";
@@ -23,6 +30,7 @@ import { EditorSessionPanel } from "@/components/canvas/EditorSessionPanel";
 import { FormsPanel } from "@/components/canvas/FormsPanel";
 import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
+import { SheetEditor } from "@/components/canvas/SheetEditor";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { ReadinessPanel } from "@/components/health-panel/ReadinessPanel";
 import { TagsPanel } from "@/components/documents/TagsPanel";
@@ -31,6 +39,11 @@ import { fetchHealth, fetchModel, type WorkflowPreset } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 import { friendlyLoadError } from "@/lib/upload";
 import type { CanonicalDocument, DocumentHealthResponse, DocNode } from "@docos/shared-types";
+
+/** Spreadsheet-shaped formats open in the inline cell editor instead of the text view. */
+function isSpreadsheet(doc: CanonicalDocument): boolean {
+  return doc.meta.source_format === "xlsx" || doc.meta.source_format === "csv";
+}
 
 const TABS: WorkspaceTab[] = [
   "document",
@@ -69,6 +82,7 @@ export default function DocumentPage() {
       : "document",
   );
   const [zoom, setZoom] = useState(100);
+  const [sheetMode, setSheetMode] = useState<"grid" | "simple">("grid");
 
   const model = useQuery({
     queryKey: ["model", docId],
@@ -129,7 +143,7 @@ export default function DocumentPage() {
                     </p>
                   </div>
                 )}
-                {doc.meta.source_format !== "pdf" && (
+                {doc.meta.source_format !== "pdf" && !isSpreadsheet(doc) && (
                   <div className="mx-auto mb-4 flex max-w-[816px] items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                     <p>
@@ -138,17 +152,53 @@ export default function DocumentPage() {
                     </p>
                   </div>
                 )}
+                {isSpreadsheet(doc) && (
+                  <div className="mx-auto mb-4 flex max-w-[1100px] flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <p className="min-w-0 flex-1">
+                      <strong>Spreadsheet editor.</strong> Edit cells — every change is a reversible,
+                      versioned edit. Use Undo/Redo and export validation as usual.
+                    </p>
+                    <div className="flex shrink-0 overflow-hidden rounded-md border border-emerald-300">
+                      <button
+                        type="button"
+                        onClick={() => setSheetMode("grid")}
+                        className={`px-3 py-1 text-xs font-medium ${sheetMode === "grid" ? "bg-emerald-600 text-white" : "bg-white text-emerald-700"}`}
+                      >
+                        Grid (Excel)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSheetMode("simple")}
+                        className={`px-3 py-1 text-xs font-medium ${sheetMode === "simple" ? "bg-emerald-600 text-white" : "bg-white text-emerald-700"}`}
+                      >
+                        Simple
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="mx-auto mb-4 max-w-[816px]">
                   <TagsPanel docId={docId} />
                 </div>
-                <div
-                  style={{
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: "top center",
-                  }}
-                >
-                  <DocumentCanvas doc={doc} docId={docId} />
-                </div>
+                {isSpreadsheet(doc) && sheetMode === "grid" ? (
+                  // Univer owns its own zoom + pointer math, so it must not sit inside the scale().
+                  <div className="mx-auto w-full max-w-[1100px]">
+                    <UniverSheet doc={doc} docId={docId} />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      transform: `scale(${zoom / 100})`,
+                      transformOrigin: "top center",
+                    }}
+                  >
+                    {isSpreadsheet(doc) ? (
+                      <SheetEditor doc={doc} docId={docId} />
+                    ) : (
+                      <DocumentCanvas doc={doc} docId={docId} />
+                    )}
+                  </div>
+                )}
               </>
             )}
           </main>

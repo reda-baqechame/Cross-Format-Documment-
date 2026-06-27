@@ -1,11 +1,11 @@
-"""Background tasks — an **unwired future-scale seam**.
+"""Background tasks.
 
-The app runs entirely synchronously in-request today (uploads, OCR, and patches all complete on
-the request path), so nothing here is invoked in normal operation and no worker is required. This
-module exists so heavy/batch work can be moved off the request path later by running a Celery
-worker against ``celery_app``; the two tasks below are real, working extension points (large-file
-ingest mirroring the sync route, and the tombstone sweeper). It is intentionally *not* imported by
-the API process.
+Ingest defaults to synchronous (in-request), so by default no worker is required. When
+``INGEST_MODE=async`` and ``CELERY_EAGER=false`` are set and a Celery worker is running against
+``celery_app``, ``ingest_document`` does the parse/persist off the request path — the API enqueues
+it and the client polls ``GET /jobs/{job_id}``. ``sweep_blob_tombstones`` retries failed blob
+deletions. The API process imports ``ingest_document`` lazily (only on the real-worker branch), so
+there is no import cycle and offline/sync use never touches Celery.
 """
 
 from __future__ import annotations
@@ -14,15 +14,50 @@ from docos.queue.celery_app import celery_app
 
 
 @celery_app.task(name="docos.ingest_document")
-def ingest_document(blob_key: str, mime: str) -> dict:
-    """Re-parse a staged blob into the canonical model asynchronously.
+def ingest_document(
+    blob_key: str, mime: str, detected_format: str, owner_session_id: str, job_id: str
+) -> dict:
+    """Re-parse a staged blob into the canonical model off the request path.
 
-    Extension point: resolve the adapter, parse, and commit a version exactly as the
-    synchronous route does, for large/batch uploads. Mirror the synchronous route's
-    ``JobRecord`` bookkeeping (kind="ingest", status succeeded/failed) so progress and
-    failures are observable from the ``jobs`` table.
+    Reads the staged bytes, runs the shared ``persist_document`` core (the exact parse → persist →
+    version → audit path the synchronous route uses), and flips the queued ``JobRecord`` to its
+    terminal state so progress/failures are observable from the ``jobs`` table. Runs in a worker
+    process (no event loop), so ``asyncio.run`` is safe here.
     """
-    return {"status": "queued", "blob_key": blob_key, "mime": mime}
+    import asyncio
+
+    from docos.api.routes_documents import persist_document  # lazy: avoids an import cycle
+    from docos.db.base import session_scope
+    from docos.db.models import JobRecord
+    from docos.deps import get_blob_store, get_registry
+
+    blob_store = get_blob_store()
+    registry = get_registry()
+    try:
+        data = asyncio.run(blob_store.get(blob_key))
+        with session_scope() as session:
+            record, version_id = asyncio.run(
+                persist_document(
+                    session,
+                    data=data,
+                    mime=mime,
+                    detected_format=detected_format,
+                    owner_session_id=owner_session_id,
+                    blob_key=blob_key,
+                    registry=registry,
+                    blob_store=blob_store,
+                    job_id=job_id,
+                )
+            )
+        return {"status": "succeeded", "document_id": record.id, "version_id": version_id}
+    except Exception as exc:  # noqa: BLE001 - record the failure on the job, never crash the worker
+        with session_scope() as session:
+            job = session.get(JobRecord, job_id)
+            if job is not None and not job.finished:
+                job.status = "failed"
+                job.error = "ingest failed"
+                job.finished = True
+        return {"status": "failed", "error": str(exc)}
 
 
 @celery_app.task(name="docos.sweep_blob_tombstones")

@@ -5,7 +5,7 @@ import { Camera, FileUp, Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { uploadDocument } from "@/lib/api";
+import { resolveUploadDocId, uploadDocument } from "@/lib/api";
 import {
   ACCEPT_ATTR,
   friendlyUploadError,
@@ -65,8 +65,9 @@ Signature: ______________________    Date: ____________
       setStatus({ kind: "uploading", done: 0, total: 1, name: file.name });
       try {
         const res = await uploadDocument(file);
+        const docId = await resolveUploadDocId(res); // immediate (sync) or polls the job (async)
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
-        router.push(`/documents/${res.doc_id}`);
+        router.push(`/documents/${docId}`);
       } catch (e) {
         setStatus({ kind: "error", message: friendlyUploadError(e) });
       }
@@ -84,7 +85,8 @@ Signature: ______________________    Date: ____________
         continue;
       }
       try {
-        await uploadDocument(file);
+        const res = await uploadDocument(file);
+        await resolveUploadDocId(res); // await processing so the document is ready in the library
         ok += 1;
       } catch (e) {
         failures.push(`${file.name}: ${friendlyUploadError(e)}`);

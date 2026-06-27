@@ -27,6 +27,14 @@ HandwritingProvider = Literal["none", "external"]
 TtsProvider = Literal["none", "external"]
 DrmProvider = Literal["none", "external"]
 CollabBackend = Literal["memory", "redis"]
+# Document-intelligence engine switches. Each defaults to the built-in implementation that
+# works offline with zero extra dependencies, and upgrades to a richer engine only when that
+# engine is installed/configured (the same activatable-seam pattern used across the app).
+ParserEngine = Literal["native", "docling"]
+OcrEngine = Literal["tesseract", "paddle"]
+IngestMode = Literal["sync", "async"]
+PiiEngine = Literal["regex", "presidio"]
+PdfRenderEngine = Literal["pymupdf", "pdfium"]
 
 # Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
@@ -96,6 +104,38 @@ class Settings(BaseSettings):
     scanner: Scanner = "noop"
     clamav_host: str = "localhost"
     clamav_port: int = 3310
+
+    # ── Document-intelligence engines ────────────────────────────────────────────────────────
+    # Primary parser. ``native`` (default) = the built-in PyMuPDF/python-docx/openpyxl/python-pptx
+    # adapters; ``docling`` routes PDF/DOCX/PPTX/XLSX through Docling (MIT) for richer layout,
+    # reading order and table structure, and falls back to native if Docling isn't installed.
+    parser_engine: ParserEngine = "native"
+    # OCR engine for scanned pages/images. ``tesseract`` (default) is the bundled best-effort
+    # engine; ``paddle`` uses PaddleOCR (Apache-2.0) for stronger multilingual/structured OCR,
+    # falling back to Tesseract when PaddleOCR isn't installed.
+    ocr_engine: OcrEngine = "tesseract"
+    # Apache Tika sidecar (Apache-2.0): universal type-detection / metadata / fallback text for
+    # 1,400+ formats. Off unless TIKA_SERVER_URL points at a running Tika server; never the
+    # primary parser — a validation/fallback layer only.
+    tika_server_url: str | None = None
+    # QPDF preflight (Apache-2.0): structural check / repair / linearize / encryption detection
+    # before PDF parse, redaction and export. Runs only when the ``qpdf`` binary is present.
+    qpdf_preflight: bool = False
+    # Ingest pipeline mode. ``sync`` (default) parses/persists in the request, as today. ``async``
+    # stages the upload, returns a job_id immediately, and parses off the request path. With
+    # ``celery_eager`` (the offline/dev/test default) the "async" work runs inline so no Redis or
+    # worker is needed; set CELERY_EAGER=false and run a worker for true off-request execution.
+    ingest_mode: IngestMode = "sync"
+    celery_eager: bool = True
+    # PII detection engine. ``regex`` (default) is the always-present high-precision detector
+    # (emails/SSNs/cards/phones/IPs). ``presidio`` additionally runs Microsoft Presidio (MIT) for
+    # NER entities (names, locations, dates, …) when it is installed, augmenting — never replacing —
+    # the regex hits; falls back to regex-only when Presidio isn't importable.
+    pii_engine: PiiEngine = "regex"
+    # PDF page rasterization engine for previews. ``pymupdf`` (default) uses PyMuPDF/fitz (AGPL);
+    # ``pdfium`` uses pypdfium2 (Apache-2.0/BSD-3) — the permissive migration target. Rendering
+    # only; parsing still uses PyMuPDF. Falls back to PyMuPDF if pypdfium2 isn't importable.
+    pdf_render_engine: PdfRenderEngine = "pymupdf"
 
     # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
     # configure provider URLs to activate real embedded editors.
@@ -278,6 +318,11 @@ class Settings(BaseSettings):
     @property
     def drm_configured(self) -> bool:
         return self.drm_provider == "external" and bool(self.drm_provider_url)
+
+    @property
+    def tika_configured(self) -> bool:
+        """True when an Apache Tika sidecar is reachable for fallback extraction/detection."""
+        return bool(self.tika_server_url)
 
     @property
     def configured_integrations(self) -> list[str]:

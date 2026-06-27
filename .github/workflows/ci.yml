@@ -32,6 +32,8 @@ jobs:
         run: pytest -q -m stress
       - name: DocumentOpsAgent eval
         run: python evals/document_ops/run_local.py
+      - name: Document-fidelity eval
+        run: python evals/document_fidelity/run_local.py
       - name: Verify migrations apply cleanly with no drift
         working-directory: backend
         env:

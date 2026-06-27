@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
 from docos.services.provenance.diff import DiffResult
+from docos.services.provenance.duplicates import DuplicateGroup
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.readiness import ReadinessReport
@@ -24,6 +25,7 @@ from docos.services.provenance.validation import ValidationReport
 from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.intelligence import DocumentInsight
+from docos.services.semantic.preview import PatchPreview
 from docos.services.semantic.reader import Citation
 from docos.services.semantic.skills.autopilot import AutopilotReport
 
@@ -65,9 +67,34 @@ class ReadyCheck(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    doc_id: str
-    version_id: str
-    detected_format: str | None
+    # In sync mode doc_id/version_id are present immediately. In async mode the response carries a
+    # job_id + status instead (doc_id arrives via GET /jobs/{job_id} once the worker finishes).
+    doc_id: str | None = None
+    version_id: str | None = None
+    detected_format: str | None = None
+    job_id: str | None = None
+    status: str | None = None
+
+
+class JobStatusResponse(BaseModel):
+    """Status of an async ingest/OCR job (the async-pipeline seam).
+
+    Today most work runs synchronously in-request; this read endpoint exposes the ``jobs`` table so
+    the frontend can poll progress once heavy parsing/OCR is moved to a worker.
+    """
+
+    job_id: str
+    kind: str
+    status: str  # pending | processing | succeeded | failed
+    document_id: str | None = None
+    finished: bool = False
+    error: str | None = None
+
+
+class DuplicatesResponse(BaseModel):
+    """Near-duplicate document clusters across the caller's library."""
+
+    groups: list[DuplicateGroup]
 
 
 class DocumentModelResponse(BaseModel):
@@ -330,6 +357,19 @@ class PatchResponse(BaseModel):
     applied: bool
     new_version_id: str | None
     intent: str | None
+
+
+class PatchPlanResponse(BaseModel):
+    """A validated, **non-committed** edit plan: the concrete ops + a before/after preview.
+
+    The client shows the preview, then re-submits ``ops`` to ``POST /documents/{id}/patches`` to
+    actually apply them. Nothing is mutated or versioned by requesting a plan.
+    """
+
+    doc_id: str
+    intent: str | None = None
+    ops: list[PatchOpDTO]
+    preview: PatchPreview
 
 
 class FindReplaceRequest(BaseModel):

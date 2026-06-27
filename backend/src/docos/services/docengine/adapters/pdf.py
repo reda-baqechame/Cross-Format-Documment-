@@ -258,6 +258,16 @@ class PdfAdapter(FormatAdapter):
         scale = settings.pdf_raster_scale if scale is None else scale
         cap = settings.max_searchable_raster_pages if max_pages is None else max_pages
         max_side = settings.pdf_raster_max_side_px
+
+        # Permissive (non-AGPL) rendering when selected + available; PyMuPDF stays the default.
+        if settings.pdf_render_engine == "pdfium":
+            from docos.services.docengine import pdfium
+
+            if pdfium.pdfium_available():
+                return pdfium.rasterize_pages(
+                    data, page_indices, scale=scale, max_side=max_side, cap=cap
+                )
+
         indices = [i for i in page_indices if i >= 0][:cap]
 
         pdf = fitz.open(stream=data, filetype="pdf")

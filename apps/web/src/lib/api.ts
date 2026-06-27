@@ -4,6 +4,7 @@ import type {
   DocumentHealthResponse,
   DocumentListResponse,
   DocumentModelResponse,
+  PatchOpDTO,
   PatchRequest,
   PatchResponse,
   SignatureResponse,
@@ -99,6 +100,38 @@ export async function fetchModel(docId: string): Promise<DocumentModelResponse> 
 
 export async function fetchHealth(docId: string): Promise<DocumentHealthResponse> {
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
+}
+
+// Async ingest/OCR job status (the worker-pipeline seam). Defined inline (like ReadinessCheck) so
+// the surface doesn't depend on a codegen run; the backend shape lives in api/schemas.JobStatusResponse.
+export interface JobStatus {
+  job_id: string;
+  kind: string;
+  status: "pending" | "processing" | "succeeded" | "failed";
+  document_id: string | null;
+  finished: boolean;
+  error: string | null;
+}
+
+export async function getJob(jobId: string): Promise<JobStatus> {
+  return json<JobStatus>(await fetch(`${BASE}/jobs/${jobId}`));
+}
+
+/**
+ * Resolve an upload to a document id. In sync mode the id is already present; in async mode we poll
+ * the job until it finishes, then return its document_id. Throws if the job fails or times out.
+ */
+export async function resolveUploadDocId(res: UploadResponse): Promise<string> {
+  if (res.doc_id) return res.doc_id;
+  if (!res.job_id) throw new Error("upload returned neither a document nor a job");
+  const deadline = Date.now() + 120_000; // 2 min ceiling for a single document
+  while (Date.now() < deadline) {
+    const job = await getJob(res.job_id);
+    if (job.status === "succeeded" && job.document_id) return job.document_id;
+    if (job.status === "failed") throw new Error(job.error ?? "document processing failed");
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error("document is taking longer than expected — check back shortly");
 }
 
 // Send-Ready Check / Document X-Ray. Defined inline (like BackendHealth) so the surface
@@ -1090,6 +1123,45 @@ export async function fetchAutopilot(docId: string): Promise<AutopilotReport> {
 /** Natural-language AI edit: routed through the LLM when a provider is configured. */
 export function instructEdit(docId: string, instruction: string): Promise<PatchResponse> {
   return submitPatch(docId, { instruction });
+}
+
+// Dry-run AI/edit planning. Defined inline (like ReadinessCheck) so the surface doesn't depend on a
+// codegen run; the backend shapes live in services/semantic/preview.py + api/schemas.PatchPlanResponse.
+export interface PatchChange {
+  op: string;
+  target_id?: string | null;
+  label: string;
+  before?: string | null;
+  after?: string | null;
+}
+
+export interface PatchPreview {
+  change_count: number;
+  summary: string;
+  changes: PatchChange[];
+}
+
+export interface PatchPlan {
+  doc_id: string;
+  intent?: string | null;
+  ops: PatchOpDTO[];
+  preview: PatchPreview;
+}
+
+/** Preview an edit without committing it: returns the concrete ops + a before/after summary. */
+export async function planEdit(docId: string, body: PatchRequest): Promise<PatchPlan> {
+  return json<PatchPlan>(
+    await fetch(`${BASE}/documents/${docId}/patches/plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/** Apply a previously-previewed plan's ops through the standard reversible-patch path. */
+export function applyPlan(docId: string, plan: PatchPlan): Promise<PatchResponse> {
+  return submitPatch(docId, { ops: plan.ops });
 }
 
 export async function listDocuments(): Promise<DocumentListResponse> {

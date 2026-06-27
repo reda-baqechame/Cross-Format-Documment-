@@ -6,6 +6,10 @@ what is actually built. Legend: ✅ done · 🟡 partial · 🔜 in progress · 
 
 This file is the source of truth for "don't forget anything." Update it as features land.
 
+> **The "100x" lane** (Universal Workspace editor, async pipeline, deeper AI orchestration) is
+> tracked in [`roadmap-100x.md`](roadmap-100x.md). Activatable document-intelligence engines that
+> have already landed are listed under **§B** below.
+
 ## A. Capture & ingest
 - ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/MD/CSV/HTML/image (magic-byte validated, OOXML verified by package
   contents not extension, zip-bomb limits) — `services/ingestion`
@@ -30,6 +34,29 @@ This file is the source of truth for "don't forget anything." Update it as featu
   when `HANDWRITING_PROVIDER_URL` is set; otherwise standard OCR (honest "not connected").
 
 ## B. Understand it (OCR, IDP, structure)
+- ✅ **Activatable document-intelligence engines** (no-strings, default-off seams):
+  - ✅ **Docling** parser (MIT) — `PARSER_ENGINE=docling` for richer PDF/DOCX/PPTX/XLSX layout +
+    reading order + real table structure; transparent fallback to native adapters when not installed.
+    — `services/docengine/adapters/docling.py`, `registry.default_registry`
+  - ✅ **PaddleOCR** (Apache-2.0) — `OCR_ENGINE=paddle` for stronger multilingual OCR; degrades to
+    Tesseract when absent. — `services/ocr/paddle.py`, `services/ocr/factory.py`
+  - ✅ **Apache Tika** (Apache-2.0) — `TIKA_SERVER_URL` sidecar for detection / metadata / fallback
+    text as a validation layer (never the primary parser). — `services/ingestion/tika.py`
+  - ✅ **QPDF** preflight (Apache-2.0) — `QPDF_PREFLIGHT=true` repairs/linearizes PDFs before parse
+    when the binary is present. — `services/ingestion/qpdf.py`
+  - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics +
+    CI gate. — `evals/document_fidelity/`
+  - ✅ **Univer spreadsheet editor** (Apache-2.0) — XLSX/CSV open in a real Excel-grade grid (ribbon,
+    formula bar, 450+ functions) seeded from `TableNode`s; edits commit via `setTableCell`. Browser-
+    verified. — `apps/web/src/components/canvas/UniverSheet.tsx`
+  - ✅ **Async ingest pipeline** — `INGEST_MODE=async` returns a `job_id` and parses off the request
+    path (shared `persist_document` core runs inline when eager, or on a Celery worker); client polls
+    `GET /jobs/{job_id}`. Sync stays the default (no Redis needed offline). — `api/routes_documents.py`,
+    `queue/tasks.py`, `api/routes_jobs.py`
+- ✅ **AI orchestration: retrieve → plan → dry-run preview → commit** — BM25 relevance retrieval picks
+  the nodes the model sees on large docs (`services/semantic/retrieval.py`); `POST /documents/{id}/patches/plan`
+  returns a validated, non-committed before/after preview (`services/semantic/preview.py`) the UI approves
+  before applying (`AiEditBar`). `set_table_cell` added to the AI op set. — `api/routes_patches.py`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by
@@ -134,6 +161,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 ## F. Protect & make trustworthy
 - ✅ True redaction on export · ✅ Metadata sanitization · ✅ Document-health panel
 - ✅ AI-assisted PII/secret detection → one-click redaction — `services/provenance/sensitive.py`
+  (high-precision regex) with an activatable **Presidio** NER seam (`PII_ENGINE=presidio`) for names/
+  locations/dates, merged without double-counting — `services/provenance/presidio.py`, `pii.py`
 - ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
   PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,

@@ -13,9 +13,11 @@ from typing import Any
 
 from docos.model.document import CanonicalDocument
 from docos.model.patch import Patch
+from docos.services.semantic import retrieval
 
-# Ops the model is allowed to emit. A subset of the full op set — these are the
-# safe, reversible edits; structural surgery (add/move) stays out of the AI path.
+# Ops the model is allowed to emit. A safe, reversible subset of the full op set; broad structural
+# surgery (add/move arbitrary nodes) stays out of the AI path. ``set_table_cell`` is included so the
+# model can fix spreadsheet/table cells (pairs with the inline sheet editor).
 _ALLOWED_OPS = {
     "set_text",
     "update_node",
@@ -23,6 +25,7 @@ _ALLOWED_OPS = {
     "redact",
     "remove_node",
     "sanitize_metadata",
+    "set_table_cell",
 }
 _FORMAT_FIELDS = ("bold", "italic", "underline", "font", "size", "color")
 # Cap the digest so a huge document can't blow the prompt budget.
@@ -39,6 +42,7 @@ SYSTEM_PROMPT = (
     "- retag: replace a node's semantic tags (target_id + tags).\n"
     "- redact: mark a node's text for true removal from exports (target_id).\n"
     "- remove_node: delete a node from the document (target_id).\n"
+    "- set_table_cell: set a table/spreadsheet cell's text (target_id = cell id, text = value).\n"
     "- sanitize_metadata: strip risky embedded metadata (no target_id).\n\n"
     "Only target ids that appear in the digest. If the instruction cannot be satisfied "
     "with these ops, call emit_patch with an empty ops list."
@@ -74,18 +78,26 @@ EDIT_TOOL: dict[str, Any] = {
 
 
 def build_user_prompt(doc: CanonicalDocument, instruction: str) -> str:
-    """Instruction plus a compact, id-anchored digest of the editable nodes."""
+    """Instruction plus a compact, id-anchored digest of the *relevant* editable nodes.
+
+    For large documents the digest is narrowed to the BM25-relevant nodes for the instruction
+    (``retrieval.select_digest_nodes``) so the model sees the right context instead of just the
+    first N nodes; small documents are shown whole.
+    """
+    selected = retrieval.select_digest_nodes(doc, instruction, limit=_MAX_DIGEST_NODES)
     lines: list[str] = []
-    for node in doc.walk():
-        if len(lines) >= _MAX_DIGEST_NODES:
-            break
-        if node.type == "run":
-            text = (getattr(node, "text", "") or "").replace("\n", " ")
-            if len(text) > 200:
-                text = text[:200] + "…"
-            lines.append(f'{node.id} [run] "{text}"')
-        elif node.type == "heading":
+    for node_id in selected:
+        node = doc.nodes.get(node_id)
+        if node is None:
+            continue
+        if node.type == "heading":
             lines.append(f"{node.id} [heading h{getattr(node, 'level', 1)}]")
+            continue
+        text = (retrieval.node_search_text(doc, node) or "").replace("\n", " ")
+        if len(text) > 200:
+            text = text[:200] + "…"
+        label = "cell" if node.type == "table_cell" else "run"
+        lines.append(f'{node.id} [{label}] "{text}"')
     digest = "\n".join(lines) if lines else "(no editable nodes)"
     return f"Instruction: {instruction}\n\nDocument nodes:\n{digest}"
 
@@ -118,6 +130,13 @@ def _coerce_op(doc: CanonicalDocument, raw: dict) -> Patch | None:
 
     if op == "set_text":
         return Patch(op="set_text", target_id=target_id, payload={"text": raw.get("text", "")})
+    if op == "set_table_cell":
+        node = doc.nodes.get(target_id)
+        if node is None or node.type != "table_cell":
+            return None
+        return Patch(
+            op="set_table_cell", target_id=target_id, payload={"text": raw.get("text", "")}
+        )
     if op == "update_node":
         payload = {f: raw[f] for f in _FORMAT_FIELDS if f in raw}
         if not payload:
