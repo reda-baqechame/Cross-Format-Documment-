@@ -47,8 +47,11 @@ built-in default that always works offline). Nothing fakes a capability that nee
   through the existing `setTableCell` reversible-patch path. Lazy-loaded client-only (`ssr:false`); the
   plain `SheetEditor` stays as a "Simple" fallback. Verified rendering in a real browser (Chromium).
   `components/canvas/UniverSheet.tsx`, e2e `apps/web/e2e/universal-workspace.spec.ts`.
+- ✅ **PDF.js reader** (Apache-2.0) — a crisp client-side vector PDF view with a selectable text layer,
+  toggled **Read/Edit** against the existing editable raster+overlay; fed the redaction-applied bytes
+  (`?format=pdf`). Pinned to pdfjs v4 (v6 needs `Map.getOrInsertComputed`, unavailable in many
+  browsers); worker served from `/public`. Browser-verified. `components/canvas/PdfReader.tsx`.
 - ⬜ **Univer Docs/Slides** for DOCX/PPTX (render + light-edit; structural ops via `ModifyStudio`).
-- ⬜ **PDF.js viewer** (Apache-2.0) — page rendering with the existing redaction/annotation overlay.
 - ⬜ **Command center first screen** — one dropzone + visible action cards + no-login sample docs, with
   the existing Trust Score and before/after proof front-and-center.
 - ⬜ **AI command bar** — promote `AiEditBar` to a persistent palette (`cmdk`, MIT) over `lib/api.ts`.

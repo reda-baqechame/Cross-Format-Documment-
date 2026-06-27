@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "copy-pdf-worker": "node ./scripts/copy-pdf-worker.mjs",
+    "predev": "node ./scripts/copy-pdf-worker.mjs",
     "dev": "next dev -p 3100",
+    "prebuild": "node ./scripts/copy-pdf-worker.mjs",
     "build": "next build && node ./scripts/assemble-standalone.mjs",
+    "prebuild:standalone": "node ./scripts/copy-pdf-worker.mjs",
     "build:standalone": "DOCOS_NEXT_STANDALONE=1 next build && node ./scripts/assemble-standalone.mjs",
     "start": "node .next/standalone/apps/web/server.js",
     "lint": "next lint",
@@ -16,6 +20,7 @@
     "@univerjs/presets": "^0.25.1",
     "lucide-react": "^1.21.0",
     "next": "14.2.35",
+    "pdfjs-dist": "^4.10.38",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "zustand": "^4.5.4"

@@ -49,6 +49,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
   - ✅ **Univer spreadsheet editor** (Apache-2.0) — XLSX/CSV open in a real Excel-grade grid (ribbon,
     formula bar, 450+ functions) seeded from `TableNode`s; edits commit via `setTableCell`. Browser-
     verified. — `apps/web/src/components/canvas/UniverSheet.tsx`
+  - ✅ **PDF.js reader** (Apache-2.0) — crisp vector PDF view + selectable text layer, Read/Edit toggle
+    against the editable overlay, redaction-applied bytes. Browser-verified. — `components/canvas/PdfReader.tsx`
+  - ✅ **Library search upgraded to BM25** — `corpus.semantic_search` ranks with BM25 (shared
+    `retrieval.bm25_scores`) for better relevance. — `services/semantic/corpus.py`
   - ✅ **Async ingest pipeline** — `INGEST_MODE=async` returns a `job_id` and parses off the request
     path (shared `persist_document` core runs inline when eager, or on a Celery worker); client polls
     `GET /jobs/{job_id}`. Sync stays the default (no Redis needed offline). — `api/routes_documents.py`,
