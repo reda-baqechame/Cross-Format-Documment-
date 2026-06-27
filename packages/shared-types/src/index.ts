@@ -147,9 +147,13 @@ export interface DocumentHealth {
 }
 
 export interface UploadResponse {
-  doc_id: string;
-  version_id: string;
-  detected_format: string | null;
+  // Sync mode returns doc_id/version_id immediately. Async mode returns job_id + status instead
+  // (doc_id arrives via GET /jobs/{job_id} once the worker finishes).
+  doc_id?: string | null;
+  version_id?: string | null;
+  detected_format?: string | null;
+  job_id?: string | null;
+  status?: string | null;
 }
 
 export interface DocumentModelResponse {

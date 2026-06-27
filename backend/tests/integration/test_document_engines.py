@@ -90,6 +90,46 @@ def test_tika_client_detect_and_metadata(monkeypatch):
     assert client.extract_text(b"bytes") == "extracted text"
 
 
+def test_async_ingest_returns_job_then_completes(make_client, monkeypatch):
+    """INGEST_MODE=async (eager) returns a job_id; the job completes and the model is loadable."""
+    monkeypatch.setenv("INGEST_MODE", "async")
+    from docos.settings import get_settings
+
+    get_settings.cache_clear()
+    client = make_client()  # built after the env change so the app sees async mode
+
+    files = {"file": ("note.txt", b"Async hello\n\nSecond block.", "text/plain")}
+    up = client.post("/documents", files=files)
+    assert up.status_code == 200, up.text
+    body = up.json()
+    assert body["job_id"], body
+    # Eager mode completes inline, so the job is already done and the doc exists.
+    assert body["status"] == "succeeded"
+    assert body["doc_id"]
+
+    job = client.get(f"/jobs/{body['job_id']}")
+    assert job.status_code == 200
+    jb = job.json()
+    assert jb["status"] == "succeeded"
+    assert jb["finished"] is True
+    assert jb["document_id"] == body["doc_id"]
+
+    model = client.get(f"/documents/{body['doc_id']}/model")
+    assert model.status_code == 200
+    assert model.json()["document"]["meta"]["source_format"] == "txt"
+    get_settings.cache_clear()
+
+
+def test_sync_ingest_unchanged_by_default(client):
+    """Default (sync) upload still returns doc_id/version_id and no job_id (back-compat)."""
+    files = {"file": ("note.txt", b"Sync hello", "text/plain")}
+    up = client.post("/documents", files=files)
+    assert up.status_code == 200, up.text
+    body = up.json()
+    assert body["doc_id"] and body["version_id"]
+    assert body.get("job_id") is None
+
+
 def test_job_status_endpoint_after_upload(client, db):
     files = {"file": ("note.txt", b"Hello world\n\nSecond block.", "text/plain")}
     up = client.post("/documents", files=files)

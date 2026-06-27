@@ -32,6 +32,7 @@ CollabBackend = Literal["memory", "redis"]
 # engine is installed/configured (the same activatable-seam pattern used across the app).
 ParserEngine = Literal["native", "docling"]
 OcrEngine = Literal["tesseract", "paddle"]
+IngestMode = Literal["sync", "async"]
 
 # Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
@@ -118,6 +119,12 @@ class Settings(BaseSettings):
     # QPDF preflight (Apache-2.0): structural check / repair / linearize / encryption detection
     # before PDF parse, redaction and export. Runs only when the ``qpdf`` binary is present.
     qpdf_preflight: bool = False
+    # Ingest pipeline mode. ``sync`` (default) parses/persists in the request, as today. ``async``
+    # stages the upload, returns a job_id immediately, and parses off the request path. With
+    # ``celery_eager`` (the offline/dev/test default) the "async" work runs inline so no Redis or
+    # worker is needed; set CELERY_EAGER=false and run a worker for true off-request execution.
+    ingest_mode: IngestMode = "sync"
+    celery_eager: bool = True
 
     # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
     # configure provider URLs to activate real embedded editors.

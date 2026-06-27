@@ -116,6 +116,23 @@ export async function getJob(jobId: string): Promise<JobStatus> {
   return json<JobStatus>(await fetch(`${BASE}/jobs/${jobId}`));
 }
 
+/**
+ * Resolve an upload to a document id. In sync mode the id is already present; in async mode we poll
+ * the job until it finishes, then return its document_id. Throws if the job fails or times out.
+ */
+export async function resolveUploadDocId(res: UploadResponse): Promise<string> {
+  if (res.doc_id) return res.doc_id;
+  if (!res.job_id) throw new Error("upload returned neither a document nor a job");
+  const deadline = Date.now() + 120_000; // 2 min ceiling for a single document
+  while (Date.now() < deadline) {
+    const job = await getJob(res.job_id);
+    if (job.status === "succeeded" && job.document_id) return job.document_id;
+    if (job.status === "failed") throw new Error(job.error ?? "document processing failed");
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error("document is taking longer than expected — check back shortly");
+}
+
 // Send-Ready Check / Document X-Ray. Defined inline (like BackendHealth) so the surface
 // doesn't depend on a codegen run; the backend shapes live in services/provenance/readiness.py.
 export interface ReadinessCheck {

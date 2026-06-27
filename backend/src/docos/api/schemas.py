@@ -65,9 +65,13 @@ class ReadyCheck(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    doc_id: str
-    version_id: str
-    detected_format: str | None
+    # In sync mode doc_id/version_id are present immediately. In async mode the response carries a
+    # job_id + status instead (doc_id arrives via GET /jobs/{job_id} once the worker finishes).
+    doc_id: str | None = None
+    version_id: str | None = None
+    detected_format: str | None = None
+    job_id: str | None = None
+    status: str | None = None
 
 
 class JobStatusResponse(BaseModel):

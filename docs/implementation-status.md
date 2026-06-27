@@ -46,8 +46,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
     when the binary is present. — `services/ingestion/qpdf.py`
   - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics +
     CI gate. — `evals/document_fidelity/`
-  - 🔜 **Async job pipeline** — `GET /jobs/{job_id}` read seam shipped; worker execution path next.
-    — `api/routes_jobs.py`, `queue/tasks.py`
+  - ✅ **Async ingest pipeline** — `INGEST_MODE=async` returns a `job_id` and parses off the request
+    path (shared `persist_document` core runs inline when eager, or on a Celery worker); client polls
+    `GET /jobs/{job_id}`. Sync stays the default (no Redis needed offline). — `api/routes_documents.py`,
+    `queue/tasks.py`, `api/routes_jobs.py`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by

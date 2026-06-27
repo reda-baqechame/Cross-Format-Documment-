@@ -20,8 +20,12 @@ built-in default that always works offline). Nothing fakes a capability that nee
   fallback text as a validation layer, never the primary parser. `services/ingestion/tika.py`.
 - ✅ **QPDF preflight** (Apache-2.0) — `QPDF_PREFLIGHT=true` repairs/linearizes PDFs before parse when
   the binary is present. `services/ingestion/qpdf.py`.
-- ✅ **Async job-status seam** — `GET /jobs/{job_id}` over the `jobs` table so the frontend can poll
-  once heavy parse/OCR moves to a worker. `api/routes_jobs.py`.
+- ✅ **Async ingest pipeline** — `INGEST_MODE=async` stages the upload, returns a `job_id`, and parses
+  off the request path; the client polls `GET /jobs/{job_id}` (`resolveUploadDocId` in `lib/api.ts`).
+  The shared `persist_document` core runs identically inline (eager) or on a Celery worker. Sync stays
+  the default so offline/CI need no Redis. `api/routes_documents.py`, `queue/tasks.py`, `api/routes_jobs.py`.
+  Run a real worker with: `celery -A docos.queue.celery_app worker` (set `INGEST_MODE=async`,
+  `CELERY_EAGER=false`).
 - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics + CI gate.
   `evals/document_fidelity/`.
 
@@ -34,12 +38,6 @@ built-in default that always works offline). Nothing fakes a capability that nee
 - ⬜ **Command center first screen** — one dropzone + visible action cards + no-login sample docs, with
   the existing Trust Score and before/after proof front-and-center.
 - ⬜ **AI command bar** — promote `AiEditBar` to a persistent palette (`cmdk`, MIT) over `lib/api.ts`.
-
-## Next — async pipeline (scale)
-
-- ⬜ Turn the dormant Celery seam into the real path: `POST /documents?async=true` returns `job_id`
-  immediately; a worker does parse/OCR/commit and updates the `jobs` row; frontend polls `GET /jobs`.
-  Keep the synchronous path as the default so offline/CI need no Redis. `queue/tasks.ingest_document`.
 
 ## Next — AI power layer (depth, not provider count)
 
