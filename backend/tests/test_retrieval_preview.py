@@ -8,7 +8,7 @@ from docos.model.document import CanonicalDocument, DocumentMeta
 from docos.model.nodes import ParagraphNode, RootNode, RunNode
 from docos.model.patch import Patch
 from docos.services.semantic.preview import build_preview
-from docos.services.semantic.retrieval import rank_nodes, select_digest_nodes
+from docos.services.semantic.retrieval import bm25_scores, rank_nodes, select_digest_nodes
 
 
 def _doc_with_runs(texts: list[str]) -> CanonicalDocument:
@@ -37,6 +37,36 @@ def test_rank_nodes_surfaces_the_relevant_run_first():
     ranked = rank_nodes(doc, "termination renewal")
     assert ranked, "expected at least one relevant node"
     assert ranked[0] == "r1"  # the clause run wins on BM25
+
+
+def test_bm25_scores_ranks_relevant_doc_highest():
+    corpus = [
+        "the cat sat on the mat".split(),
+        "termination and renewal clauses govern the contract".split(),
+        "lorem ipsum dolor sit amet".split(),
+    ]
+    scores = bm25_scores(corpus, {"termination", "renewal"})
+    assert scores[1] == max(scores) and scores[1] > 0
+    assert scores[0] == 0.0 and scores[2] == 0.0
+
+
+def test_bm25_scores_empty_query_or_corpus():
+    assert bm25_scores([], {"x"}) == []
+    assert bm25_scores([["a", "b"]], set()) == [0.0]
+
+
+def test_corpus_semantic_search_uses_bm25_ranking():
+    from docos.services.semantic.corpus import CorpusDoc, semantic_search
+
+    docs = [
+        _doc_with_runs(["Quarterly compensation and salary review for staff"]),
+        _doc_with_runs(["The office picnic featured sandwiches and games"]),
+    ]
+    corpus = [CorpusDoc(doc_id=f"d{i}", title=f"Doc {i}", doc=d) for i, d in enumerate(docs)]
+    hits = semantic_search(corpus, "salary compensation")
+    assert hits, "expected at least one hit"
+    assert hits[0].doc_id == "d0"  # the compensation doc ranks first
+    assert hits[0].score > 0
 
 
 def test_rank_nodes_empty_query_returns_document_order():

@@ -57,6 +57,41 @@ def _candidates(doc: CanonicalDocument) -> list[tuple[BaseNode, list[str]]]:
     return out
 
 
+def bm25_scores(
+    corpus_tokens: list[list[str]], query_terms: set[str], *, k1: float = _K1, b: float = _B
+) -> list[float]:
+    """BM25 relevance score per document, given pre-tokenized docs + a query term set.
+
+    Tokenizer-agnostic (callers supply their own tokenization), so node-level retrieval and
+    corpus-level library search share one implementation. Returns a score aligned to
+    ``corpus_tokens`` (0.0 where nothing matches).
+    """
+    n = len(corpus_tokens)
+    if n == 0 or not query_terms:
+        return [0.0] * n
+    avgdl = (sum(len(toks) for toks in corpus_tokens) / n) or 1.0
+    df: Counter = Counter()
+    for toks in corpus_tokens:
+        present = set(toks)
+        for term in query_terms:
+            if term in present:
+                df[term] += 1
+
+    scores: list[float] = []
+    for toks in corpus_tokens:
+        tf = Counter(toks)
+        dl = len(toks)
+        score = 0.0
+        for term in query_terms:
+            f = tf.get(term, 0)
+            if f == 0:
+                continue
+            idf = math.log(1 + (n - df[term] + 0.5) / (df[term] + 0.5))
+            score += idf * (f * (k1 + 1)) / (f + k1 * (1 - b + b * dl / avgdl))
+        scores.append(score)
+    return scores
+
+
 def rank_nodes(doc: CanonicalDocument, query: str, *, k: int = 200) -> list[str]:
     """Return up to ``k`` node ids most relevant to ``query`` (BM25), best first.
 
@@ -70,31 +105,11 @@ def rank_nodes(doc: CanonicalDocument, query: str, *, k: int = 200) -> list[str]
     if not q_terms:
         return [node.id for node, _ in candidates[:k]]
 
-    n = len(candidates)
-    avgdl = sum(len(toks) for _, toks in candidates) / n
-    # Document frequency per query term.
-    df = Counter()
-    for _, toks in candidates:
-        present = set(toks)
-        for term in q_terms:
-            if term in present:
-                df[term] += 1
-
-    scored: list[tuple[float, int, str]] = []
-    for idx, (node, toks) in enumerate(candidates):
-        tf = Counter(toks)
-        dl = len(toks)
-        score = 0.0
-        for term in q_terms:
-            f = tf.get(term, 0)
-            if f == 0:
-                continue
-            idf = math.log(1 + (n - df[term] + 0.5) / (df[term] + 0.5))
-            denom = f + _K1 * (1 - _B + _B * dl / avgdl)
-            score += idf * (f * (_K1 + 1)) / denom
-        if score > 0:
-            scored.append((score, idx, node.id))
+    scores = bm25_scores([toks for _, toks in candidates], q_terms)
     # Highest score first; ties keep document order (stable, deterministic).
+    scored = [
+        (scores[i], i, candidates[i][0].id) for i in range(len(candidates)) if scores[i] > 0
+    ]
     scored.sort(key=lambda s: (-s[0], s[1]))
     return [nid for _, _, nid in scored[:k]]
 

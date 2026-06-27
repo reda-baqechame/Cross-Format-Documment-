@@ -11,6 +11,11 @@ const UniverSheet = dynamic(() => import("@/components/canvas/UniverSheet"), {
   ssr: false,
   loading: () => <p className="p-6 text-sm text-slate-500">Loading spreadsheet editor…</p>,
 });
+// PDF.js reader — client-only (uses a web worker).
+const PdfReader = dynamic(() => import("@/components/canvas/PdfReader"), {
+  ssr: false,
+  loading: () => <p className="p-6 text-sm text-slate-500">Loading PDF reader…</p>,
+});
 
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { BulkSendPanel } from "@/components/workflows/BulkSendPanel";
@@ -83,6 +88,7 @@ export default function DocumentPage() {
   );
   const [zoom, setZoom] = useState(100);
   const [sheetMode, setSheetMode] = useState<"grid" | "simple">("grid");
+  const [pdfMode, setPdfMode] = useState<"edit" | "read">("edit");
 
   const model = useQuery({
     queryKey: ["model", docId],
@@ -135,12 +141,30 @@ export default function DocumentPage() {
             {doc && (
               <>
                 {doc.meta.source_format === "pdf" && (
-                  <div className="mx-auto mb-4 flex max-w-[816px] items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p>
-                      <strong>Basic PDF editing.</strong> Connect a licensed PDF provider for full
-                      native editing parity.
+                  <div className="mx-auto mb-4 flex max-w-[1000px] flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <TriangleAlert className="h-4 w-4 shrink-0" />
+                    <p className="min-w-0 flex-1">
+                      <strong>{pdfMode === "read" ? "PDF reader." : "Basic PDF editing."}</strong>{" "}
+                      {pdfMode === "read"
+                        ? "Crisp, selectable view (redactions applied)."
+                        : "Edit the text overlay; redactions are true removal."}
                     </p>
+                    <div className="flex shrink-0 overflow-hidden rounded-md border border-amber-300">
+                      <button
+                        type="button"
+                        onClick={() => setPdfMode("read")}
+                        className={`px-3 py-1 text-xs font-medium ${pdfMode === "read" ? "bg-amber-600 text-white" : "bg-white text-amber-700"}`}
+                      >
+                        Read
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPdfMode("edit")}
+                        className={`px-3 py-1 text-xs font-medium ${pdfMode === "edit" ? "bg-amber-600 text-white" : "bg-white text-amber-700"}`}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 )}
                 {doc.meta.source_format !== "pdf" && !isSpreadsheet(doc) && (
@@ -185,6 +209,9 @@ export default function DocumentPage() {
                   <div className="mx-auto w-full max-w-[1100px]">
                     <UniverSheet doc={doc} docId={docId} />
                   </div>
+                ) : doc.meta.source_format === "pdf" && pdfMode === "read" ? (
+                  // PDF.js renders at its own scale; keep it out of the CSS scale() wrapper.
+                  <PdfReader docId={docId} />
                 ) : (
                   <div
                     style={{
