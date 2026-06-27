@@ -158,11 +158,15 @@ class ImageAdapter(FormatAdapter):
         return True
 
     def _structured_ocr_into(self, doc: CanonicalDocument, page: PageNode, data: bytes) -> bool:
-        """Attach positioned, confidence-tagged word runs. True if anything was recognised."""
-        try:
-            from docos.services.ocr.tesseract import TesseractOcr
+        """Attach positioned, confidence-tagged word runs. True if anything was recognised.
 
-            ocr = TesseractOcr()
+        Uses the OCR engine selected in settings (Tesseract by default, PaddleOCR when configured
+        and installed); both implement the same ``OcrStructureService`` interface.
+        """
+        try:
+            from docos.services.ocr.factory import get_ocr_service
+
+            ocr = get_ocr_service()
             runs = ocr.recognize(data)
             if not runs:
                 return False

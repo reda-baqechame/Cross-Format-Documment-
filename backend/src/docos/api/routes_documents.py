@@ -86,6 +86,25 @@ async def _persist_pending_assets(doc: CanonicalDocument, blob_store: BlobStore)
     pending.clear()
 
 
+def _qpdf_preflight(mime: str, data: bytes) -> bytes:
+    """Repair + linearize a PDF before parsing when QPDF preflight is enabled and installed.
+
+    Best-effort and gated by ``QPDF_PREFLIGHT``: returns the original bytes for non-PDFs, when the
+    binary is absent, or on any qpdf error, so the ingest path is never weakened.
+    """
+    from docos.settings import get_settings
+
+    if mime != "application/pdf" or not get_settings().qpdf_preflight:
+        return data
+    try:
+        from docos.services.ingestion.qpdf import repair_and_linearize
+
+        return repair_and_linearize(data)
+    except Exception:  # noqa: BLE001 - preflight is an optional hardening step, never fatal
+        logger.warning("qpdf preflight failed; ingesting original bytes")
+        return data
+
+
 async def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
     """Read the upload in chunks, aborting as soon as it exceeds ``max_bytes``.
 
@@ -138,6 +157,8 @@ async def ingest_bytes(
         )
         session.commit()
         raise HTTPException(status_code=422, detail="file failed malware scan")
+
+    data = _qpdf_preflight(result.mime, data)
 
     try:
         adapter = registry.resolve(result.mime)

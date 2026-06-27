@@ -6,6 +6,10 @@ what is actually built. Legend: ✅ done · 🟡 partial · 🔜 in progress · 
 
 This file is the source of truth for "don't forget anything." Update it as features land.
 
+> **The "100x" lane** (Universal Workspace editor, async pipeline, deeper AI orchestration) is
+> tracked in [`roadmap-100x.md`](roadmap-100x.md). Activatable document-intelligence engines that
+> have already landed are listed under **§B** below.
+
 ## A. Capture & ingest
 - ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/MD/CSV/HTML/image (magic-byte validated, OOXML verified by package
   contents not extension, zip-bomb limits) — `services/ingestion`
@@ -30,6 +34,20 @@ This file is the source of truth for "don't forget anything." Update it as featu
   when `HANDWRITING_PROVIDER_URL` is set; otherwise standard OCR (honest "not connected").
 
 ## B. Understand it (OCR, IDP, structure)
+- ✅ **Activatable document-intelligence engines** (no-strings, default-off seams):
+  - ✅ **Docling** parser (MIT) — `PARSER_ENGINE=docling` for richer PDF/DOCX/PPTX/XLSX layout +
+    reading order + real table structure; transparent fallback to native adapters when not installed.
+    — `services/docengine/adapters/docling.py`, `registry.default_registry`
+  - ✅ **PaddleOCR** (Apache-2.0) — `OCR_ENGINE=paddle` for stronger multilingual OCR; degrades to
+    Tesseract when absent. — `services/ocr/paddle.py`, `services/ocr/factory.py`
+  - ✅ **Apache Tika** (Apache-2.0) — `TIKA_SERVER_URL` sidecar for detection / metadata / fallback
+    text as a validation layer (never the primary parser). — `services/ingestion/tika.py`
+  - ✅ **QPDF** preflight (Apache-2.0) — `QPDF_PREFLIGHT=true` repairs/linearizes PDFs before parse
+    when the binary is present. — `services/ingestion/qpdf.py`
+  - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics +
+    CI gate. — `evals/document_fidelity/`
+  - 🔜 **Async job pipeline** — `GET /jobs/{job_id}` read seam shipped; worker execution path next.
+    — `api/routes_jobs.py`, `queue/tasks.py`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by

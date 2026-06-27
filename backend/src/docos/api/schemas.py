@@ -70,6 +70,21 @@ class UploadResponse(BaseModel):
     detected_format: str | None
 
 
+class JobStatusResponse(BaseModel):
+    """Status of an async ingest/OCR job (the async-pipeline seam).
+
+    Today most work runs synchronously in-request; this read endpoint exposes the ``jobs`` table so
+    the frontend can poll progress once heavy parsing/OCR is moved to a worker.
+    """
+
+    job_id: str
+    kind: str
+    status: str  # pending | processing | succeeded | failed
+    document_id: str | None = None
+    finished: bool = False
+    error: str | None = None
+
+
 class DocumentModelResponse(BaseModel):
     document: CanonicalDocument
     version_id: str | None

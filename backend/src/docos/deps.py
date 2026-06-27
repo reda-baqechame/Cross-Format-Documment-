@@ -53,7 +53,24 @@ def blob_store_dep() -> BlobStore:
 
 @lru_cache
 def get_registry() -> AdapterRegistry:
-    return default_registry()
+    return default_registry(get_settings().parser_engine)
+
+
+def get_ocr_service():
+    """The configured OCR engine (Tesseract by default; PaddleOCR when set up and installed)."""
+    from docos.services.ocr.factory import get_ocr_service as _factory
+
+    return _factory()
+
+
+def get_tika_client():
+    """An Apache Tika fallback/validation client, or ``None`` when no Tika server is configured."""
+    s = get_settings()
+    if not s.tika_configured:
+        return None
+    from docos.services.ingestion.tika import TikaClient
+
+    return TikaClient(s.tika_server_url or "")
 
 
 @lru_cache

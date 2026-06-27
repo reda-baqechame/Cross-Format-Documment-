@@ -51,6 +51,11 @@ CI gates (`.github/workflows/ci.yml`): backend = ruff + pytest; web = tsc + lint
 5. **Types don't drift.** Pydantic models in `model/` + `api/schemas.py` define the OpenAPI
    schema; `make codegen` regenerates `packages/shared-types`. Service DTOs live next to the
    service and are imported into `schemas.py` (e.g. `SensitiveFinding`, `Extraction`, `Citation`).
+6. **License discipline (closed SaaS core).** New deps must be **MIT/Apache-2.0/BSD/ISC**. Avoid
+   GPL/AGPL/SSPL/BSL/Commons-Clause/non-commercial. Heavy optional engines (Docling, PaddleOCR…) go
+   in `pyproject` extras behind an activatable seam (default-off), never the default install. ⚠️
+   Known risk: PyMuPDF/fitz is **AGPL** and load-bearing for PDF — migration plan in
+   `docs/roadmap-100x.md`.
 
 ## Recipe: add a new capability (the pattern used throughout)
 
