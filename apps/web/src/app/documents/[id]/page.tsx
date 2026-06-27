@@ -23,6 +23,7 @@ import { EditorSessionPanel } from "@/components/canvas/EditorSessionPanel";
 import { FormsPanel } from "@/components/canvas/FormsPanel";
 import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
+import { SheetEditor } from "@/components/canvas/SheetEditor";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
 import { ReadinessPanel } from "@/components/health-panel/ReadinessPanel";
 import { TagsPanel } from "@/components/documents/TagsPanel";
@@ -31,6 +32,11 @@ import { fetchHealth, fetchModel, type WorkflowPreset } from "@/lib/api";
 import { useWorkspace } from "@/lib/store";
 import { friendlyLoadError } from "@/lib/upload";
 import type { CanonicalDocument, DocumentHealthResponse, DocNode } from "@docos/shared-types";
+
+/** Spreadsheet-shaped formats open in the inline cell editor instead of the text view. */
+function isSpreadsheet(doc: CanonicalDocument): boolean {
+  return doc.meta.source_format === "xlsx" || doc.meta.source_format === "csv";
+}
 
 const TABS: WorkspaceTab[] = [
   "document",
@@ -129,12 +135,21 @@ export default function DocumentPage() {
                     </p>
                   </div>
                 )}
-                {doc.meta.source_format !== "pdf" && (
+                {doc.meta.source_format !== "pdf" && !isSpreadsheet(doc) && (
                   <div className="mx-auto mb-4 flex max-w-[816px] items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                     <p>
                       This is a structured text view of your {doc.meta.source_format.toUpperCase()} file.
                       To preserve exact appearance, use export validation before download.
+                    </p>
+                  </div>
+                )}
+                {isSpreadsheet(doc) && (
+                  <div className="mx-auto mb-4 flex max-w-[1100px] items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <p>
+                      <strong>Spreadsheet editor.</strong> Edit cells inline — every change is a
+                      reversible, versioned edit. Use Undo/Redo and export validation as usual.
                     </p>
                   </div>
                 )}
@@ -147,7 +162,11 @@ export default function DocumentPage() {
                     transformOrigin: "top center",
                   }}
                 >
-                  <DocumentCanvas doc={doc} docId={docId} />
+                  {isSpreadsheet(doc) ? (
+                    <SheetEditor doc={doc} docId={docId} />
+                  ) : (
+                    <DocumentCanvas doc={doc} docId={docId} />
+                  )}
                 </div>
               </>
             )}

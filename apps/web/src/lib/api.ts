@@ -101,6 +101,21 @@ export async function fetchHealth(docId: string): Promise<DocumentHealthResponse
   return json<DocumentHealthResponse>(await fetch(`${BASE}/documents/${docId}/health`));
 }
 
+// Async ingest/OCR job status (the worker-pipeline seam). Defined inline (like ReadinessCheck) so
+// the surface doesn't depend on a codegen run; the backend shape lives in api/schemas.JobStatusResponse.
+export interface JobStatus {
+  job_id: string;
+  kind: string;
+  status: "pending" | "processing" | "succeeded" | "failed";
+  document_id: string | null;
+  finished: boolean;
+  error: string | null;
+}
+
+export async function getJob(jobId: string): Promise<JobStatus> {
+  return json<JobStatus>(await fetch(`${BASE}/jobs/${jobId}`));
+}
+
 // Send-Ready Check / Document X-Ray. Defined inline (like BackendHealth) so the surface
 // doesn't depend on a codegen run; the backend shapes live in services/provenance/readiness.py.
 export interface ReadinessCheck {
