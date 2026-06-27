@@ -25,6 +25,7 @@ from docos.api.schemas import (
     DocumentListResponse,
     DocumentModelResponse,
     DocumentSummary,
+    DuplicatesResponse,
     HistoryResponse,
     PurgeResponse,
     UploadResponse,
@@ -44,6 +45,7 @@ from docos.model.serialize import from_dict
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.ingestion.allowlist import sniff_mime
 from docos.services.ingestion.interface import IngestionGateway
+from docos.services.provenance import duplicates
 from docos.settings import Settings
 from docos.storage.blob import BlobStore
 
@@ -462,6 +464,35 @@ def list_documents(
     if tag:
         summaries = [s for s in summaries if tag in s.tags]
     return DocumentListResponse(documents=summaries)
+
+
+@router.get("/duplicates", response_model=DuplicatesResponse)
+def find_duplicates(
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    threshold: float = duplicates.DEFAULT_THRESHOLD,
+) -> DuplicatesResponse:
+    """Find near-duplicate documents in the caller's library (rapidfuzz over document text)."""
+    records = session.scalars(
+        select(Document).where(
+            owner_clause(Document.owner_session_id, Document.owner_user_id, actor)
+        )
+    ).all()
+    titles: dict[str, str | None] = {}
+    items: list[tuple[str, str]] = []
+    for r in records:
+        if r.current_version_id is None:
+            continue
+        version = session.get(DocumentVersion, r.current_version_id)
+        if version is None:
+            continue
+        titles[r.id] = r.title
+        items.append((r.id, duplicates.document_text(from_dict(version.model))))
+
+    groups = duplicates.group_duplicates(items, threshold=max(0.0, min(1.0, threshold)))
+    for g in groups:
+        g.titles = [titles.get(i) or i for i in g.doc_ids]
+    return DuplicatesResponse(groups=groups)
 
 
 @router.get("/{doc_id}/history", response_model=HistoryResponse)

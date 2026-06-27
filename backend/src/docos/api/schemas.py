@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
 from docos.services.provenance.diff import DiffResult
+from docos.services.provenance.duplicates import DuplicateGroup
 from docos.services.provenance.health import DocumentHealth
 from docos.services.provenance.interface import VersionRef
 from docos.services.provenance.readiness import ReadinessReport
@@ -88,6 +89,12 @@ class JobStatusResponse(BaseModel):
     document_id: str | None = None
     finished: bool = False
     error: str | None = None
+
+
+class DuplicatesResponse(BaseModel):
+    """Near-duplicate document clusters across the caller's library."""
+
+    groups: list[DuplicateGroup]
 
 
 class DocumentModelResponse(BaseModel):

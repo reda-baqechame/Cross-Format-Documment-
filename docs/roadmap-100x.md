@@ -28,6 +28,13 @@ built-in default that always works offline). Nothing fakes a capability that nee
   `CELERY_EAGER=false`).
 - ✅ **Document-fidelity eval lab** — deterministic layout/OCR/table/export/redaction metrics + CI gate.
   `evals/document_fidelity/`.
+- ✅ **pypdfium2 permissive render seam** (Apache-2.0/BSD-3) — `PDF_RENDER_ENGINE=pdfium` rasterizes PDF
+  pages with the non-AGPL PDFium engine (migration step 1 off PyMuPDF); falls back to PyMuPDF when not
+  importable. Rendering only — parsing still PyMuPDF. `services/docengine/pdfium.py`.
+- ✅ **Near-duplicate detection** (rapidfuzz, MIT) — `GET /documents/duplicates` clusters duplicate
+  invoices/contracts/re-uploads by text similarity. `services/provenance/duplicates.py`.
+- ✅ **Phone-PII validation** (phonenumbers, Apache-2.0) — validates phone candidates before flagging,
+  cutting false positives in the redaction scanner. `services/provenance/sensitive.py`.
 - ✅ **Presidio PII seam** (MIT) — `PII_ENGINE=presidio` augments the regex detector with NER entities
   (names, locations, dates, …) for "redact all personal information"; merges without double-counting and
   falls back to regex-only when not installed. `services/provenance/presidio.py` + `pii.py`. Install with
@@ -68,7 +75,8 @@ built-in default that always works offline). Nothing fakes a capability that nee
 Allowed by default: **MIT, Apache-2.0, BSD-2/3, ISC**. Review carefully: MPL, LGPL. **Avoid in the
 closed SaaS core:** GPL, AGPL, SSPL, BSL, Commons-Clause, non-commercial/research-only model licenses.
 
-⚠️ **Open license risk to resolve:** the PDF core is **PyMuPDF/fitz (AGPL)**. It is load-bearing today
-(`services/docengine/adapters/pdf.py`, page-ops), so it stays for now, but a commercial SaaS should
-plan a migration to permissive engines (`pikepdf` — already a dep — `pypdfium2`, `pdf-lib`) and audit
-before scaling commercially. Track as a dedicated task; don't rip out under load.
+⚠️ **Open license risk (migration in progress):** the PDF core is **PyMuPDF/fitz (AGPL)**.
+**Step 1 done** — page *rendering* can now run on permissive **pypdfium2** (`PDF_RENDER_ENGINE=pdfium`).
+Still on PyMuPDF: PDF **parsing** (`adapters/pdf.py` text/table extraction) and some page-ops. Remaining
+migration: move parsing to `pypdfium2`/`pdfplumber`/`pikepdf` (already a dep), then drop the `pymupdf`
+dependency. Until then PyMuPDF stays load-bearing; don't rip it out under load.

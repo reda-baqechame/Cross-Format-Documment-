@@ -25,6 +25,13 @@ dependencies = [
     "pikepdf>=8.0",
     "httpx>=0.27",
     "cryptography>=42.0",
+    # Permissive (non-AGPL) PDF rendering — the migration target off PyMuPDF. Apache-2.0/BSD-3,
+    # ships a self-contained PDFium wheel (no system libs, no heavy transitive tree).
+    "pypdfium2>=4.20",
+    # Fast fuzzy matching for near-duplicate document detection (MIT). Pure wheels, no deps.
+    "rapidfuzz>=3.0",
+    # Phone-number validation to cut PII false positives (Apache-2.0). Pure-Python, no deps.
+    "phonenumbers>=8.13",
 ]
 
 [project.optional-dependencies]

@@ -34,6 +34,7 @@ ParserEngine = Literal["native", "docling"]
 OcrEngine = Literal["tesseract", "paddle"]
 IngestMode = Literal["sync", "async"]
 PiiEngine = Literal["regex", "presidio"]
+PdfRenderEngine = Literal["pymupdf", "pdfium"]
 
 # Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
@@ -131,6 +132,10 @@ class Settings(BaseSettings):
     # NER entities (names, locations, dates, …) when it is installed, augmenting — never replacing —
     # the regex hits; falls back to regex-only when Presidio isn't importable.
     pii_engine: PiiEngine = "regex"
+    # PDF page rasterization engine for previews. ``pymupdf`` (default) uses PyMuPDF/fitz (AGPL);
+    # ``pdfium`` uses pypdfium2 (Apache-2.0/BSD-3) — the permissive migration target. Rendering
+    # only; parsing still uses PyMuPDF. Falls back to PyMuPDF if pypdfium2 isn't importable.
+    pdf_render_engine: PdfRenderEngine = "pymupdf"
 
     # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
     # configure provider URLs to activate real embedded editors.
