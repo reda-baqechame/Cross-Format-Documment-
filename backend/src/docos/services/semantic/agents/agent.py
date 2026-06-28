@@ -31,6 +31,11 @@ _MODIFY_TERMS = (
     "redact", "remove", "delete", "clean", "sanitize", "fill",
 )
 
+# Goal keywords that imply a domain review/validation (pull in the matching business pack).
+_REVIEW_TERMS = (
+    "review", "validate", "check", "risk", "contract", "onboard", "compliance", "audit",
+)
+
 
 class AgentStep(BaseModel):
     tool: str
@@ -98,6 +103,9 @@ async def run_agent(
     read_sequence = ["classify", "extract", "intelligence"]
     if any(t in ("redact",) for t in planned) or "redact" in goal.lower() or "pii" in goal.lower():
         read_sequence.append("sensitive_scan")
+    # A review/validation intent pulls in the matching business pack (it self-skips when none fits).
+    if any(t in goal.lower() for t in _REVIEW_TERMS):
+        read_sequence.append("pack_review")
 
     for name in read_sequence:
         tool = toolbox.get_tool(name)

@@ -65,10 +65,39 @@ async def test_agent_adds_sensitive_scan_on_redaction_goal():
 def test_tool_registry_shape():
     # Read tools carry a runner; mutate/action tools are approval-described, not auto-run.
     reads = toolbox.read_tools()
-    assert {"classify", "extract", "intelligence", "sensitive_scan"} <= set(reads)
+    assert {"classify", "extract", "intelligence", "sensitive_scan", "pack_review"} <= set(reads)
     assert all(t.run is not None for t in reads.values())
     redact = toolbox.get_tool("redact_pii")
     assert redact is not None and redact.destructive and redact.requires_approval
+
+
+def _contract_doc() -> CanonicalDocument:
+    return _doc(
+        "This Services Agreement is made between Acme Corp and Beta LLC. "
+        "This Agreement shall automatically renew for successive one-year terms."
+    )
+
+
+async def test_agent_runs_pack_review_on_contract_review_goal():
+    run = await run_agent(
+        _contract_doc(), "review this contract for risks", orchestrator=_orchestrator()
+    )
+    pack = [s for s in run.steps if s.tool == "pack_review"]
+    assert pack, "a review goal must run the business-pack tool"
+    assert "Contract review" in pack[0].summary
+
+
+async def test_pack_review_skips_when_no_pack_matches():
+    # A plain document with a review goal still runs the tool, which honestly reports no match.
+    run = await run_agent(_doc(), "review this document", orchestrator=_orchestrator())
+    pack = [s for s in run.steps if s.tool == "pack_review"]
+    assert pack and "No business pack" in pack[0].summary
+
+
+async def test_pack_review_not_run_for_plain_analysis():
+    # No review/validation intent → pack_review is not part of the transcript (additive default).
+    run = await run_agent(_doc(), "analyze this document", orchestrator=_orchestrator())
+    assert not any(s.tool == "pack_review" for s in run.steps)
 
 
 def test_agent_endpoint_end_to_end(client):
