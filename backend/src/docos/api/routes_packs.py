@@ -17,9 +17,11 @@ from docos.deps import db_session
 from docos.services.packs import (
     APReport,
     ContractReport,
+    HRReport,
     PacketReport,
     check_ap,
     check_contracts,
+    check_onboarding,
     check_packet,
 )
 
@@ -35,6 +37,10 @@ class APCheckRequest(BaseModel):
 
 
 class ContractCheckRequest(BaseModel):
+    doc_ids: list[str]
+
+
+class OnboardingCheckRequest(BaseModel):
     doc_ids: list[str]
 
 
@@ -99,3 +105,24 @@ def contracts_check(
     if not corpus:
         raise HTTPException(status_code=404, detail="no matching documents found")
     return check_contracts([(c.doc_id, c.title, c.doc) for c in corpus])
+
+
+@router.post("/hr/onboarding-check", response_model=HRReport)
+def hr_onboarding_check(
+    body: OnboardingCheckRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
+) -> HRReport:
+    """Extract offer terms + verify onboarding-packet completeness across docs (owner-scoped)."""
+    if not body.doc_ids:
+        raise HTTPException(status_code=422, detail="at least one doc_id is required")
+    corpus = load_corpus(
+        session,
+        body.doc_ids,
+        owner_session_id=actor.session_id,
+        owner_user_id=actor.user_id,
+    )
+    if not corpus:
+        raise HTTPException(status_code=404, detail="no matching documents found")
+    return check_onboarding([(c.doc_id, c.title, c.doc) for c in corpus])
