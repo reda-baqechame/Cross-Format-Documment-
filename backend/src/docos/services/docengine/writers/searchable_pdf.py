@@ -15,7 +15,7 @@ the same guarantee every other writer makes.
 
 from __future__ import annotations
 
-import fitz  # PyMuPDF
+import io
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
@@ -24,7 +24,9 @@ from docos.services.docengine.writers.redaction import run_text
 _A4 = (595.0, 842.0)  # points
 _MARGIN = 54.0  # ¾ inch
 _FONTSIZE = 11.0
+_LEADING = 14.0
 _INVISIBLE = 3  # PDF text render mode: neither fill nor stroke (OCR text layer)
+_FONT = "Helvetica"
 
 
 def _lines_under(doc: CanonicalDocument, start_id: str) -> list[str]:
@@ -66,33 +68,97 @@ def pages_needing_raster(doc: CanonicalDocument, page_nodes: list[AnyNode]) -> l
     return indices
 
 
-def _write_text(page: fitz.Page, lines: list[str], *, invisible: bool) -> None:
+def _wrap(text: str, max_width: float, fontsize: float, string_width) -> list[str]:
+    """Greedy word-wrap ``text`` to ``max_width`` points using reportlab's metrics."""
+    out: list[str] = []
+    for paragraph in text.split("\n"):
+        words = paragraph.split(" ")
+        line = ""
+        for word in words:
+            trial = f"{line} {word}".strip()
+            if line and string_width(trial, _FONT, fontsize) > max_width:
+                out.append(line)
+                line = word
+            else:
+                line = trial
+        out.append(line)
+    return out
+
+
+def _draw_text(canvas, lines: list[str], page_width: float, page_height: float, *, invisible: bool):
+    """Lay ``lines`` down the page (wrapped) at the invisible (OCR) or visible render mode."""
     if not lines:
         return
-    rect = fitz.Rect(_MARGIN, _MARGIN, page.rect.width - _MARGIN, page.rect.height - _MARGIN)
-    page.insert_textbox(
-        rect,
-        "\n".join(lines),
-        fontsize=_FONTSIZE,
-        fontname="helv",
-        render_mode=_INVISIBLE if invisible else 0,
-        align=0,
-    )
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    text = canvas.beginText(_MARGIN, page_height - _MARGIN)
+    text.setFont(_FONT, _FONTSIZE)
+    text.setLeading(_LEADING)
+    text.setTextRenderMode(_INVISIBLE if invisible else 0)
+    max_width = page_width - 2 * _MARGIN
+    for line in lines:
+        for wrapped in _wrap(line, max_width, _FONTSIZE, stringWidth):
+            text.textLine(wrapped)
+    canvas.drawText(text)
 
 
-def model_to_searchable_pdf(
-    doc: CanonicalDocument, page_images: dict[int, bytes] | None = None
+def _permissive_searchable_pdf(
+    doc: CanonicalDocument, page_images: dict[int, bytes]
 ) -> bytes:
-    """Render the document to a searchable PDF.
+    """Build the searchable PDF with reportlab (BSD-3) — no AGPL dependency."""
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas as rl_canvas
 
-    ``page_images`` maps a 0-based page index to image bytes; when present for a page,
-    that image is drawn and the text becomes an invisible overlay (scan → searchable).
-    """
-    page_images = page_images or {}
-    out = fitz.open()
-
+    buf = io.BytesIO()
+    pdf = rl_canvas.Canvas(buf)
     page_nodes = [n for n in doc.children_of(doc.root_id) if n.type == "page"]
 
+    def _emit(width: float, height: float, lines: list[str], image: bytes | None) -> None:
+        pdf.setPageSize((width, height))
+        drew_image = False
+        if image:
+            try:
+                pdf.drawImage(ImageReader(io.BytesIO(image)), 0, 0, width=width, height=height)
+                drew_image = True
+            except Exception:  # noqa: BLE001 - a bad image must not fail the export
+                drew_image = False
+        _draw_text(pdf, lines, width, height, invisible=drew_image)
+        pdf.showPage()
+
+    if page_nodes:
+        for idx, pnode in enumerate(page_nodes):
+            width = float(getattr(pnode, "width", 0) or 0) or _A4[0]
+            height = float(getattr(pnode, "height", 0) or 0) or _A4[1]
+            _emit(width, height, _lines_under(doc, pnode.id), page_images.get(idx))
+    else:
+        # No page structure (e.g. TXT/DOCX): a single born-digital page of selectable text.
+        _emit(_A4[0], _A4[1], _lines_under(doc, doc.root_id), None)
+
+    pdf.save()
+    return buf.getvalue()
+
+
+def _pymupdf_searchable_pdf(
+    doc: CanonicalDocument, page_images: dict[int, bytes]
+) -> bytes:
+    """Legacy PyMuPDF (AGPL) impl, behind the engine switch until parity becomes the default."""
+    import fitz
+
+    def _write_text(page, lines: list[str], *, invisible: bool) -> None:
+        if not lines:
+            return
+        rect = fitz.Rect(_MARGIN, _MARGIN, page.rect.width - _MARGIN, page.rect.height - _MARGIN)
+        page.insert_textbox(
+            rect,
+            "\n".join(lines),
+            fontsize=_FONTSIZE,
+            fontname="helv",
+            render_mode=_INVISIBLE if invisible else 0,
+            align=0,
+        )
+
+    out = fitz.open()
+    page_nodes = [n for n in doc.children_of(doc.root_id) if n.type == "page"]
     if page_nodes:
         for idx, pnode in enumerate(page_nodes):
             width = float(getattr(pnode, "width", 0) or 0) or _A4[0]
@@ -106,10 +172,32 @@ def model_to_searchable_pdf(
                     image = None
             _write_text(page, _lines_under(doc, pnode.id), invisible=bool(image))
     else:
-        # No page structure (e.g. TXT/DOCX): a single born-digital page of selectable text.
         page = out.new_page(width=_A4[0], height=_A4[1])
         _write_text(page, _lines_under(doc, doc.root_id), invisible=False)
-
     data = out.tobytes()
     out.close()
     return data
+
+
+def model_to_searchable_pdf(
+    doc: CanonicalDocument, page_images: dict[int, bytes] | None = None
+) -> bytes:
+    """Render the document to a searchable PDF.
+
+    ``page_images`` maps a 0-based page index to image bytes; when present for a page,
+    that image is drawn and the text becomes an invisible overlay (scan → searchable).
+
+    Dispatched by ``settings.pdf_engine``: the permissive (reportlab, BSD-3) writer when selected
+    and importable, otherwise the legacy PyMuPDF writer. Both honor redaction via ``run_text``.
+    """
+    page_images = page_images or {}
+    from docos.settings import get_settings
+
+    if get_settings().pdf_engine == "permissive":
+        try:
+            import reportlab  # noqa: F401
+
+            return _permissive_searchable_pdf(doc, page_images)
+        except ModuleNotFoundError:
+            pass  # reportlab not installed; fall back to the legacy engine
+    return _pymupdf_searchable_pdf(doc, page_images)
