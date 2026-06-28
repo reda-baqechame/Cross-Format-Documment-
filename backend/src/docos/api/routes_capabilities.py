@@ -477,6 +477,19 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_insurance",
+            "Insurance policy/claims review (business pack)",
+            state="verified",
+            engine="pack:insurance",
+            engine_version=None,
+            proof_id="test:pack_insurance",
+            limitations=[
+                "Deterministic declarations extraction (policy/claim number, coverage limit, "
+                "premium, deductible, effective/expiration dates) with expiry, missing-coverage, "
+                "and claim-within-coverage-period checks; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",
