@@ -15,6 +15,9 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from docos.model.document import CanonicalDocument
+from docos.services.packs import check_contracts, check_onboarding
+from docos.services.packs.hr import _is_offer
+from docos.services.packs.import_export import _visible_text
 from docos.services.provenance import sensitive
 from docos.services.semantic import classify, extract
 from docos.services.semantic.skills import autopilot
@@ -85,6 +88,29 @@ def _run_sensitive(doc: CanonicalDocument) -> ToolResult:
     )
 
 
+def _run_pack_review(doc: CanonicalDocument) -> ToolResult:
+    """Run the matching business-pack review for this document (single-doc, deterministic, offline).
+
+    Picks the pack from the document's content: contracts→clause/risk review, offer letters→
+    onboarding terms. Multi-document packs (finance AP, import/export) are best invoked through
+    their corpus endpoints; here the agent surfaces the single-document findings.
+    """
+    text = _visible_text(doc)
+    label = classify.classify(doc).label
+    entry = (doc.doc_id, None, doc)
+
+    if label == "contract" or "agreement" in text.lower():
+        report = check_contracts([entry])
+        return ToolResult(summary=f"Contract review: {report.summary}", data=report.model_dump())
+    if _is_offer(text):
+        report = check_onboarding([entry])
+        return ToolResult(summary=f"Onboarding review: {report.summary}", data=report.model_dump())
+    return ToolResult(
+        summary="No business pack matches this document type; skipped.",
+        data={"matched_pack": None, "label": label},
+    )
+
+
 # ── the registry ────────────────────────────────────────────────────────────────────────────
 
 _TOOLS: dict[str, AgentTool] = {
@@ -105,6 +131,11 @@ _TOOLS: dict[str, AgentTool] = {
     "sensitive_scan": AgentTool(
         "sensitive_scan", "read", "Scan for sensitive data",
         "Detect PII/secrets without modifying the document.", run=_run_sensitive,
+    ),
+    "pack_review": AgentTool(
+        "pack_review", "read", "Business-pack review",
+        "Run the matching vertical pack (contracts / HR onboarding) for deterministic field "
+        "extraction + risk findings on this document.", run=_run_pack_review,
     ),
     # Mutate tools — executed via the reversible-patch route (preview→approve→commit); the agent
     # only proposes them. Described here so the brain/UI know they exist and are approval-gated.
