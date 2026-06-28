@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { getWorkflow, WORKFLOWS } from "@/lib/workflows";
 import { friendlyApiError } from "@/lib/upload";
+import { RecipeManagerPanel } from "@/components/workflows/RecipeManagerPanel";
 
 export function WorkflowRunnerPanel({
   docId,
@@ -31,6 +32,7 @@ export function WorkflowRunnerPanel({
   initialPreset?: WorkflowPreset;
 }) {
   const queryClient = useQueryClient();
+  const [mode, setMode] = useState<"guided" | "recipes">("guided");
   const [preset, setPreset] = useState<WorkflowPreset>(initialPreset);
   const workflow = getWorkflow(preset);
   const [approved, setApproved] = useState<string[]>([]);
@@ -92,9 +94,34 @@ export function WorkflowRunnerPanel({
             Guarded
           </span>
         </div>
+        <div className="mt-3 grid grid-cols-2 rounded-lg bg-slate-100 p-1" aria-label="Workflow mode">
+          <button
+            type="button"
+            onClick={() => setMode("guided")}
+            className={[
+              "min-h-[34px] rounded-md text-xs font-semibold",
+              mode === "guided" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500",
+            ].join(" ")}
+          >
+            Guided workflows
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("recipes")}
+            className={[
+              "min-h-[34px] rounded-md text-xs font-semibold",
+              mode === "recipes" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500",
+            ].join(" ")}
+          >
+            Saved recipes
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-5 overflow-auto p-5">
+      {mode === "recipes" ? (
+        <RecipeManagerPanel docId={docId} />
+      ) : (
+        <div className="space-y-5 overflow-auto p-5">
         <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
           Workflow
         </label>
@@ -227,7 +254,8 @@ export function WorkflowRunnerPanel({
             <ResultList label="Needs approval" steps={result.skipped_steps} />
           </section>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

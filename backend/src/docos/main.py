@@ -132,6 +132,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_bulk_send.router)
     app.include_router(routes_workflows.router)
     app.include_router(routes_recipes.router)
+    app.include_router(routes_recipes.tools_router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",

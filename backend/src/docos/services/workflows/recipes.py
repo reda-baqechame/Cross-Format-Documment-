@@ -11,15 +11,37 @@ the agent a compile target ("describe a workflow in plain English" → a recipe)
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+import json
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from docos.model.document import CanonicalDocument
 from docos.services.semantic.agents import tools as toolbox
 
 
 class RecipeStep(BaseModel):
-    tool: str
-    params: dict = {}
+    """One validated recipe step.
+
+    ``params`` is intentionally stored for future typed tools, but the current deterministic
+    runners do not consume it.  Keeping a tight limit prevents recipes becoming an unbounded JSON
+    storage channel while preserving the forward-compatible wire shape.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tool: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$")
+    params: dict = Field(default_factory=dict)
+
+    @field_validator("tool")
+    @classmethod
+    def normalize_tool(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def limit_params(self) -> RecipeStep:
+        if len(json.dumps(self.params, ensure_ascii=False, separators=(",", ":")).encode()) > 8192:
+            raise ValueError("step params must be at most 8192 bytes")
+        return self
 
 
 class StepResult(BaseModel):
@@ -27,13 +49,16 @@ class StepResult(BaseModel):
     kind: str  # read | mutate | action | unknown
     status: str  # done | requires_approval | skipped | unknown_tool
     summary: str
-    data: dict = {}
+    data: dict = Field(default_factory=dict)
 
 
 class RecipeRunResult(BaseModel):
     status: str  # completed | failed
     steps: list[StepResult]
     summary: str
+    run_id: str | None = None
+    recipe_id: str | None = None
+    document_id: str | None = None
 
 
 def run_steps(doc: CanonicalDocument, steps: list[RecipeStep]) -> RecipeRunResult:
