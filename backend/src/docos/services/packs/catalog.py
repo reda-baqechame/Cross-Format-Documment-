@@ -77,6 +77,17 @@ CATALOG: tuple[PackInfo, ...] = (
         endpoint="/packs/hr/onboarding-check",
         capability="pack_hr_onboarding",
     ),
+    PackInfo(
+        pack_id="insurance",
+        name="Insurance",
+        description=(
+            "Policy/declarations review (coverage limit, premium, deductible, effective/expiration "
+            "dates) with expiry, missing-coverage, and claim-within-coverage-period checks."
+        ),
+        doc_types=["insurance_policy", "declarations", "insurance_claim"],
+        endpoint="/packs/insurance/check",
+        capability="pack_insurance",
+    ),
 )
 
 

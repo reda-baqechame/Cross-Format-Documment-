@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from docos.model.document import CanonicalDocument
-from docos.services.packs import check_contracts, check_onboarding
+from docos.services.packs import check_contracts, check_insurance, check_onboarding
 from docos.services.packs.hr import _is_offer
 from docos.services.packs.import_export import _visible_text
 from docos.services.provenance import sensitive
@@ -105,6 +105,10 @@ def _run_pack_review(doc: CanonicalDocument) -> ToolResult:
     if _is_offer(text):
         report = check_onboarding([entry])
         return ToolResult(summary=f"Onboarding review: {report.summary}", data=report.model_dump())
+    low = text.lower()
+    if "declarations" in low or "insurance" in low or ("policy" in low and "premium" in low):
+        ins = check_insurance([entry])
+        return ToolResult(summary=f"Insurance review: {ins.summary}", data=ins.model_dump())
     return ToolResult(
         summary="No business pack matches this document type; skipped.",
         data={"matched_pack": None, "label": label},

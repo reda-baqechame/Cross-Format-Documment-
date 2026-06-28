@@ -11,15 +11,18 @@ from docos.services.packs.contracts import ContractReport, check_contracts
 from docos.services.packs.finance import APReport, check_ap
 from docos.services.packs.hr import HRReport, check_onboarding
 from docos.services.packs.import_export import PacketReport, check_packet
+from docos.services.packs.insurance import InsuranceReport, check_insurance
 
 __all__ = [
     "APReport",
     "ContractReport",
     "HRReport",
+    "InsuranceReport",
     "PackInfo",
     "PacketReport",
     "check_ap",
     "check_contracts",
+    "check_insurance",
     "check_onboarding",
     "check_packet",
     "list_packs",

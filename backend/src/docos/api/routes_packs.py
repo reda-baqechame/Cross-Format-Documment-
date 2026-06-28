@@ -18,10 +18,12 @@ from docos.services.packs import (
     APReport,
     ContractReport,
     HRReport,
+    InsuranceReport,
     PacketReport,
     PackInfo,
     check_ap,
     check_contracts,
+    check_insurance,
     check_onboarding,
     check_packet,
     list_packs,
@@ -49,6 +51,10 @@ class ContractCheckRequest(BaseModel):
 
 
 class OnboardingCheckRequest(BaseModel):
+    doc_ids: list[str]
+
+
+class InsuranceCheckRequest(BaseModel):
     doc_ids: list[str]
 
 
@@ -134,3 +140,24 @@ def hr_onboarding_check(
     if not corpus:
         raise HTTPException(status_code=404, detail="no matching documents found")
     return check_onboarding([(c.doc_id, c.title, c.doc) for c in corpus])
+
+
+@router.post("/insurance/check", response_model=InsuranceReport)
+def insurance_check(
+    body: InsuranceCheckRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
+) -> InsuranceReport:
+    """Review insurance policies/claims: expiry, coverage, claim-within-period (owner-scoped)."""
+    if not body.doc_ids:
+        raise HTTPException(status_code=422, detail="at least one doc_id is required")
+    corpus = load_corpus(
+        session,
+        body.doc_ids,
+        owner_session_id=actor.session_id,
+        owner_user_id=actor.user_id,
+    )
+    if not corpus:
+        raise HTTPException(status_code=404, detail="no matching documents found")
+    return check_insurance([(c.doc_id, c.title, c.doc) for c in corpus])
