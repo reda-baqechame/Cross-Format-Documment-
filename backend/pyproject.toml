@@ -38,6 +38,9 @@ dependencies = [
     "rapidfuzz>=3.0",
     # Phone-number validation to cut PII false positives (Apache-2.0). Pure-Python, no deps.
     "phonenumbers>=8.13",
+    # Snowball stemmer for search/retrieval morphological matching (BSD-3). Pure-Python, ships its
+    # algorithms in code — no runtime data/model download, so it works fully offline.
+    "snowballstemmer>=2.2",
 ]
 
 [project.optional-dependencies]
