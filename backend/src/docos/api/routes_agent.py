@@ -15,8 +15,9 @@ from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import AgentRunRequest
 from docos.api.session import Actor, get_actor
-from docos.deps import db_session, get_orchestrator
-from docos.services.semantic.agents import AgentRun, run_agent
+from docos.deps import db_session, get_llm_client, get_orchestrator
+from docos.services.semantic.agents import AgentRun, run_agent, run_agent_loop
+from docos.settings import get_settings
 
 router = APIRouter(prefix="/documents", tags=["agent"])
 
@@ -31,10 +32,21 @@ async def agent(
 ) -> AgentRun:
     """Run the document agent for a goal.
 
-    Reads execute; edits are proposed (preview) and never committed here — apply them via
-    ``POST /documents/{doc_id}/patches`` after review.
+    With an AI provider configured, runs the iterative tool-calling loop (plan → call tools →
+    observe → cite → propose). Offline (``LLM_PROVIDER=noop``) it falls back to the deterministic
+    plan + read tools. Either way, edits are proposed (preview) and never committed here — apply
+    them via ``POST /documents/{doc_id}/patches`` after review.
     """
     _record, doc = _load_latest(session, doc_id, actor)
+    orchestrator = get_orchestrator()
+    if get_settings().effective_llm_provider != "noop":
+        return await run_agent_loop(
+            doc,
+            body.goal,
+            llm=get_llm_client(),
+            orchestrator=orchestrator,
+            allow_destructive=body.allow_destructive,
+        )
     return await run_agent(
-        doc, body.goal, orchestrator=get_orchestrator(), allow_destructive=body.allow_destructive
+        doc, body.goal, orchestrator=orchestrator, allow_destructive=body.allow_destructive
     )

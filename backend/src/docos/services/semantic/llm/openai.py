@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from docos.services.semantic.llm.base import LLMClient, LLMResponse
+from docos.services.semantic.llm.base import LLMClient, LLMResponse, Message
 
 
 def _to_openai_tool(tool: dict) -> dict:
@@ -59,3 +59,66 @@ class OpenAIClient(LLMClient):
                 )
 
         return LLMResponse(text=message.content or "", tool_calls=tool_calls)
+
+    async def converse(
+        self,
+        system: str,
+        messages: list[Message],
+        *,
+        tools: list[dict] | None = None,
+    ) -> LLMResponse:
+        """Native multi-turn tool use over Chat Completions (assistant tool_calls + tool role)."""
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=self.api_key)
+        api_messages: list[dict] = [{"role": "system", "content": system}]
+        for m in messages:
+            role = m.get("role")
+            if role == "user":
+                api_messages.append({"role": "user", "content": m.get("content", "")})
+            elif role == "assistant":
+                api_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": m.get("content", "") or None,
+                        "tool_calls": [
+                            {
+                                "id": c["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": c["name"],
+                                    "arguments": json.dumps(c.get("input", {})),
+                                },
+                            }
+                            for c in m.get("tool_calls", [])
+                        ],
+                    }
+                )
+            elif role == "tool":
+                for res in m.get("tool_results", []):
+                    api_messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": res["id"],
+                            "content": str(res.get("content", "")),
+                        }
+                    )
+
+        kwargs: dict = {"model": self.model, "messages": api_messages}
+        if tools:
+            kwargs["tools"] = [_to_openai_tool(t) for t in tools]
+            kwargs["tool_choice"] = "auto"
+
+        response = await client.chat.completions.create(**kwargs)
+        msg = response.choices[0].message
+        tool_calls: list[dict] = []
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "name": tc.function.name,
+                        "input": json.loads(tc.function.arguments or "{}"),
+                    }
+                )
+        return LLMResponse(text=msg.content or "", tool_calls=tool_calls)

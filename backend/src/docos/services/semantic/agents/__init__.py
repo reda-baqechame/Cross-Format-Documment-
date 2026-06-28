@@ -11,6 +11,7 @@ from docos.services.semantic.agents.document_ops import (
     PlannedAction,
     plan_document_ops,
 )
+from docos.services.semantic.agents.executor import run_agent_loop
 
 __all__ = [
     "AgentRun",
@@ -20,4 +21,5 @@ __all__ = [
     "RecommendedAction",
     "plan_document_ops",
     "run_agent",
+    "run_agent_loop",
 ]

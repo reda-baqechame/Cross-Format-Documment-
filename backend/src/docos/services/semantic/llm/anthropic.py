@@ -8,7 +8,7 @@ loads (and the rest of the app runs offline) without the SDK present.
 
 from __future__ import annotations
 
-from docos.services.semantic.llm.base import LLMClient, LLMResponse
+from docos.services.semantic.llm.base import LLMClient, LLMResponse, Message
 
 
 class AnthropicClient(LLMClient):
@@ -49,4 +49,65 @@ class AnthropicClient(LLMClient):
             elif block.type == "tool_use":
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
 
+        return LLMResponse(text="".join(text_parts), tool_calls=tool_calls)
+
+    async def converse(
+        self,
+        system: str,
+        messages: list[Message],
+        *,
+        tools: list[dict] | None = None,
+    ) -> LLMResponse:
+        """Native multi-turn tool use: map the agnostic transcript onto Anthropic content blocks."""
+        from anthropic import AsyncAnthropic
+
+        client = AsyncAnthropic(api_key=self.api_key)
+        api_messages: list[dict] = []
+        for m in messages:
+            role = m.get("role")
+            if role == "user":
+                api_messages.append({"role": "user", "content": m.get("content", "")})
+            elif role == "assistant":
+                content: list[dict] = []
+                if m.get("content"):
+                    content.append({"type": "text", "text": m["content"]})
+                for call in m.get("tool_calls", []):
+                    content.append(
+                        {
+                            "type": "tool_use",
+                            "id": call["id"],
+                            "name": call["name"],
+                            "input": call.get("input", {}),
+                        }
+                    )
+                api_messages.append({"role": "assistant", "content": content})
+            elif role == "tool":
+                content = [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": res["id"],
+                        "content": str(res.get("content", "")),
+                    }
+                    for res in m.get("tool_results", [])
+                ]
+                api_messages.append({"role": "user", "content": content})
+
+        kwargs: dict = {
+            "model": self.model,
+            "max_tokens": 8192,
+            "thinking": {"type": "adaptive"},
+            "system": system,
+            "messages": api_messages,
+        }
+        if tools:
+            kwargs["tools"] = tools
+
+        message = await client.messages.create(**kwargs)
+        text_parts: list[str] = []
+        tool_calls: list[dict] = []
+        for block in message.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+            elif block.type == "tool_use":
+                tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
         return LLMResponse(text="".join(text_parts), tool_calls=tool_calls)
