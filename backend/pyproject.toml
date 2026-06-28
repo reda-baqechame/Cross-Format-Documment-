@@ -28,6 +28,9 @@ dependencies = [
     # Permissive (non-AGPL) PDF rendering — the migration target off PyMuPDF. Apache-2.0/BSD-3,
     # ships a self-contained PDFium wheel (no system libs, no heavy transitive tree).
     "pypdfium2>=4.20",
+    # Permissive (BSD-3) pure-Python PDF reader/writer — powers the permissive PdfEngine page-ops
+    # (merge/split/reorder/rotate/delete) so those capabilities can route off AGPL PyMuPDF.
+    "pypdf>=4.0",
     # Fast fuzzy matching for near-duplicate document detection (MIT). Pure wheels, no deps.
     "rapidfuzz>=3.0",
     # Phone-number validation to cut PII false positives (Apache-2.0). Pure-Python, no deps.
