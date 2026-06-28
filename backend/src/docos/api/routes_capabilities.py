@@ -427,6 +427,18 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_import_export",
+            "Import/export packet validation (business pack)",
+            state="verified",
+            engine="pack:import_export",
+            engine_version=None,
+            proof_id="test:pack_import_export",
+            limitations=[
+                "Deterministic cross-document checks (currency/total/HS/origin consistency + "
+                "customs checklist) over the canonical model; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",
