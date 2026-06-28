@@ -47,3 +47,30 @@ def test_without_redaction_the_secret_would_leak():
     leaked = _find(model_to_docx(doc), SECRET)
     assert leaked, "expected the un-redacted secret to appear in the docx export"
     assert CONTROL  # control constant exists/used
+
+
+def test_pdf_write_back_redaction_is_unrecoverable():
+    # The PDF export path (parse -> redact -> write_back_pdf) must leave zero recoverable secret
+    # bytes in raw bytes, the text layer, or decompressed content streams; the control survives.
+    from redaction_proof.harness import _find_pdf, build_pdf_and_redact
+
+    out = build_pdf_and_redact()
+    assert out[:5] == b"%PDF-"
+    assert _find_pdf(out, SECRET) == [], "secret recoverable in the redacted PDF"
+    assert _find_pdf(out, CONTROL), "non-redacted control was lost from the PDF"
+
+
+def test_pdf_scanner_detects_a_real_leak_self_test():
+    # The PDF scanner must find a secret when it IS present (raw + text layer), so a "clean"
+    # verdict on the redacted PDF is meaningful.
+    import io
+
+    from redaction_proof.harness import _find_pdf
+    from reportlab.pdfgen import canvas
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(595, 842))
+    c.drawString(72, 700, f"{SECRET} present and recoverable")
+    c.save()
+    hits = _find_pdf(buf.getvalue(), SECRET)
+    assert "raw-bytes" in hits or "text-layer" in hits
