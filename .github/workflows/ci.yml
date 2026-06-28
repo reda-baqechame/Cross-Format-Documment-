@@ -34,6 +34,8 @@ jobs:
         run: python evals/document_ops/run_local.py
       - name: Document-fidelity eval
         run: python evals/document_fidelity/run_local.py
+      - name: Search retrieval benchmark
+        run: python evals/search_retrieval/run_local.py
       - name: Verify migrations apply cleanly with no drift
         working-directory: backend
         env:

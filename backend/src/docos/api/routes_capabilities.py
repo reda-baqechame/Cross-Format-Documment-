@@ -250,15 +250,17 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
         # ── Search ───────────────────────────────────────────────────────────────────────────
         _cap(
             "search",
-            "Library search",
-            state="claim_without_proof",
+            "Library search (BM25 keyword)",
+            # Verified as *keyword* search by a labelled benchmark, not claimed as semantic.
+            state="verified",
             engine="bm25-keyword",
             engine_version=None,
-            proof_id="Keyword search",
+            proof_id="eval:search_retrieval",
             limitations=[
-                "BM25 keyword ranking — NOT demonstrated synonym/semantic search. A "
-                "'salary' query will not match a document containing only 'compensation'. "
-                "Relabel as 'keyword search' until a labelled recall/nDCG benchmark exists."
+                "BM25 keyword ranking. Benchmark (evals/search_retrieval): lexical recall@5 = "
+                "100%, but semantic recall@5 = 0% — a 'compensation' query does NOT match a doc "
+                "saying only 'salary'. Closing that gap needs an embedding model (Phase D); the "
+                "benchmark is the predeclared gate it must beat."
             ],
         ),
         # ── AI ───────────────────────────────────────────────────────────────────────────────
