@@ -23,7 +23,21 @@ from __future__ import annotations
 import io
 
 import pikepdf
-from pypdf import PdfReader, PdfWriter
+
+try:  # pypdf is the permissive page-ops backend; optional so the module imports in any env.
+    from pypdf import PdfReader, PdfWriter
+
+    _PYPDF_OK = True
+except ModuleNotFoundError:  # pragma: no cover - exercised only in stripped environments
+    PdfReader = PdfWriter = None  # type: ignore[assignment, misc]
+    _PYPDF_OK = False
+
+
+def _require_pypdf() -> None:
+    if not _PYPDF_OK:
+        raise RuntimeError(
+            "permissive PdfEngine requires 'pypdf' — install it or set PDF_ENGINE=pymupdf"
+        )
 
 
 def _validate(indices: list[int], count: int) -> None:
@@ -33,6 +47,7 @@ def _validate(indices: list[int], count: int) -> None:
 
 
 def _reader(pdf: bytes) -> PdfReader:
+    _require_pypdf()
     return PdfReader(io.BytesIO(pdf))
 
 
@@ -96,6 +111,7 @@ def merge(pdfs: list[bytes]) -> bytes:
     """Concatenate several PDFs into one, in order."""
     if not pdfs:
         raise ValueError("nothing to merge")
+    _require_pypdf()
     writer = PdfWriter()
     for pdf in pdfs:
         writer.append(io.BytesIO(pdf))
