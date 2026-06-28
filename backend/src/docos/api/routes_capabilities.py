@@ -195,15 +195,18 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
         _cap(
             "redaction",
             "True redaction on export",
-            state="degraded",
+            # Verified by the redaction proof corpus: zero recoverable secret bytes across every
+            # from-model export format, including decompressed OOXML parts, with a negative control.
+            state="verified",
             engine=f"pii:{settings.pii_engine}",
             engine_version=search_versions.get("presidio-analyzer")
             if settings.pii_engine == "presidio"
             else None,
-            proof_id="Clean before send (POST on txt)",
+            proof_id="eval:redaction_proof",
             limitations=[
-                "Local logic verified, but the full zero-recoverable-bytes audit across text, "
-                "metadata, objects, and streams is not yet a release gate."
+                "Zero-recoverable-bytes proven for docx/xlsx/pptx/html/markdown/rtf/csv "
+                "(evals/redaction_proof, CI-gated). PDF redaction is a separate write-back path "
+                "(redaction_audit) still on PyMuPDF — see the AGPL note."
             ],
             warnings=pdf_warning,
         ),

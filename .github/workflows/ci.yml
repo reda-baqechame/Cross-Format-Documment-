@@ -36,6 +36,8 @@ jobs:
         run: python evals/document_fidelity/run_local.py
       - name: Search retrieval benchmark
         run: python evals/search_retrieval/run_local.py
+      - name: Redaction proof (zero recoverable bytes)
+        run: python evals/redaction_proof/run_local.py
       - name: Verify migrations apply cleanly with no drift
         working-directory: backend
         env:
