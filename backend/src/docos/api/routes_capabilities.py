@@ -451,6 +451,19 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_contracts",
+            "Contracts / CLM clause extraction + risk review (business pack)",
+            state="verified",
+            engine="pack:contracts",
+            engine_version=None,
+            proof_id="test:pack_contracts",
+            limitations=[
+                "Deterministic extraction of parties, dates, term, governing law, renewal, "
+                "termination notice, liability cap, and payment terms with common risk flags "
+                "over the canonical model; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",
