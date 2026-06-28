@@ -16,7 +16,7 @@ Safety rails (hard):
 from __future__ import annotations
 
 from docos.model.document import CanonicalDocument
-from docos.services.semantic import classify, reader
+from docos.services.semantic import classify, search
 from docos.services.semantic import preview as preview_service
 from docos.services.semantic.agents import tools as toolbox
 from docos.services.semantic.agents.agent import AgentRun, AgentStep, _recommended
@@ -132,7 +132,7 @@ async def run_agent_loop(
             cid = call.get("id", name)
 
             if name == "search":
-                hits = reader.retrieve(doc, str(args.get("query", goal)), k=_MAX_CITATIONS)
+                hits = search.semantic_retrieve(doc, str(args.get("query", goal)), k=_MAX_CITATIONS)
                 for node_id, text in hits:
                     if not any(c["node_id"] == node_id for c in citations):
                         citations.append({"node_id": node_id, "text": text})

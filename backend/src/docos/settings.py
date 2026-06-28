@@ -15,6 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PrivacyMode = Literal["offline", "enterprise", "cloud"]
 BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
+EmbeddingProvider = Literal["none", "openai"]
 Scanner = Literal["heuristic", "clamav", "noop"]
 BlobEncryption = Literal["none", "aesgcm"]
 OfficeEditorProvider = Literal["local", "onlyoffice"]
@@ -100,6 +101,11 @@ class Settings(BaseSettings):
     llm_model: str = ""
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
+
+    # embeddings / semantic search (default-off: retrieval stays deterministic BM25 until a
+    # provider is configured, then semantic ranking turns on with a keyword fallback).
+    embedding_provider: EmbeddingProvider = "none"
+    embedding_model: str = ""
 
     # e-signature (HMAC key; override in production via SIGNING_SECRET)
     signing_secret: str = "docos-dev-signing-secret"
