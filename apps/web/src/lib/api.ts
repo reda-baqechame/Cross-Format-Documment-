@@ -1342,6 +1342,55 @@ export async function fetchSummary(docId: string): Promise<SummaryResponse> {
   return json<SummaryResponse>(await fetch(`${BASE}/documents/${docId}/summary`));
 }
 
+// AI document agent: one goal -> plan + read results + proposed (uncommitted) edits.
+export interface AgentStep {
+  tool: string;
+  kind: string; // read | mutate | action
+  label: string;
+  status: string; // done | proposed | requires_approval | skipped
+  summary: string;
+  data?: Record<string, unknown>;
+  requires_approval?: boolean;
+  destructive?: boolean;
+}
+
+export interface AgentProposedPatch {
+  change_count: number;
+  summary: string;
+  changes?: { before?: string; after?: string }[];
+}
+
+export interface AgentRecommendedAction {
+  kind: string;
+  label: string;
+  params?: Record<string, unknown>;
+}
+
+export interface AgentRun {
+  goal: string;
+  classification: string;
+  used_llm: boolean;
+  steps: AgentStep[];
+  proposed_patch: AgentProposedPatch | null;
+  recommended_actions: AgentRecommendedAction[];
+  warnings: string[];
+}
+
+/** Run the AI document agent for a goal. Reads run; edits are proposed (preview), never committed. */
+export async function runAgent(
+  docId: string,
+  goal: string,
+  allowDestructive = false,
+): Promise<AgentRun> {
+  return json<AgentRun>(
+    await fetch(`${BASE}/documents/${docId}/agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal, allow_destructive: allowDestructive }),
+    }),
+  );
+}
+
 // Cross-document compare (redline).
 export interface DiffSegment {
   op: "equal" | "insert" | "delete" | "replace";
