@@ -392,6 +392,110 @@ export async function executeWorkflow(
   );
 }
 
+export interface RecipeStep {
+  tool: string;
+  params: Record<string, unknown>;
+}
+
+export interface WorkflowRecipe {
+  id: string;
+  name: string;
+  trigger: "manual";
+  steps: RecipeStep[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeTool {
+  name: string;
+  kind: "read" | "mutate" | "action";
+  label: string;
+  description: string;
+  requires_approval: boolean;
+  destructive: boolean;
+}
+
+export interface RecipeStepResult {
+  tool: string;
+  kind: "read" | "mutate" | "action" | "unknown";
+  status: "done" | "requires_approval" | "skipped" | "unknown_tool";
+  summary: string;
+  data: Record<string, unknown>;
+}
+
+export interface RecipeRunResult {
+  status: "completed" | "failed";
+  steps: RecipeStepResult[];
+  summary: string;
+  run_id: string;
+  recipe_id: string;
+  document_id: string;
+}
+
+export interface RecipeRunHistory {
+  id: string;
+  recipe_id: string;
+  document_id: string | null;
+  status: string;
+  steps: RecipeStepResult[];
+  summary: string;
+  created_at: string;
+}
+
+export async function listRecipeTools(): Promise<RecipeTool[]> {
+  return json<RecipeTool[]>(await apiFetch("/recipe-tools"));
+}
+
+export async function listRecipes(): Promise<WorkflowRecipe[]> {
+  return json<WorkflowRecipe[]>(await apiFetch("/recipes"));
+}
+
+export async function createRecipe(body: {
+  name: string;
+  steps: RecipeStep[];
+}): Promise<WorkflowRecipe> {
+  return json<WorkflowRecipe>(
+    await apiFetch("/recipes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, trigger: "manual" }),
+    }),
+  );
+}
+
+export async function updateRecipe(
+  recipeId: string,
+  body: { name?: string; steps?: RecipeStep[] },
+): Promise<WorkflowRecipe> {
+  return json<WorkflowRecipe>(
+    await apiFetch(`/recipes/${recipeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function deleteRecipe(recipeId: string): Promise<{ ok: boolean }> {
+  return json<{ ok: boolean }>(
+    await apiFetch(`/recipes/${recipeId}`, { method: "DELETE" }),
+  );
+}
+
+export async function runRecipe(recipeId: string, docId: string): Promise<RecipeRunResult> {
+  return json<RecipeRunResult>(
+    await apiFetch(`/recipes/${recipeId}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doc_id: docId }),
+    }),
+  );
+}
+
+export async function listRecipeRuns(recipeId: string): Promise<RecipeRunHistory[]> {
+  return json<RecipeRunHistory[]>(await apiFetch(`/recipes/${recipeId}/runs`));
+}
+
 export async function submitPatch(docId: string, body: PatchRequest): Promise<PatchResponse> {
   return json<PatchResponse>(
     await fetch(`${BASE}/documents/${docId}/patches`, {

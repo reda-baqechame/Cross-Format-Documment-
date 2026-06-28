@@ -19,6 +19,8 @@ from docos.db.models import (
     RenewalReminder,
     SignatureRequest,
     Template,
+    WorkflowRecipe,
+    WorkflowRun,
 )
 
 
@@ -82,6 +84,8 @@ def claim_session_assets(session: Session, *, from_session: str, to_user: str) -
         (IntegrationToken, "integration_tokens"),
         (RenewalReminder, "renewal_reminders"),
         (DocumentShare, "document_shares"),
+        (WorkflowRecipe, "workflow_recipes"),
+        (WorkflowRun, "workflow_runs"),
     ):
         _claim(table, label)
     return counts

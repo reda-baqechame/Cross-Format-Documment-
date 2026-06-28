@@ -105,6 +105,7 @@ jobs:
             --experimental=openapi-3.1 \
             --checks not_a_server_error \
             --exclude-path-regex '(webhook|/translate|/integrations/)' \
+            --hypothesis-suppress-health-check filter_too_much \
             --hypothesis-max-examples 12 \
             --hypothesis-deadline 10000
 

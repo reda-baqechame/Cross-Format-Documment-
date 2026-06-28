@@ -510,6 +510,19 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "workflow_recipes",
+            "User-defined workflow recipes (save + run)",
+            state="verified",
+            engine="workflow:recipes",
+            engine_version=None,
+            proof_id="test:workflow_recipes",
+            limitations=[
+                "Stored, repeatable recipes of document tools; read/analysis steps run "
+                "deterministically and offline, while mutating/action steps are surfaced as "
+                "approval-gated (never auto-committed). Run tracking persisted per execution."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",
