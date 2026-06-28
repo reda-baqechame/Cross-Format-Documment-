@@ -149,6 +149,63 @@ def _find(data: bytes, needle: str) -> list[str]:
     return hits
 
 
+def _find_pdf(data: bytes, needle: str) -> list[str]:
+    """Where ``needle`` occurs in a PDF — raw bytes, extracted text, and decompressed streams."""
+    hits: list[str] = []
+    raw = needle.encode()
+    if raw in data:
+        hits.append("raw-bytes")
+    # Text objects (visible + invisible render-mode-3) via the permissive engine.
+    from docos.services.docengine import pdfium
+
+    if needle in pdfium.extract_text(data):
+        hits.append("text-layer")
+    # Decompressed content streams (catches a secret hiding in a compressed stream).
+    try:
+        import pikepdf
+
+        with pikepdf.open(io.BytesIO(data)) as pdf:
+            for page in pdf.pages:
+                contents = page.get("/Contents")
+                streams = contents if isinstance(contents, list) else [contents]
+                for stream in streams:
+                    if stream is not None and raw in bytes(stream.read_bytes()):
+                        hits.append("content-stream")
+                        break
+    except Exception:  # noqa: BLE001 - stream walk is best-effort; raw+text already cover the gate
+        pass
+    return hits
+
+
+def build_pdf_and_redact() -> bytes:
+    """Born-digital PDF with the secret + control, parsed, the secret run redacted, written back.
+
+    Exercises the real PDF export path (parse -> redact -> write_back_pdf), so the proof covers
+    the write-back redaction, not just the from-model writers.
+    """
+    from reportlab.pdfgen import canvas
+
+    from docos.services.docengine.adapters.pdf import PdfAdapter
+    from docos.services.docengine.writers.pdf_writer import write_back_pdf
+
+    buf = io.BytesIO()
+    pdf = canvas.Canvas(buf, pagesize=(595.0, 842.0))
+    pdf.drawString(72, 760, "Public heading visible")
+    pdf.drawString(72, 730, f"{SECRET} confidential")
+    pdf.drawString(72, 700, f"keep {CONTROL} please")
+    pdf.save()
+    source = buf.getvalue()
+
+    doc = PdfAdapter().parse(source)
+    secret_runs = [
+        n.id
+        for n in doc.nodes.values()
+        if n.type == "run" and SECRET in (getattr(n, "text", "") or "")
+    ]
+    doc.redaction.redacted_node_ids = secret_runs
+    return write_back_pdf(source, doc)
+
+
 def run() -> list[FormatResult]:
     doc = build_redacted_document()
     results: list[FormatResult] = []
@@ -161,4 +218,12 @@ def run() -> list[FormatResult]:
                 control_present=bool(_find(data, CONTROL)),
             )
         )
+    pdf_bytes = build_pdf_and_redact()
+    results.append(
+        FormatResult(
+            fmt="pdf",
+            secret_locations=_find_pdf(pdf_bytes, SECRET),
+            control_present=bool(_find_pdf(pdf_bytes, CONTROL)),
+        )
+    )
     return results
