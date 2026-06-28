@@ -62,6 +62,9 @@ class AgentRun(BaseModel):
     proposed_patch: PatchPreview | None = None
     recommended_actions: list[RecommendedAction]
     warnings: list[str]
+    # Set by the iterative agent loop (executor.py); the deterministic path leaves them empty.
+    answer: str = ""
+    citations: list[dict] = []
 
 
 def _wants_modification(goal: str) -> bool:
