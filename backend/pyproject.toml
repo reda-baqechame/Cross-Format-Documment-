@@ -41,6 +41,9 @@ dependencies = [
     # Snowball stemmer for search/retrieval morphological matching (BSD-3). Pure-Python, ships its
     # algorithms in code — no runtime data/model download, so it works fully offline.
     "snowballstemmer>=2.2",
+    # Permissive (BSD-3) PDF generation — powers the non-AGPL searchable-PDF / overlay paths behind
+    # the PdfEngine boundary, replacing PyMuPDF for text-layer writing. Pure wheels, no model data.
+    "reportlab>=4.0",
 ]
 
 [project.optional-dependencies]
