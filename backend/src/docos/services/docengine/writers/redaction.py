@@ -12,7 +12,9 @@ from urllib.parse import urlparse
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
 
-_SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@")
+# Leading chars a spreadsheet may treat as a formula. Includes tab and CR (OWASP CSV-injection
+# vectors that some apps strip before evaluating the next char).
+_SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 _SAFE_LINK_SCHEMES = {"http", "https", "mailto", "tel"}
 
 
