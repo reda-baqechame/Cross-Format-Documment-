@@ -464,6 +464,19 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_hr_onboarding",
+            "HR onboarding offer extraction + packet completeness (business pack)",
+            state="verified",
+            engine="pack:hr",
+            engine_version=None,
+            proof_id="test:pack_hr",
+            limitations=[
+                "Deterministic offer-letter extraction (role, start date, compensation, "
+                "employment type, at-will) plus onboarding-packet completeness checks over the "
+                "canonical model; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",

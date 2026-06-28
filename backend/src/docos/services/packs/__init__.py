@@ -8,13 +8,16 @@ of origin, purchase order). Everything here is deterministic and offline.
 
 from docos.services.packs.contracts import ContractReport, check_contracts
 from docos.services.packs.finance import APReport, check_ap
+from docos.services.packs.hr import HRReport, check_onboarding
 from docos.services.packs.import_export import PacketReport, check_packet
 
 __all__ = [
     "APReport",
     "ContractReport",
+    "HRReport",
     "PacketReport",
     "check_ap",
     "check_contracts",
+    "check_onboarding",
     "check_packet",
 ]
