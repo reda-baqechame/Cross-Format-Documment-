@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from docos.api import (
+    routes_agent,
     routes_approvals,
     routes_auth,
     routes_billing,
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_comments.router)
     app.include_router(routes_notebook.router)
     app.include_router(routes_ops_agent.router)
+    app.include_router(routes_agent.router)
     app.include_router(routes_approvals.router)
     app.include_router(routes_templates.router)
     app.include_router(routes_suggestions.router)

@@ -293,6 +293,25 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             else [],
         ),
         _cap(
+            "ai_agent",
+            "AI document agent (plan → run tools → propose edits)",
+            # Read tools (classify/extract/intelligence/sensitive) + planning run offline and are
+            # always available; AI-proposed *edits* need a provider. Honest split.
+            state="degraded" if not settings.ai_enabled else "verified",
+            engine=f"agent:{settings.effective_llm_provider}",
+            engine_version=settings.llm_model or None,
+            proof_id="eval:document_ops",
+            limitations=[
+                "Offline: deterministic plan + read tools work; edit proposals need an AI "
+                "provider. The agent only proposes reversible edits with a preview, never commits."
+            ]
+            if not settings.ai_enabled
+            else [
+                "The agent proposes reversible edits with a preview; commit stays explicit via "
+                "/documents/{id}/patches (no silent mutation)."
+            ],
+        ),
+        _cap(
             "translate",
             "Translate",
             state="provider_gated",

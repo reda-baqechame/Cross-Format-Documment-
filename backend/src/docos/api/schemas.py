@@ -640,6 +640,11 @@ class OpsAgentPlanRequest(BaseModel):
     allow_destructive: bool = False
 
 
+class AgentRunRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=500)
+    allow_destructive: bool = False
+
+
 class OpsAgentAction(BaseModel):
     tool: str
     label: str
