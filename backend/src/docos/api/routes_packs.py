@@ -19,13 +19,21 @@ from docos.services.packs import (
     ContractReport,
     HRReport,
     PacketReport,
+    PackInfo,
     check_ap,
     check_contracts,
     check_onboarding,
     check_packet,
+    list_packs,
 )
 
 router = APIRouter(prefix="/packs", tags=["packs"])
+
+
+@router.get("", response_model=list[PackInfo])
+def list_business_packs() -> list[PackInfo]:
+    """List the installed business packs and their endpoints (static metadata, no auth)."""
+    return list_packs()
 
 
 class ImportExportCheckRequest(BaseModel):
