@@ -6,6 +6,7 @@ must agree across a shipment packet (commercial invoice, packing list, bill of l
 of origin, purchase order). Everything here is deterministic and offline.
 """
 
+from docos.services.packs.catalog import PackInfo, list_packs
 from docos.services.packs.contracts import ContractReport, check_contracts
 from docos.services.packs.finance import APReport, check_ap
 from docos.services.packs.hr import HRReport, check_onboarding
@@ -15,9 +16,11 @@ __all__ = [
     "APReport",
     "ContractReport",
     "HRReport",
+    "PackInfo",
     "PacketReport",
     "check_ap",
     "check_contracts",
     "check_onboarding",
     "check_packet",
+    "list_packs",
 ]
