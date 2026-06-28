@@ -268,6 +268,26 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
                 "the benchmark is the predeclared gate it must beat."
             ],
         ),
+        _cap(
+            "semantic_search",
+            "Semantic search (embeddings)",
+            # Off by default → degraded (keyword fallback); turns on with an embedding provider.
+            state="degraded" if settings.embedding_provider == "none" else "verified",
+            engine=(
+                "bm25-fallback"
+                if settings.embedding_provider == "none"
+                else f"embeddings:{settings.embedding_provider}"
+            ),
+            engine_version=settings.embedding_model or None,
+            proof_id=(
+                None if settings.embedding_provider == "none" else "eval:search_retrieval"
+            ),
+            limitations=[
+                "Embedding semantic search is default-off; retrieval falls back to BM25 keyword "
+                "ranking until EMBEDDING_PROVIDER is configured. Cosine ranking over cached "
+                "embeddings; degrades to keyword on any provider error (never fails closed)."
+            ],
+        ),
         # ── AI ───────────────────────────────────────────────────────────────────────────────
         _cap(
             "ai_ask_summarize",
