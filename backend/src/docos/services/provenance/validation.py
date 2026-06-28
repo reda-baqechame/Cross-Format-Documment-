@@ -58,10 +58,7 @@ def status(report: ValidationReport) -> str:
 def _open_ok(fmt: str, output: bytes) -> tuple[bool, str]:
     try:
         if fmt in _PDF_FORMATS:
-            import fitz
-
-            doc = fitz.open(stream=output, filetype="pdf")
-            _ = doc.page_count
+            _ = _pdf_page_count(output)
         elif fmt == "docx":
             import docx
 
@@ -86,6 +83,11 @@ def _open_ok(fmt: str, output: bytes) -> tuple[bool, str]:
 
 
 def _pdf_page_count(output: bytes) -> int:
+    # Prefer the permissive engine (pypdfium2); fall back to PyMuPDF only if it isn't importable.
+    from docos.services.docengine import pdfium
+
+    if pdfium.pdfium_available():
+        return pdfium.page_count(output)
     import fitz
 
     return fitz.open(stream=output, filetype="pdf").page_count
@@ -94,11 +96,15 @@ def _pdf_page_count(output: bytes) -> int:
 def _output_text(fmt: str, output: bytes) -> str:
     """All recoverable text in the output (visible *and* hidden), for the redaction scan."""
     if fmt in _PDF_FORMATS:
-        import fitz
-
         from docos.settings import get_settings
 
         limit = get_settings().max_validation_pdf_pages
+        from docos.services.docengine import pdfium
+
+        if pdfium.pdfium_available():
+            return pdfium.extract_text(output, max_pages=limit)
+        import fitz
+
         doc = fitz.open(stream=output, filetype="pdf")
         try:
             count = doc.page_count if limit is None else min(doc.page_count, limit)
