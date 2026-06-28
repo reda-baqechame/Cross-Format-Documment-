@@ -50,29 +50,35 @@ jobs:
       - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
-      - name: Install backend + security tooling
+      - name: Install backend
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          # Pinned, reproducible security tooling.
-          pip install "pip-audit==2.7.3" "cyclonedx-bom==4.6.1" "schemathesis==3.39.16"
+      # Security tools run in isolated venvs so they never downgrade the app's own dependencies
+      # (e.g. schemathesis pins starlette<1, cyclonedx pulls an older lxml) and thus can't mask
+      # or reintroduce vulnerabilities in what actually ships.
       - name: Dependency vulnerability scan (pip-audit)
         working-directory: backend
-        # --skip-editable ignores the local 'docos' package (not on PyPI); still fails on any vuln.
-        run: pip-audit --skip-editable --desc
+        run: |
+          pip freeze --exclude-editable > /tmp/app-reqs.txt
+          python -m venv /tmp/audit
+          /tmp/audit/bin/pip install --quiet "pip-audit==2.7.3"
+          /tmp/audit/bin/pip-audit -r /tmp/app-reqs.txt --desc
       - name: License gate (no forbidden licenses in the closed-SaaS SBOM)
         working-directory: backend
         run: python scripts/check_licenses.py
       - name: Generate SBOM (CycloneDX)
-        working-directory: backend
-        run: cyclonedx-py environment -o sbom.cdx.json
+        run: |
+          python -m venv /tmp/sbom
+          /tmp/sbom/bin/pip install --quiet "cyclonedx-bom==4.6.1"
+          /tmp/sbom/bin/cyclonedx-py environment "$(which python)" -o backend/sbom.cdx.json
       - name: Upload SBOM
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: sbom-cyclonedx
           path: backend/sbom.cdx.json
-      - name: API fuzzing (Schemathesis, OpenAPI-driven)
+      - name: API fuzzing (Schemathesis against a live server)
         working-directory: backend
         env:
           APP_ENV: dev
@@ -80,10 +86,16 @@ jobs:
           DATABASE_URL: sqlite:////tmp/fuzz.db
         run: |
           alembic upgrade head
+          # The app runs in the job env (real, patched deps); schemathesis runs from its own venv
+          # and drives it over HTTP, so its starlette<1 pin can't corrupt what we test.
+          uvicorn docos.main:app --port 8077 --log-level warning &
+          for i in $(seq 1 30); do curl -sf http://localhost:8077/health >/dev/null && break; sleep 1; done
+          python -m venv /tmp/st
+          /tmp/st/bin/pip install --quiet "schemathesis==3.39.16"
           # Provider-gated webhook/callback/translate seams correctly return 501 (Not Implemented)
-          # in offline mode; that is a 5xx the not_a_server_error check would flag, so they are
-          # excluded here and covered by their own integration tests instead.
-          st run --app docos.main:app /openapi.json \
+          # in offline mode; that 5xx would trip not_a_server_error, so they are excluded here and
+          # covered by their own integration tests instead.
+          /tmp/st/bin/st run http://localhost:8077/openapi.json \
             --experimental=openapi-3.1 \
             --checks not_a_server_error \
             --exclude-path-regex '(webhook|/translate|/integrations/)' \
