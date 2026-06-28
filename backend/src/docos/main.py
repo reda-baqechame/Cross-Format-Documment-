@@ -52,6 +52,7 @@ from docos.api.observability import (
     init_sentry,
     register_error_handlers,
 )
+from docos.api.security_headers import SecurityHeadersMiddleware
 from docos.api.session import SessionMiddleware
 from docos.settings import get_settings
 
@@ -88,6 +89,8 @@ def create_app() -> FastAPI:
     )
     # Issue/validate the anonymous session cookie so every document gets a private owner.
     app.add_middleware(SessionMiddleware)
+    # Defence-in-depth response headers (HSTS only when actually serving over TLS in production).
+    app.add_middleware(SecurityHeadersMiddleware, hsts=settings.is_production)
     # Outermost: bind a request id + emit access logs for everything below.
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
