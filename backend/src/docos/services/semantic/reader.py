@@ -11,6 +11,7 @@ fluent answer, so we never lose the citation trail.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from pydantic import BaseModel
 
@@ -56,12 +57,21 @@ class SummaryResult(BaseModel):
     used_llm: bool
 
 
+@lru_cache(maxsize=1)
+def _stemmer():
+    import snowballstemmer
+
+    return snowballstemmer.stemmer("english")
+
+
+@lru_cache(maxsize=8192)
 def _norm(word: str) -> str:
-    """Lowercase + crude singularization so 'refunds' matches 'refund'."""
-    w = word.lower()
-    if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
-        w = w[:-1]
-    return w
+    """Lowercase + Snowball (Porter2) stemming so morphological variants match.
+
+    e.g. 'refunds'→'refund', 'renting'→'rent', 'payments'→'payment'. This is morphological
+    normalisation, not synonymy: 'salary' and 'compensation' still differ (that needs embeddings).
+    """
+    return _stemmer().stemWord(word.lower())
 
 
 def _tokens(text: str) -> set[str]:

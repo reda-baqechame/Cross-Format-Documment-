@@ -253,14 +253,15 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             "Library search (BM25 keyword)",
             # Verified as *keyword* search by a labelled benchmark, not claimed as semantic.
             state="verified",
-            engine="bm25-keyword",
+            engine="bm25-keyword+stemming",
             engine_version=None,
             proof_id="eval:search_retrieval",
             limitations=[
-                "BM25 keyword ranking. Benchmark (evals/search_retrieval): lexical recall@5 = "
-                "100%, but semantic recall@5 = 0% — a 'compensation' query does NOT match a doc "
-                "saying only 'salary'. Closing that gap needs an embedding model (Phase D); the "
-                "benchmark is the predeclared gate it must beat."
+                "BM25 keyword ranking with Snowball stemming. Benchmark (evals/search_retrieval): "
+                "lexical recall@5 = 100%, semantic recall@5 = 20% — stemming matches morphological "
+                "variants (renting→rent) but NOT true synonymy (a 'compensation' query still "
+                "misses a doc saying only 'salary'). Closing the rest needs an embedding model; "
+                "the benchmark is the predeclared gate it must beat."
             ],
         ),
         # ── AI ───────────────────────────────────────────────────────────────────────────────

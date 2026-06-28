@@ -105,7 +105,7 @@ def main() -> int:
     semantic = _run("semantic", corpus)
 
     report = {
-        "engine": "bm25 (lexical)",
+        "engine": "bm25 + snowball stemming",
         "k": K,
         "lexical": lexical,
         "semantic_gap": semantic,
