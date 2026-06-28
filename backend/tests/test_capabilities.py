@@ -73,14 +73,26 @@ def test_provider_gated_when_env_unset():
     """When no provider credentials are configured, gated capabilities report provider_gated."""
     with TestClient(create_app()) as client:
         data = _caps(client)
-    # Default dev settings: every provider is unset.
-    for cid in ("ai_ask_summarize", "ai_edit", "tts", "esign", "drm", "billing", "malware_scan"):
+    # Default dev settings: every external provider is unset.
+    for cid in ("ai_ask_summarize", "ai_edit", "tts", "esign", "drm", "billing"):
         cap = _by_id(data, cid)
         assert cap["state"] == "provider_gated", (
             f"{cid} should be provider_gated, got {cap['state']}"
         )
         # And it must explain why (non-empty limitations) so the UI shows an honest reason.
         assert cap["limitations"], f"{cid} provider_gated with no limitations explanation"
+
+
+def test_malware_scan_verified_by_default_offline():
+    """The default offline scanner is the heuristic content-defense, not noop — so public
+    uploads are inspected and the capability reports 'verified' (a release-blocker fix)."""
+    with TestClient(create_app()) as client:
+        data = _caps(client)
+    cap = _by_id(data, "malware_scan")
+    assert cap["state"] == "verified", f"malware_scan should be verified, got {cap['state']}"
+    assert cap["engine"] == "scanner:heuristic"
+    assert cap["proof_id"], "verified scanner must cite a proof"
+    assert cap["limitations"], "scanner must honestly state it is not signature AV"
 
 
 def test_agpl_pymupdf_risk_is_surfaced():

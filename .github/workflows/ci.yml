@@ -10,8 +10,8 @@ jobs:
     name: Backend (ruff + pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
       - name: Install system deps (Tesseract for OCR tests)
@@ -42,14 +42,62 @@ jobs:
           alembic upgrade head
           alembic check
 
+  security:
+    name: Security & supply-chain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.11"
+      - name: Install backend + security tooling
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          # Pinned, reproducible security tooling.
+          pip install "pip-audit==2.7.3" "cyclonedx-bom==4.6.1" "schemathesis==3.39.16"
+      - name: Dependency vulnerability scan (pip-audit)
+        working-directory: backend
+        # --skip-editable ignores the local 'docos' package (not on PyPI); still fails on any vuln.
+        run: pip-audit --skip-editable --desc
+      - name: License gate (no forbidden licenses in the closed-SaaS SBOM)
+        working-directory: backend
+        run: python scripts/check_licenses.py
+      - name: Generate SBOM (CycloneDX)
+        working-directory: backend
+        run: cyclonedx-py environment -o sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: sbom-cyclonedx
+          path: backend/sbom.cdx.json
+      - name: API fuzzing (Schemathesis, OpenAPI-driven)
+        working-directory: backend
+        env:
+          APP_ENV: dev
+          LLM_PROVIDER: noop
+          DATABASE_URL: sqlite:////tmp/fuzz.db
+        run: |
+          alembic upgrade head
+          # Provider-gated webhook/callback/translate seams correctly return 501 (Not Implemented)
+          # in offline mode; that is a 5xx the not_a_server_error check would flag, so they are
+          # excluded here and covered by their own integration tests instead.
+          st run --app docos.main:app /openapi.json \
+            --experimental=openapi-3.1 \
+            --checks not_a_server_error \
+            --exclude-path-regex '(webhook|/translate|/integrations/)' \
+            --hypothesis-max-examples 12 \
+            --hypothesis-deadline 10000
+
   web:
     name: Web (typecheck + lint + build)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # pnpm version comes from the root package.json "packageManager" field.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "20"
           cache: pnpm
@@ -72,9 +120,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [backend, web]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "20"
           cache: pnpm

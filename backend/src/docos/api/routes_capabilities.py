@@ -79,6 +79,26 @@ def _pdf_agpl_warning() -> list[str]:
     ]
 
 
+def _scanner_limitations(scanner: str) -> list[str]:
+    """Honest description of what the active upload scanner does and does not cover."""
+    if scanner == "noop":
+        return [
+            "Scanner is 'noop' (accepts everything) — for local-dev opt-out only; never use on "
+            "public uploads."
+        ]
+    heuristic = (
+        "Heuristic content-defense (offline, deterministic): blocks EICAR, embedded executables, "
+        "PDF launch actions and Office macros. Not signature AV — does not catch novel/obfuscated "
+        "malware; chain ClamAV (SCANNER=clamav) for that."
+    )
+    if scanner == "clamav":
+        return [
+            "ClamAV signature scanning is layered behind the always-on heuristic content-defense; "
+            "fails closed if the clamd daemon is unreachable."
+        ]
+    return [heuristic]
+
+
 @router.get("/capabilities", response_model=CapabilitiesResponse)
 def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResponse:
     """The honest map of what the platform actually does right now."""
@@ -382,17 +402,12 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
         ),
         _cap(
             "malware_scan",
-            "Malware scanning for public uploads",
-            state="provider_gated" if settings.scanner == "noop" else "verified",
+            "Malware / content-defense scanning for public uploads",
+            state="degraded" if settings.scanner == "noop" else "verified",
             engine=f"scanner:{settings.scanner}",
             engine_version=None,
-            proof_id=None,
-            limitations=[
-                "Scanner is 'noop' (accepts everything) — a release blocker for public uploads "
-                "until ClamAV or an approved control is wired."
-            ]
-            if settings.scanner == "noop"
-            else [],
+            proof_id=None if settings.scanner == "noop" else "test:scanner_content_defense",
+            limitations=_scanner_limitations(settings.scanner),
         ),
     ]
 
