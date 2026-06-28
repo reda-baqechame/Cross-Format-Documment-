@@ -90,6 +90,10 @@ export interface TaskDef {
   minFiles?: number;
   options?: OptionField[];
   needsAI?: boolean;
+  /** Capability IDs (from GET /capabilities) this task needs beyond AI. When any is not
+   * `verified`, TaskRunner shows an honest "requires configuration" banner instead of failing
+   * at runtime. Mirrors the `needsAI` gating pattern. */
+  requires?: string[];
   cta?: string;
   run: (ctx: TaskContext) => Promise<TaskResult>;
 }
@@ -919,6 +923,7 @@ export const TASKS: TaskDef[] = [
     emoji: "🔊",
     accept: ANY,
     acceptLabel: "any document",
+    requires: ["tts"],
     cta: "Generate audio",
     run: async ({ docIds }) => {
       await downloadAudio(docIds[0]);

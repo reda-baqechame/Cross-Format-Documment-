@@ -18,6 +18,7 @@ from docos.api import (
     routes_auth,
     routes_billing,
     routes_bulk_send,
+    routes_capabilities,
     routes_clm,
     routes_comments,
     routes_documents,
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
 
     app.include_router(routes_health.router)
+    app.include_router(routes_capabilities.router)
     app.include_router(routes_auth.router)
     app.include_router(routes_billing.router)
     app.include_router(routes_share.router)

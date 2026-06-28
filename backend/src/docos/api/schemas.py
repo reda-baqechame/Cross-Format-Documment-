@@ -66,6 +66,55 @@ class ReadyCheck(BaseModel):
     checks: dict[str, str]
 
 
+# Truth-ledger capability state. The UI/marketing must derive a capability's enablement from this
+# state instead of asserting it. A capability is ``verified`` only when a real customer workflow
+# produces a correct artifact (a passing production-matrix outcome), never merely an HTTP 200.
+CapabilityState = Literal[
+    "verified",  # real workflow produces a correct, independently-checked artifact
+    "degraded",  # works but at reduced fidelity/quality; honesty warning attached
+    "provider_gated",  # needs an external provider/credential not currently configured
+    "disabled",  # intentionally off
+    "broken",  # currently failing in the production matrix
+    "claim_without_proof",  # asserted in the UI but no repeatable proof exists yet
+]
+
+
+class Capability(BaseModel):
+    """A single capability's real state, engine, limitations, and proof.
+
+    ``proof_id`` references a named outcome in the production tool-matrix run; ``last_verified_at``
+    is when that run last recorded a passing artifact. Both are null when unproven, so a missing
+    proof is visible rather than implied.
+    """
+
+    id: str
+    name: str
+    state: CapabilityState
+    engine: str
+    engine_version: str | None = None
+    limitations: list[str] = []
+    last_verified_at: datetime | None = None
+    proof_id: str | None = None
+    warnings: list[str] = []
+
+
+class CapabilitiesResponse(BaseModel):
+    """``GET /api/capabilities`` — the honest map of what the platform actually does.
+
+    Mirrors ``HealthCheck`` (so flags stay in sync) but adds engine/version, limitations, proof
+    linkage, and the AGPL/GPL licence risk surface. UI controls and marketing claims must derive
+    from this rather than hardcoding "available".
+    """
+
+    generated_at: datetime
+    privacy_mode: str
+    database: str
+    max_upload_mb: int
+    capabilities: list[Capability]
+    engine_versions: dict[str, dict[str, str | None]]
+    licence_risks: list[str]
+
+
 class UploadResponse(BaseModel):
     # In sync mode doc_id/version_id are present immediately. In async mode the response carries a
     # job_id + status instead (doc_id arrives via GET /jobs/{job_id} once the worker finishes).

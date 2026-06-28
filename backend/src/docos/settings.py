@@ -35,6 +35,11 @@ OcrEngine = Literal["tesseract", "paddle"]
 IngestMode = Literal["sync", "async"]
 PiiEngine = Literal["regex", "presidio"]
 PdfRenderEngine = Literal["pymupdf", "pdfium"]
+# Low-level PDF operations engine (page ops, encryption, compress). ``pymupdf`` (default) keeps
+# the current AGPL behaviour; ``permissive`` routes the parity-proven subset (merge/split/
+# reorder/rotate/delete/encrypt/compress) to pypdf+pikepdf and falls back to PyMuPDF for the
+# capabilities not yet migrated (watermark/text-extract/redaction/searchable-PDF).
+PdfEngine = Literal["pymupdf", "permissive"]
 
 # Built-in upload catalog — merged when ALLOWED_MIME_TYPES is a partial Railway override.
 _CATALOG_MIME_TYPES = (
@@ -136,6 +141,10 @@ class Settings(BaseSettings):
     # ``pdfium`` uses pypdfium2 (Apache-2.0/BSD-3) — the permissive migration target. Rendering
     # only; parsing still uses PyMuPDF. Falls back to PyMuPDF if pypdfium2 isn't importable.
     pdf_render_engine: PdfRenderEngine = "pymupdf"
+    # Low-level PDF operations engine. ``pymupdf`` (default) = current AGPL behaviour unchanged;
+    # ``permissive`` = pypdf+pikepdf for the parity-proven page ops/encryption/compress subset,
+    # with PyMuPDF fallback for not-yet-migrated capabilities (watermark/redaction/searchable-PDF).
+    pdf_engine: PdfEngine = "pymupdf"
 
     # Embedded editor providers. ``local``/``basic`` never claim full native fidelity;
     # configure provider URLs to activate real embedded editors.

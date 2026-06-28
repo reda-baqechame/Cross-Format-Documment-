@@ -83,6 +83,54 @@ export async function fetchBackendHealth(): Promise<BackendHealth> {
   return json<BackendHealth>(await fetch(`${BASE}/health`));
 }
 
+/**
+ * The honest capability state vocabulary mirroring the backend's
+ * `GET /capabilities`. A capability is only `verified` when a real customer workflow
+ * produces a correct artifact (a passing production-matrix outcome), never merely an HTTP 200.
+ */
+export type CapabilityState =
+  | "verified"
+  | "degraded"
+  | "provider_gated"
+  | "disabled"
+  | "broken"
+  | "claim_without_proof";
+
+export interface Capability {
+  id: string;
+  name: string;
+  state: CapabilityState;
+  engine: string;
+  engine_version: string | null;
+  limitations: string[];
+  last_verified_at: string | null;
+  proof_id: string | null;
+  warnings: string[];
+}
+
+export interface CapabilitiesResponse {
+  generated_at: string;
+  privacy_mode: string;
+  database: string;
+  max_upload_mb: number;
+  capabilities: Capability[];
+  engine_versions: Record<string, Record<string, string | null>>;
+  licence_risks: string[];
+}
+
+/**
+ * Fetch the truth ledger. UI controls and marketing claims should derive their enablement
+ * from this so they never assert a capability that is provider-gated, degraded, or broken.
+ */
+export async function fetchCapabilities(): Promise<CapabilitiesResponse> {
+  return json<CapabilitiesResponse>(await fetch(`${BASE}/capabilities`));
+}
+
+/** True when a capability is actually available (verified) — degraded/unproven/gated is not. */
+export function isCapabilityUsable(cap: Capability | undefined): boolean {
+  return cap?.state === "verified";
+}
+
 /** Private Mode: delete every document owned by this browser session. */
 export async function purgeDocuments(): Promise<{ deleted: number }> {
   return json(await fetch(`${BASE}/documents`, { method: "DELETE" }));

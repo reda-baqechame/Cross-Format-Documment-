@@ -15,7 +15,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { FreeBadge } from "@/components/marketing/FreeBadge";
-import { fetchBackendHealth, resolveUploadDocId, uploadDocument } from "@/lib/api";
+import {
+  fetchBackendHealth,
+  fetchCapabilities,
+  resolveUploadDocId,
+  uploadDocument,
+  type Capability,
+} from "@/lib/api";
 import { getTask, type TaskResult } from "@/lib/tasks";
 import { friendlyApiError, friendlyUploadError, validateFile } from "@/lib/upload";
 
@@ -42,10 +48,25 @@ export function TaskRunner({ slug }: { slug: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: "pick" });
 
   const health = useQuery({ queryKey: ["health"], queryFn: fetchBackendHealth, retry: false });
+  const capabilities = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: fetchCapabilities,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (!task) return null;
 
   const aiBlocked = !!task.needsAI && health.data?.ai_enabled === false;
+  // Honor `task.requires`: when any required capability is not `verified`, show an honest
+  // "requires configuration" banner instead of letting the run fail at runtime with a 501.
+  const capById = new Map<string, Capability>(capabilities.data?.capabilities.map((c) => [c.id, c]));
+  const missingRequired =
+    task.requires
+      ?.map((id) => ({ id, cap: capById.get(id) }))
+      .filter((r) => !r.cap || r.cap.state !== "verified") ?? [];
+  const requiredBlocked = missingRequired.length > 0;
+  const blocked = aiBlocked || requiredBlocked;
   const minFiles = task.minFiles ?? 1;
   const enoughFiles = files.length >= minFiles;
   const busy = phase.kind === "uploading" || phase.kind === "running";
@@ -75,7 +96,7 @@ export function TaskRunner({ slug }: { slug: string }) {
   };
 
   const run = async () => {
-    if (!enoughFiles || aiBlocked) return;
+    if (!enoughFiles || blocked) return;
     setPhase({ kind: "running" });
     try {
       const result = await task.run({ docIds: files.map((file) => file.docId), options });
@@ -105,7 +126,7 @@ export function TaskRunner({ slug }: { slug: string }) {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">{task.title}</h1>
         <p className="mt-1 text-sm text-slate-600">{task.blurb}</p>
-        <FreeBadge className="mt-3 justify-center" />
+        <FreeBadge className="mt-3 justify-center" maxUploadMb={capabilities.data?.max_upload_mb} />
       </header>
 
       {aiBlocked && (
@@ -118,6 +139,20 @@ export function TaskRunner({ slug }: { slug: string }) {
         </div>
       )}
 
+      {missingRequired.map(({ id, cap }) => (
+        <div
+          key={id}
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <p className="font-medium">{cap?.name ?? id} is not configured</p>
+          <p className="mt-1">
+            {cap?.limitations[0] ??
+              "This task needs a provider that is not wired up in this deployment."}
+            {!cap && " This capability is not reported by the backend yet."}
+          </p>
+        </div>
+      ))}
+
       <FilePicker
         accept={task.accept}
         acceptLabel={task.acceptLabel}
@@ -127,7 +162,7 @@ export function TaskRunner({ slug }: { slug: string }) {
         uploadingName={phase.kind === "uploading" ? phase.name : null}
         onPick={addFiles}
         onRemove={(index) => setFiles(files.filter((_, idx) => idx !== index))}
-        disabled={aiBlocked}
+        disabled={blocked}
       />
 
       {enoughFiles && (task.options?.length ?? 0) > 0 && (
@@ -170,7 +205,7 @@ export function TaskRunner({ slug }: { slug: string }) {
         <button
           type="button"
           onClick={() => void run()}
-          disabled={!enoughFiles || busy || aiBlocked}
+          disabled={!enoughFiles || busy || blocked}
           className="min-h-[48px] w-full rounded-xl bg-brand-600 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {phase.kind === "running" ? "Working..." : (task.cta ?? "Run")}
