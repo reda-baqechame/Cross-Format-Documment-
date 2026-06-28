@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends
 
 from docos.api.schemas import CapabilitiesResponse, Capability, CapabilityState
 from docos.services import engines
+from docos.services.engines import registry as engine_registry
 from docos.settings import Settings, get_settings
 
 router = APIRouter(tags=["system"])
@@ -444,4 +445,5 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
         capabilities=caps,
         engine_versions=engines.all_engine_versions(),
         licence_risks=agpl,
+        engines=engine_registry.registry_report(),
     )

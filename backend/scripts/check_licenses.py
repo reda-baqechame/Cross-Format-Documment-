@@ -109,8 +109,27 @@ def main() -> int:
         print("\nUse a permissive replacement, or add a documented EXCEPTIONS entry if justified.")
         return 1
 
+    # Engine-registry firewall: catch a known-forbidden ENGINE that is installed even if its package
+    # metadata license string is ambiguous (the registry classifies by hand-verified SPDX + policy).
+    registry_violations = _registry_forbidden()
+    if registry_violations:
+        print("\n❌ Forbidden engine(s) installed (engine registry / license firewall):")
+        for name, detail in registry_violations:
+            print(f"  - {name}: {detail}")
+        print("\nRemove it, move it to an external service, or add a tracked registry EXCEPTION.")
+        return 1
+
     print(f"\n✅ License gate passed: {len(inventory)} distributions, no forbidden licenses.")
     return 0
+
+
+def _registry_forbidden() -> list[tuple[str, str]]:
+    """Cross-check installed engines against the hand-verified engine/license registry."""
+    try:
+        from docos.services.engines.registry import forbidden_installed
+    except Exception:  # noqa: BLE001 - registry import is best-effort in odd environments
+        return []
+    return forbidden_installed()
 
 
 if __name__ == "__main__":
