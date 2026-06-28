@@ -113,6 +113,9 @@ class CapabilitiesResponse(BaseModel):
     capabilities: list[Capability]
     engine_versions: dict[str, dict[str, str | None]]
     licence_risks: list[str]
+    # The engine + license registry (the "license firewall"): every engine we use or vet, its
+    # SPDX license, usage class, capabilities, and whether it is installed in this deployment.
+    engines: list[dict] = []
 
 
 class UploadResponse(BaseModel):
