@@ -17,6 +17,7 @@ const PdfReader = dynamic(() => import("@/components/canvas/PdfReader"), {
   loading: () => <p className="p-6 text-sm text-slate-500">Loading PDF reader…</p>,
 });
 
+import { AiHelperPanel } from "@/components/canvas/AiHelperPanel";
 import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { BulkSendPanel } from "@/components/workflows/BulkSendPanel";
 import { AskPanel } from "@/components/canvas/AskPanel";
@@ -54,6 +55,7 @@ const TABS: WorkspaceTab[] = [
   "document",
   "editor",
   "modify",
+  "ai-helper",
   "autopilot",
   "insights",
   "forms",
@@ -293,6 +295,7 @@ function RightPanel({
   }
   if (tab === "editor") return <EditorSessionPanel docId={docId} sourceFormat={doc.meta.source_format} />;
   if (tab === "modify" || tab === "document") return <ModifyStudio doc={doc} docId={docId} />;
+  if (tab === "ai-helper") return <AiHelperPanel docId={docId} />;
   if (tab === "insights") {
     return (
       <div className="flex flex-col gap-4 overflow-auto p-4">

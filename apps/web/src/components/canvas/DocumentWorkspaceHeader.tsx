@@ -18,6 +18,7 @@ import {
   Search,
   Send,
   Share2,
+  Sparkles,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -42,6 +43,7 @@ type WorkspaceTab =
   | "document"
   | "editor"
   | "modify"
+  | "ai-helper"
   | "autopilot"
   | "insights"
   | "forms"
@@ -56,6 +58,7 @@ const PRIMARY_TABS: {
   icon: typeof FilePenLine;
 }[] = [
   { id: "document", label: "Edit", icon: FilePenLine },
+  { id: "ai-helper", label: "AI Helper", icon: Sparkles },
   { id: "forms", label: "Forms", icon: FormInput },
   { id: "clauses", label: "Clauses", icon: Library },
   { id: "comments", label: "Review", icon: MessageSquare },
