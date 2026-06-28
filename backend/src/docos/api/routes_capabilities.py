@@ -439,6 +439,18 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_finance_ap",
+            "Finance / AP invoice↔PO matching (business pack)",
+            state="verified",
+            engine="pack:finance",
+            engine_version=None,
+            proof_id="test:pack_finance",
+            limitations=[
+                "Deterministic invoice↔PO matching, total/currency comparison, and duplicate-"
+                "invoice detection over the canonical model; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
             "malware_scan",
             "Malware / content-defense scanning for public uploads",
             state="degraded" if settings.scanner == "noop" else "verified",
