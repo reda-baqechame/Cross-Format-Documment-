@@ -57,3 +57,37 @@ def rasterize_pages(
     finally:
         pdf.close()
     return out
+
+
+def page_count(data: bytes) -> int:
+    """Number of pages, via pypdfium2."""
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(data)
+    try:
+        return len(pdf)
+    finally:
+        pdf.close()
+
+
+def extract_text(data: bytes, *, max_pages: int | None = None) -> str:
+    """All recoverable text (visible *and* invisible render-mode-3 layers) for the redaction scan.
+
+    pypdfium2 reads the page text objects directly from the content stream, so invisible OCR/overlay
+    text is included — exactly what the redaction read-back must catch.
+    """
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(data)
+    try:
+        count = len(pdf) if max_pages is None else min(len(pdf), max_pages)
+        parts: list[str] = []
+        for i in range(count):
+            page = pdf[i]
+            textpage = page.get_textpage()
+            parts.append(textpage.get_text_range())
+            textpage.close()
+            page.close()
+        return "\n".join(parts)
+    finally:
+        pdf.close()
