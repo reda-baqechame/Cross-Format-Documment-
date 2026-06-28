@@ -15,7 +15,13 @@ from docos.db.base import get_session
 from docos.services.docengine.registry import AdapterRegistry, default_registry
 from docos.services.ingestion.gateway import IngestionGatewayImpl
 from docos.services.ingestion.interface import IngestionGateway
-from docos.services.ingestion.scanner import ClamAVScanner, MalwareScanner, NoopScanner
+from docos.services.ingestion.scanner import (
+    ClamAVScanner,
+    CompositeScanner,
+    ContentDefenseScanner,
+    MalwareScanner,
+    NoopScanner,
+)
 from docos.services.provenance.service import ProvenancePolicyServiceImpl
 from docos.services.semantic.llm.base import LLMClient
 from docos.services.semantic.llm.noop import LocalNoopClient
@@ -94,9 +100,14 @@ def get_ingestion_gateway() -> IngestionGateway:
     s = get_settings()
     scanner: MalwareScanner
     if s.scanner == "clamav":
-        scanner = ClamAVScanner(host=s.clamav_host, port=s.clamav_port)
-    else:
+        # Layer the always-on offline content-defense in front of signature AV.
+        scanner = CompositeScanner(
+            [ContentDefenseScanner(), ClamAVScanner(host=s.clamav_host, port=s.clamav_port)]
+        )
+    elif s.scanner == "noop":
         scanner = NoopScanner()
+    else:  # "heuristic" (default)
+        scanner = ContentDefenseScanner()
     return IngestionGatewayImpl(
         blob_store=get_blob_store(),
         allowed_mimes=s.allowed_mimes,

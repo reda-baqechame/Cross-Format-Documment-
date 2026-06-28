@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PrivacyMode = Literal["offline", "enterprise", "cloud"]
 BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
-Scanner = Literal["noop", "clamav"]
+Scanner = Literal["heuristic", "clamav", "noop"]
 BlobEncryption = Literal["none", "aesgcm"]
 OfficeEditorProvider = Literal["local", "onlyoffice"]
 PdfEditorProvider = Literal["basic", "external"]
@@ -104,9 +104,12 @@ class Settings(BaseSettings):
     # e-signature (HMAC key; override in production via SIGNING_SECRET)
     signing_secret: str = "docos-dev-signing-secret"
 
-    # malware scanning. ``noop`` (the offline default) accepts everything; ``clamav`` streams
-    # uploads to a clamd daemon and fails closed if it is unreachable.
-    scanner: Scanner = "noop"
+    # upload scanning. ``heuristic`` (the default) is a deterministic, fully-offline content-defense
+    # control that blocks EICAR, embedded executables, PDF launch actions and Office macros — no
+    # external infra, so public uploads are always inspected. ``clamav`` additionally streams to a
+    # clamd daemon (signature AV) and fails closed if unreachable. ``noop`` accepts everything and
+    # is for explicit local-dev opt-out only.
+    scanner: Scanner = "heuristic"
     clamav_host: str = "localhost"
     clamav_port: int = 3310
 
