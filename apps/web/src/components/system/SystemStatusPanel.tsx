@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchBackendHealth, type BackendHealth } from "@/lib/api";
+import { fetchBackendHealth, fetchCapabilities, type BackendHealth } from "@/lib/api";
 
 type Tone = "ok" | "muted" | "warn";
 
@@ -98,7 +98,18 @@ const DOT: Record<Tone, string> = {
  */
 export function SystemStatusPanel({ className = "" }: { className?: string }) {
   const health = useQuery({ queryKey: ["health"], queryFn: fetchBackendHealth, retry: false });
+  const caps = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: fetchCapabilities,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
   if (!health.data) return null;
+
+  // Honest engine/licence notes surfaced only by /capabilities (not /health). Shown compactly
+  // so the panel never implies a capability the deployment doesn't truly have.
+  const searchCap = caps.data?.capabilities.find((c) => c.id === "search");
+  const licenceRisks = caps.data?.licence_risks ?? [];
 
   return (
     <div className={className}>
@@ -114,6 +125,21 @@ export function SystemStatusPanel({ className = "" }: { className?: string }) {
           </div>
         ))}
       </dl>
+      {(searchCap || licenceRisks.length > 0) && (
+        <div className="mt-3 space-y-1 border-t border-slate-100 pt-2 text-xs text-slate-500">
+          {searchCap && searchCap.state !== "verified" && (
+            <p>
+              <span className="font-medium text-slate-600">Search:</span>{" "}
+              {searchCap.limitations[0] ?? "Keyword ranking only."}
+            </p>
+          )}
+          {licenceRisks.map((risk) => (
+            <p key={risk.slice(0, 40)} className="text-amber-700">
+              ⚠ {risk}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

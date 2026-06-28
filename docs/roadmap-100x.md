@@ -31,6 +31,17 @@ built-in default that always works offline). Nothing fakes a capability that nee
 - ✅ **pypdfium2 permissive render seam** (Apache-2.0/BSD-3) — `PDF_RENDER_ENGINE=pdfium` rasterizes PDF
   pages with the non-AGPL PDFium engine (migration step 1 off PyMuPDF); falls back to PyMuPDF when not
   importable. Rendering only — parsing still PyMuPDF. `services/docengine/pdfium.py`.
+- ✅ **PdfEngine boundary + permissive page ops/encryption/compress** — `PDF_ENGINE=permissive` routes
+  merge/split/reorder/rotate/delete/encrypt(AES-256 R6)/compress through **pypdf + pikepdf**
+  (parity-proven against PyMuPDF in `tests/test_pdfengine_parity.py`), removing the AGPL dependency
+  from those code paths. Watermark/text-extraction/redaction/searchable-PDF still fall back to
+  PyMuPDF until fidelity parity and are honestly flagged in `/api/capabilities`. Migration step 2.
+  `services/docengine/pdfengine/`, `services/docengine/pageops.py` (now a façade over the boundary).
+- ✅ **Capabilities truth ledger** — `GET /api/capabilities` exposes each capability's real state
+  (`verified | degraded | provider_gated | disabled | broken | claim_without_proof`), the active
+  engine + version, limitations, proof_id (citing the production-matrix outcome), and the AGPL licence
+  risk. UI controls and marketing must derive from this rather than asserting availability.
+  `api/routes_capabilities.py`, `services/engines/`.
 - ✅ **Near-duplicate detection** (rapidfuzz, MIT) — `GET /documents/duplicates` clusters duplicate
   invoices/contracts/re-uploads by text similarity. `services/provenance/duplicates.py`.
 - ✅ **Phone-PII validation** (phonenumbers, Apache-2.0) — validates phone candidates before flagging,
@@ -83,6 +94,10 @@ closed SaaS core:** GPL, AGPL, SSPL, BSL, Commons-Clause, non-commercial/researc
 
 ⚠️ **Open license risk (migration in progress):** the PDF core is **PyMuPDF/fitz (AGPL)**.
 **Step 1 done** — page *rendering* can now run on permissive **pypdfium2** (`PDF_RENDER_ENGINE=pdfium`).
-Still on PyMuPDF: PDF **parsing** (`adapters/pdf.py` text/table extraction) and some page-ops. Remaining
-migration: move parsing to `pypdfium2`/`pdfplumber`/`pikepdf` (already a dep), then drop the `pymupdf`
-dependency. Until then PyMuPDF stays load-bearing; don't rip it out under load.
+**Step 2 done** — *page operations* (merge/split/reorder/rotate/delete), *encryption* (AES-256 R6), and
+*compress* now run on permissive **pypdf + pikepdf** (`PDF_ENGINE=permissive`), parity-proven in
+`tests/test_pdfengine_parity.py`. Still on PyMuPDF: PDF **parsing** (`adapters/pdf.py` text/table
+extraction), **redaction write-back**, and **searchable-PDF** writing — these have no clean permissive
+drop-in yet and are honestly flagged in `/api/capabilities`. Remaining migration: move parsing to
+`pypdfium2`/`pdfplumber`, redaction to a dedicated path, then drop the `pymupdf` dependency. Until then
+PyMuPDF stays load-bearing for those capabilities; don't rip it out under load.

@@ -1,0 +1,462 @@
+{
+  "base": "https://docosweb-production.up.railway.app",
+  "uploads": {
+    "userPdf": "doc_d2571579b3e749db",
+    "fixturePdf": "doc_e6eb99b0206c46cc",
+    "docx": "doc_19d1231d446f494f",
+    "xlsx": "doc_1cb79f3e4be74748",
+    "pptx": "doc_95460bd3799b4b36",
+    "png": "doc_b70b29a06f764698",
+    "rtf": "doc_7c63551ce49e4392",
+    "html": "doc_5945be2ade6a4ab6",
+    "txt": "doc_b7d01da4b4954be7"
+  },
+  "results": [
+    {
+      "n": "Auth register",
+      "s": "ok",
+      "d": "matrix_1782609264943@example.com"
+    },
+    {
+      "n": "Upload userPdf",
+      "s": "ok",
+      "d": "doc_d2571579b3e749db (8776 KB)"
+    },
+    {
+      "n": "Upload fixturePdf",
+      "s": "ok",
+      "d": "doc_e6eb99b0206c46cc (2 KB)"
+    },
+    {
+      "n": "Upload docx",
+      "s": "ok",
+      "d": "doc_19d1231d446f494f (35 KB)"
+    },
+    {
+      "n": "Upload xlsx",
+      "s": "ok",
+      "d": "doc_1cb79f3e4be74748 (5 KB)"
+    },
+    {
+      "n": "Upload pptx",
+      "s": "ok",
+      "d": "doc_95460bd3799b4b36 (28 KB)"
+    },
+    {
+      "n": "Upload png",
+      "s": "ok",
+      "d": "doc_b70b29a06f764698 (0 KB)"
+    },
+    {
+      "n": "Upload rtf",
+      "s": "ok",
+      "d": "doc_7c63551ce49e4392 (0 KB)"
+    },
+    {
+      "n": "Upload html",
+      "s": "ok",
+      "d": "doc_5945be2ade6a4ab6 (0 KB)"
+    },
+    {
+      "n": "Upload txt",
+      "s": "ok",
+      "d": "doc_b7d01da4b4954be7"
+    },
+    {
+      "n": "Modify PDF text",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Sensitive scan (GET)",
+      "s": "ok",
+      "d": "2 findings"
+    },
+    {
+      "n": "Document health panel",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Readiness / send-ready",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Redaction audit (un-redact test)",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Redact sensitive (POST on txt)",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Sanitize metadata",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Remediate accessibility",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Export PDF→pdf",
+      "s": "ok",
+      "d": "application/pdf"
+    },
+    {
+      "n": "Export PDF→docx",
+      "s": "ok",
+      "d": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    },
+    {
+      "n": "Export PDF→txt",
+      "s": "ok",
+      "d": "text/plain"
+    },
+    {
+      "n": "Export PDF→html",
+      "s": "ok",
+      "d": "text/html"
+    },
+    {
+      "n": "Export PDF→md",
+      "s": "ok",
+      "d": "text/markdown"
+    },
+    {
+      "n": "Export PDF→csv",
+      "s": "ok",
+      "d": "text/csv"
+    },
+    {
+      "n": "Export PDF→xlsx",
+      "s": "ok",
+      "d": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    {
+      "n": "Export PDF→pptx",
+      "s": "ok",
+      "d": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    {
+      "n": "Export PDF→png",
+      "s": "ok",
+      "d": "image/png"
+    },
+    {
+      "n": "Export PDF→rtf",
+      "s": "ok",
+      "d": "application/rtf"
+    },
+    {
+      "n": "Export validation report",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Export DOCX→docx",
+      "s": "ok",
+      "d": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    },
+    {
+      "n": "Export DOCX→pdf",
+      "s": "skip",
+      "d": "format not supported for source"
+    },
+    {
+      "n": "Export DOCX→txt",
+      "s": "ok",
+      "d": "text/plain"
+    },
+    {
+      "n": "Export DOCX→html",
+      "s": "ok",
+      "d": "text/html"
+    },
+    {
+      "n": "Compress PDF",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Rotate PDF",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Watermark PDF",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Protect PDF",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Merge PDFs",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Split/extract PDF page",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Delete pages (422 invalid page expected)",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Ask document",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Summarize",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Extract data",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Classify",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Intelligence analyze",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Autopilot",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Translate",
+      "s": "expect",
+      "d": "noop LLM/TTS seam"
+    },
+    {
+      "n": "List form fields",
+      "s": "ok",
+      "d": "0 fields"
+    },
+    {
+      "n": "Detect form fields/blanks",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Compare documents (diff)",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview contract_packet",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview invoice_approval",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview vendor_onboarding",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview employee_form_packet",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview proposal_to_signature",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Workflow preview bulk_send_template",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Create clause",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Insert clause",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Create renewal reminder",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Renewal suggestions",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Save as template",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Instantiate template",
+      "s": "ok",
+      "d": "doc_7661d3107db04354"
+    },
+    {
+      "n": "Editor session create",
+      "s": "ok",
+      "d": "eds_9bfe"
+    },
+    {
+      "n": "Ops agent plan",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Listen (TTS)",
+      "s": "expect",
+      "d": "501 not configured"
+    },
+    {
+      "n": "Integrity seal / sign",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Get signature status",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Request e-signature",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "DRM protect",
+      "s": "expect",
+      "d": "501 seam"
+    },
+    {
+      "n": "List integrations",
+      "s": "ok",
+      "d": "5 providers"
+    },
+    {
+      "n": "Notebook multi-doc ask",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Keyword search",
+      "s": "ok",
+      "d": "4 hits"
+    },
+    {
+      "n": "Semantic search",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Add tag",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Remove tag",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Add comment",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Start approvals",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Bulk send",
+      "s": "ok",
+      "d": "/portal/uK1iKS0L9fHf9C76UyaT75txorwqUeEp"
+    },
+    {
+      "n": "List bulk sends",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Portal view",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Portal readiness",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Clean before send (POST on txt)",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Searchable PDF (PNG scan)",
+      "s": "ok",
+      "d": "application/pdf"
+    },
+    {
+      "n": "Searchable PDF (user doc)",
+      "s": "ok",
+      "d": "application/pdf"
+    },
+    {
+      "n": "Save fill profile",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "Autofill document",
+      "s": "ok",
+      "d": ""
+    },
+    {
+      "n": "PDF preview PNG",
+      "s": "ok",
+      "d": "image/png"
+    },
+    {
+      "n": "Slide thumbnail",
+      "s": "ok",
+      "d": ""
+    }
+  ],
+  "summary": {
+    "passed": 84,
+    "failed": 0,
+    "skipped": 1,
+    "expected": 3
+  }
+}
