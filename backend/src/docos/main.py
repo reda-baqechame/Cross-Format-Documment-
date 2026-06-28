@@ -42,6 +42,7 @@ from docos.api import (
     routes_profile,
     routes_query,
     routes_readiness,
+    routes_recipes,
     routes_share,
     routes_suggestions,
     routes_templates,
@@ -130,6 +131,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_suggestions.router)
     app.include_router(routes_bulk_send.router)
     app.include_router(routes_workflows.router)
+    app.include_router(routes_recipes.router)
 
     logger.info(
         "docos starting: env=%s privacy_mode=%s blob_backend=%s llm=%s",

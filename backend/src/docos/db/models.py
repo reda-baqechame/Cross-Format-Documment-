@@ -364,3 +364,44 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+
+
+class WorkflowRecipe(Base):
+    """A user-defined, reusable workflow: a named, ordered list of steps over the document tools.
+
+    Generalizes the hardcoded ``services/workflows/business.py`` presets into stored recipes a user
+    (or the agent, compiling plain English) can save and re-run. ``steps`` is a JSON list of
+    ``{"tool": str, "params": dict}``; only deterministic read/analysis tools run automatically —
+    mutating/action steps are surfaced as approval-gated, never auto-committed. Owner-scoped like
+    documents/templates. Stores workflow metadata, never document content.
+    """
+
+    __tablename__ = "workflow_recipes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    trigger: Mapped[str] = mapped_column(String, default="manual")  # manual|on_upload|on_classify
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
+class WorkflowRun(Base):
+    """An execution record of a ``WorkflowRecipe`` over one document — the run-tracking trail."""
+
+    __tablename__ = "workflow_runs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    recipe_id: Mapped[str] = mapped_column(ForeignKey("workflow_recipes.id"), index=True)
+    document_id: Mapped[str | None] = mapped_column(
+        ForeignKey("documents.id"), nullable=True, index=True
+    )
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="completed")  # completed|failed
+    results: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
