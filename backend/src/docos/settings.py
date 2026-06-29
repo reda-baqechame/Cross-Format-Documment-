@@ -58,7 +58,12 @@ _CATALOG_MIME_TYPES = (
     "application/rtf,"
     "image/png,"
     "image/jpeg,"
-    "image/tiff"
+    "image/tiff,"
+    "message/rfc822,"
+    "application/json,"
+    "text/json,"
+    "application/xml,"
+    "text/xml"
 )
 _CATALOG_MIMES = frozenset(m.strip() for m in _CATALOG_MIME_TYPES.split(",") if m.strip())
 

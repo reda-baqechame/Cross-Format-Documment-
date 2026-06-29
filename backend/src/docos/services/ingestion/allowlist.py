@@ -105,6 +105,12 @@ def sniff_mime(filename: str, data: bytes) -> str:
             return "text/csv"
         if ext in {".html", ".htm"}:
             return "text/html"
+        if ext == ".eml":
+            return "message/rfc822"
+        if ext == ".json":
+            return "application/json"
+        if ext == ".xml":
+            return "application/xml"
         return "text/plain"
     except UnicodeDecodeError:
         return "application/octet-stream"

@@ -14,6 +14,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/MD/CSV/HTML/image (magic-byte validated, OOXML verified by package
   contents not extension, zip-bomb limits) — `services/ingestion`
 - ✅ First-class Markdown / CSV / HTML import adapters — `services/docengine/adapters`
+- ✅ Email (`.eml`/RFC-822), JSON, and XML import adapters (stdlib, offline; XML hardened against
+  billion-laughs/XXE) — `adapters/eml.py`, `adapters/json_adapter.py`, `adapters/xml_adapter.py`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - ✅ OCR structure extraction — `TesseractOcr` recognises positioned, confidence-scored word runs
   (`image_to_data` → `RunNode` + bbox + `attrs.confidence`/`ocr_review`), geometric reading order,

@@ -29,6 +29,11 @@ _FORMAT_BY_MIME = {
     "image/png": "image",
     "image/jpeg": "image",
     "image/tiff": "image",
+    "message/rfc822": "eml",
+    "application/json": "json",
+    "text/json": "json",
+    "application/xml": "xml",
+    "text/xml": "xml",
 }
 
 # Mimes whose bytes are zip containers and therefore need zip-bomb inspection.

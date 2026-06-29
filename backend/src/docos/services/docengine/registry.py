@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from docos.services.docengine.adapters.csv import CsvAdapter
 from docos.services.docengine.adapters.docx import DocxAdapter
+from docos.services.docengine.adapters.eml import EmlAdapter
 from docos.services.docengine.adapters.html import HtmlAdapter
 from docos.services.docengine.adapters.image import ImageAdapter
+from docos.services.docengine.adapters.json_adapter import JsonAdapter
 from docos.services.docengine.adapters.markdown import MarkdownAdapter
 from docos.services.docengine.adapters.pdf import PdfAdapter
 from docos.services.docengine.adapters.pptx import PptxAdapter
 from docos.services.docengine.adapters.rtf import RtfAdapter
 from docos.services.docengine.adapters.txt import TxtAdapter
 from docos.services.docengine.adapters.xlsx import XlsxAdapter
+from docos.services.docengine.adapters.xml_adapter import XmlAdapter
 from docos.services.docengine.interface import FormatAdapter
 
 
@@ -74,5 +77,8 @@ def default_registry(parser_engine: str = "native") -> AdapterRegistry:
             pptx,
             RtfAdapter(),
             ImageAdapter(),
+            EmlAdapter(),
+            JsonAdapter(),
+            XmlAdapter(),
         ]
     )
