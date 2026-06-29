@@ -108,6 +108,16 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
     search_versions = engines.search_pii_versions()
     agpl = engines.agpl_risk()
     pdf_warning = _pdf_agpl_warning() if pdf_versions.get("pymupdf") else []
+    local_storage = settings.blob_backend == "local" or settings.database_kind == "sqlite"
+    storage_limitations: list[str] = []
+    if settings.blob_backend == "local":
+        storage_limitations.append(
+            "Document blobs use local disk; durability depends on a correctly mounted volume."
+        )
+    if settings.database_kind == "sqlite":
+        storage_limitations.append(
+            "Metadata uses SQLite; this is a single-node deployment without PostgreSQL durability."
+        )
 
     # The active page-ops/encryption engine (permissive when pdf_engine=permissive AND deps are
     # installed; otherwise PyMuPDF). Page ops/encrypt/compress have permissive parity; watermark/
@@ -126,12 +136,13 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
         _cap(
             "upload_store",
             "Upload and store documents",
-            state="verified",
+            state="degraded" if local_storage else "verified",
             engine=f"parser:{settings.parser_engine}",
             engine_version=(
                 ocr_versions.get("docling") if settings.parser_engine == "docling" else None
             ),
             proof_id="Upload userPdf",
+            limitations=storage_limitations,
         ),
         _cap(
             "convert_formats",

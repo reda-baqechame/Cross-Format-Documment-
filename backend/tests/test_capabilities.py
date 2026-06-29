@@ -95,6 +95,24 @@ def test_malware_scan_verified_by_default_offline():
     assert cap["limitations"], "scanner must honestly state it is not signature AV"
 
 
+def test_local_sqlite_storage_is_explicitly_degraded(monkeypatch):
+    """The free single-node deployment must not imply durable cloud persistence."""
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///capabilities-test.db")
+    monkeypatch.setenv("BLOB_BACKEND", "local")
+    get_settings.cache_clear()
+    try:
+        with TestClient(create_app()) as client:
+            data = _caps(client)
+    finally:
+        get_settings.cache_clear()
+    storage = _by_id(data, "upload_store")
+    assert data["database"] == "sqlite"
+    assert storage["state"] == "degraded"
+    limitations = " ".join(storage["limitations"]).lower()
+    assert "local disk" in limitations
+    assert "sqlite" in limitations
+
+
 def test_agpl_pymupdf_risk_is_surfaced():
     """When PyMuPDF is installed (the AGPL blocker), the licence risk list is non-empty."""
     from importlib.metadata import PackageNotFoundError, version

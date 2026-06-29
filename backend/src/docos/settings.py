@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     log_format: Literal["human", "json"] = "human"
     sentry_dsn: str | None = None
 
+    # Source revision injected by Railway (with common fallbacks for other build systems). This is
+    # surfaced by /health and /ready so release automation can prove it is testing the intended
+    # deployment rather than a healthy but stale container.
+    railway_git_commit_sha: str | None = None
+    source_commit: str | None = None
+    git_commit_sha: str | None = None
+
     # CORS allow-list for the browser app (comma-separated origins).
     cors_origins: str = "http://localhost:3100"
 
@@ -271,6 +278,17 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env in ("staging", "production")
+
+    @property
+    def deployed_revision(self) -> str:
+        for revision in (
+            self.railway_git_commit_sha,
+            self.source_commit,
+            self.git_commit_sha,
+        ):
+            if revision and revision.strip():
+                return revision.strip()
+        return "unknown"
 
     @property
     def effective_llm_provider(self) -> LLMProvider:
