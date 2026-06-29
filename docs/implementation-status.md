@@ -214,9 +214,17 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
+- ✅ Conversational multi-turn Q&A (history-biased retrieval, cited per turn) — `reader.chat`,
+  `POST /documents/{id}/chat`
 - ✅ Extract structured data on request — `services/semantic/extract.py`
 - ✅ Translate (LLM-backed)
 - ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`
+- ✅ Multi-document **agent** (plan→search→cite across the corpus, read-only) —
+  `services/semantic/agents/corpus_executor.py`, `POST /notebook/agent`
+- ✅ Grounding/faithfulness gate in CI (deterministic, offline): the Q&A answer must trace stated
+  numbers to citations and abstain on absent facts — `evals/agent_quality/harness.py::score_grounding`
+- ✅ Token-usage metering on the agent loop + Anthropic prompt-caching of the system prompt —
+  `llm/base.py::merge_usage`, `llm/anthropic.py`
 - 🟡 Doc → audio — **seam wired** (`services/tts`, `GET /documents/{id}/audio`): streams narrated,
   redaction-aware audio when `TTS_PROVIDER_URL` is set, else an honest 501. No offline TTS engine.
 
@@ -241,7 +249,10 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ **Monetization seam** — `/pricing`, Stripe Checkout + webhook when `STRIPE_*` keys set,
   `subscriptions` table, plan gating (portal links = Pro) — `api/routes_billing.py`,
   `services/billing/`, `app/pricing`. Honest 501 when billing not configured.
-- ✅ Semantic search across the corpus (TF-IDF cosine; offline) — `services/semantic/corpus.py`
+- ✅ Semantic search across the corpus (BM25; offline) — `services/semantic/corpus.py`
+- ✅ True semantic recall via embeddings, fused with BM25 (RRF) — `services/semantic/embeddings.py`,
+  `services/semantic/search.py`. Offline `EMBEDDING_PROVIDER=local` (fastembed, no API key) or
+  `openai`; default-off → pure BM25. Persistent on-disk embedding cache.
 - 🟡 Drive/Dropbox/Box/SharePoint/Slack integrations — OAuth seam wired (see §A)
 - 🔒 Mobile **apps** (native clients) — PWA capture is wired (see §A); native apps still need clients
 

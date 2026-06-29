@@ -69,3 +69,19 @@ def test_notebook_no_match(client):
 
 def test_notebook_requires_question(client):
     assert client.post("/notebook/ask", json={"question": "  "}).status_code == 422
+
+
+def test_notebook_agent_offline_cites_across_docs(client):
+    d1 = _upload(client, "policy.txt", "Refund requests must be filed within 30 days of purchase.")
+    _upload(client, "hr.txt", "Employees accrue 15 vacation days per year.")
+    resp = client.post("/notebook/agent", json={"goal": "How many days for a refund?"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["used_llm"] is False  # offline noop → deterministic cross-document analysis
+    assert any(s["tool"] == "search" for s in body["steps"])
+    assert "30 days" in body["answer"]
+    assert any(c["doc_id"] == d1 for c in body["citations"])
+
+
+def test_notebook_agent_requires_goal(client):
+    assert client.post("/notebook/agent", json={"goal": "  "}).status_code == 422

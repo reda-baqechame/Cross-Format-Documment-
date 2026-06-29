@@ -38,7 +38,7 @@ jobs:
         run: python evals/search_retrieval/run_local.py
       - name: Redaction proof (zero recoverable bytes)
         run: python evals/redaction_proof/run_local.py
-      - name: Agent-quality eval (offline structural gate; answer gate runs with a provider)
+      - name: Agent-quality eval (offline structural + grounding gates; answer gate runs with a provider)
         run: python evals/agent_quality/run_local.py
       - name: Verify migrations apply cleanly with no drift
         working-directory: backend

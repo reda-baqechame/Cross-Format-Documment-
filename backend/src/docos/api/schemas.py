@@ -26,7 +26,7 @@ from docos.services.semantic.classify import Classification
 from docos.services.semantic.extract import Extraction
 from docos.services.semantic.intelligence import DocumentInsight
 from docos.services.semantic.preview import PatchPreview
-from docos.services.semantic.reader import Citation
+from docos.services.semantic.reader import ChatTurn, Citation
 from docos.services.semantic.skills.autopilot import AutopilotReport
 
 
@@ -465,6 +465,18 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[Citation]
     used_llm: bool  # False = deterministic offline answer
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=50)
+
+
+class ChatResponse(BaseModel):
+    doc_id: str
+    answer: str
+    citations: list[Citation]
+    used_llm: bool
 
 
 class SummaryResponse(BaseModel):

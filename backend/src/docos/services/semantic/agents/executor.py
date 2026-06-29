@@ -21,7 +21,7 @@ from docos.services.semantic import preview as preview_service
 from docos.services.semantic.agents import tools as toolbox
 from docos.services.semantic.agents.agent import AgentRun, AgentStep, _recommended
 from docos.services.semantic.interface import SemanticOrchestrator
-from docos.services.semantic.llm.base import LLMClient
+from docos.services.semantic.llm.base import LLMClient, merge_usage
 
 _MAX_STEPS = 6
 _MAX_CITATIONS = 6
@@ -115,9 +115,11 @@ async def run_agent_loop(
     proposed = None
     warnings: list[str] = []
     answer = ""
+    usage: dict | None = None
 
     for _ in range(max_steps):
         resp = await llm.converse(SYSTEM_PROMPT, messages, tools=schemas)
+        usage = merge_usage(usage, resp.usage)
         if not resp.tool_calls:
             answer = resp.text.strip()
             break
@@ -205,4 +207,5 @@ async def run_agent_loop(
         warnings=warnings,
         answer=answer,
         citations=citations,
+        usage=usage,
     )

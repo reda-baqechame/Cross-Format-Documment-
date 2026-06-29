@@ -51,6 +51,11 @@ class AnswerResult(BaseModel):
     used_llm: bool
 
 
+class ChatTurn(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
 class SummaryResult(BaseModel):
     summary: str
     citations: list[Citation]
@@ -136,6 +141,51 @@ async def answer(
         resp = await llm.complete(
             system=ANSWER_SYSTEM, user=f"Question: {question}\n\nExcerpts:\n{_context(hits)}"
         )
+        if resp.text.strip():
+            return AnswerResult(answer=resp.text.strip(), citations=citations, used_llm=True)
+
+    return AnswerResult(answer=_extractive_answer(hits), citations=citations, used_llm=False)
+
+
+CHAT_SYSTEM = (
+    "You answer questions about a document in a multi-turn conversation, using ONLY the provided "
+    "excerpts (each prefixed with its node id). Use the prior turns for context (e.g. resolving "
+    '"it"/"they"), but never invent facts not in the excerpts. If the excerpts do not contain the '
+    "answer, say so. Be concise."
+)
+
+
+def _history_query(history: list[ChatTurn], question: str) -> str:
+    """Bias retrieval with recent *user* turns so follow-ups ('who signed it?') keep context."""
+    recent_user = [t.content for t in history if t.role == "user"][-2:]
+    return " ".join([*recent_user, question]).strip()
+
+
+async def chat(
+    doc: CanonicalDocument,
+    history: list[ChatTurn],
+    question: str,
+    llm: LLMClient,
+    *,
+    use_llm: bool,
+) -> AnswerResult:
+    """Answer a follow-up question with conversation history, citing the nodes used this turn.
+
+    Retrieval runs through the semantic seam (BM25 ⊕ embeddings when configured), biased by recent
+    user turns. Offline (``use_llm=False``) returns a deterministic extractive answer over this
+    turn's hits — history only shapes retrieval, never fabricates. Redaction-aware throughout.
+    """
+    from docos.services.semantic import search  # local import: search imports reader (avoid cycle)
+
+    hits = search.semantic_retrieve(doc, _history_query(history, question))
+    citations = [Citation(node_id=nid, excerpt=_excerpt(text)) for nid, text in hits]
+
+    if use_llm and hits:
+        messages: list[dict] = [{"role": t.role, "content": t.content} for t in history]
+        messages.append(
+            {"role": "user", "content": f"Question: {question}\n\nExcerpts:\n{_context(hits)}"}
+        )
+        resp = await llm.converse(system=CHAT_SYSTEM, messages=messages)
         if resp.text.strip():
             return AnswerResult(answer=resp.text.strip(), citations=citations, used_llm=True)
 

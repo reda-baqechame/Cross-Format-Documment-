@@ -15,6 +15,7 @@ No "best/500×" assertions — the harness measures and reports.
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -27,14 +28,22 @@ if str(_BACKEND_SRC) not in sys.path:
 from docos.model.document import CanonicalDocument, DocumentMeta  # noqa: E402
 from docos.model.ids import new_doc_id, new_node_id  # noqa: E402
 from docos.model.nodes import ParagraphNode, RootNode, RunNode  # noqa: E402
+from docos.services.semantic import reader  # noqa: E402
 from docos.services.semantic.agents import run_agent, run_agent_loop  # noqa: E402
 from docos.services.semantic.llm.noop import LocalNoopClient  # noqa: E402
 from docos.services.semantic.orchestrator import SemanticOrchestratorImpl  # noqa: E402
 
 # Structural gate: the deterministic contract must hold for every case (offline, in CI).
 STRUCTURAL_GATE = 1.0
+# Grounding gate: the deterministic Q&A answer must be faithful to its citations and abstain when
+# the fact is absent (offline, in CI). 100% — a hallucinated/unsupported answer is never acceptable.
+GROUNDING_GATE = 1.0
 # Answer gate: with a provider configured, labeled-answer correctness must clear this bar.
 ANSWER_GATE = 0.95
+
+# A digit run (optionally with separators), used as a deterministic faithfulness probe: every number
+# an answer states must trace back to a cited excerpt — the cheapest catch for invented figures.
+_NUM = re.compile(r"\d[\d,.]*")
 
 
 @dataclass(frozen=True)
@@ -92,10 +101,44 @@ CASES: tuple[Case, ...] = (
 )
 
 
+@dataclass(frozen=True)
+class GroundingCase:
+    name: str
+    lines: tuple[str, ...]
+    question: str
+    must_contain: tuple[str, ...] = ()  # tokens a faithful answer should surface
+    must_abstain: bool = False  # the fact is absent → the answer must decline, not invent
+
+
+# Deterministic Q&A faithfulness cases (offline). These hit ``reader.answer(use_llm=False)`` — the
+# exact surface users query — and prove it (a) draws stated numbers from cited text and (b) abstains
+# instead of fabricating when the document doesn't contain the answer.
+GROUNDING_CASES: tuple[GroundingCase, ...] = (
+    GroundingCase(
+        name="answer_traces_to_citation",
+        lines=("Commercial Invoice", "Invoice number: INV-42", "Total due: $100.00"),
+        question="What is the invoice number?",
+        must_contain=("42",),
+    ),
+    GroundingCase(
+        name="abstain_on_absent_clause",
+        lines=("Team picnic notes", "We will meet at the park on Saturday."),
+        question="What is the contract's governing law?",
+        must_abstain=True,
+    ),
+    GroundingCase(
+        name="no_fabricated_total",
+        lines=("Meeting memo", "The all-hands is on Friday in room 3."),
+        question="What is the total amount due?",
+        must_abstain=True,
+    ),
+)
+
+
 @dataclass
 class ScoreCard:
     name: str
-    mode: str  # "offline" | "provider"
+    mode: str  # "offline" | "grounding" | "provider"
     checks: dict[str, bool] = field(default_factory=dict)
 
     @property
@@ -144,6 +187,32 @@ async def score_offline(case: Case) -> ScoreCard:
     return ScoreCard(name=case.name, mode="offline", checks=checks)
 
 
+async def score_grounding(case: GroundingCase) -> ScoreCard:
+    """Faithfulness of the deterministic, offline Q&A answer (no provider needed).
+
+    Either the answer abstains (absent fact → no invented number), or it is supported: it carries
+    citations and every number it states appears in a cited excerpt.
+    """
+    doc = _doc(case.lines)
+    res = await reader.answer(doc, case.question, LocalNoopClient(), use_llm=False)
+    answer = res.answer
+    cited = " ".join(c.excerpt for c in res.citations).lower()
+    checks: dict[str, bool] = {}
+
+    if case.must_abstain:
+        markers = ("couldn't find", "could not find", "no extractable", "not ", "n/a")
+        checks["abstained"] = any(m in answer.lower() for m in markers)
+        # Abstention must be honest: no fabricated figures when nothing was cited.
+        checks["no_fabricated_number"] = bool(res.citations) or not _NUM.search(answer)
+    else:
+        checks["has_citations"] = bool(res.citations)
+        for tok in case.must_contain:
+            checks[f"contains:{tok}"] = tok.lower() in answer.lower()
+        checks["numbers_traceable"] = all(n in cited for n in set(_NUM.findall(answer)))
+
+    return ScoreCard(name=case.name, mode="grounding", checks=checks)
+
+
 async def score_with_provider(case: Case, llm, orchestrator) -> ScoreCard:
     """Answer-quality via the iterative loop (requires a configured provider)."""
     doc = _doc(case.lines)
@@ -165,6 +234,12 @@ async def score_with_provider(case: Case, llm, orchestrator) -> ScoreCard:
         checks["citations_resolvable"] = bool(run.citations) and all(
             c.get("node_id") in node_ids for c in run.citations
         )
+    # Faithfulness: any number the model states in its answer must trace to a cited excerpt — a
+    # deterministic catch for invented figures, even with a real provider.
+    nums = set(_NUM.findall(answer))
+    if nums:
+        cited_text = " ".join(str(c.get("text", "")) for c in run.citations).lower()
+        checks["faithful_numbers"] = all(n in cited_text for n in nums)
     return ScoreCard(name=case.name, mode="provider", checks=checks)
 
 

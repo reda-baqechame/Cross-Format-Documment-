@@ -7,6 +7,19 @@ import json
 from docos.services.semantic.llm.base import LLMClient, LLMResponse, Message
 
 
+def _usage(response) -> dict | None:
+    """Plain-dict token usage from a Chat Completions response, when reported."""
+    u = getattr(response, "usage", None)
+    if u is None:
+        return None
+    out: dict = {}
+    for src, dst in (("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens")):
+        val = getattr(u, src, None)
+        if isinstance(val, int):
+            out[dst] = val
+    return out or None
+
+
 def _to_openai_tool(tool: dict) -> dict:
     return {
         "type": "function",
@@ -58,7 +71,9 @@ class OpenAIClient(LLMClient):
                     }
                 )
 
-        return LLMResponse(text=message.content or "", tool_calls=tool_calls)
+        return LLMResponse(
+            text=message.content or "", tool_calls=tool_calls, usage=_usage(response)
+        )
 
     async def converse(
         self,
@@ -121,4 +136,4 @@ class OpenAIClient(LLMClient):
                         "input": json.loads(tc.function.arguments or "{}"),
                     }
                 )
-        return LLMResponse(text=msg.content or "", tool_calls=tool_calls)
+        return LLMResponse(text=msg.content or "", tool_calls=tool_calls, usage=_usage(response))

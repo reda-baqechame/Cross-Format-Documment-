@@ -11,6 +11,34 @@ from __future__ import annotations
 from docos.services.semantic.llm.base import LLMClient, LLMResponse, Message
 
 
+def _cacheable_system(system: str) -> list[dict]:
+    """The system prompt as a cache-marked block.
+
+    The agent's system prompt is large and constant across every turn of a loop; marking it
+    ``ephemeral`` lets Anthropic prompt-caching serve it from cache on each subsequent call, cutting
+    cost/latency without changing behaviour.
+    """
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+
+
+def _usage(message) -> dict | None:
+    """Plain-dict token usage from an Anthropic message (cache fields included when present)."""
+    u = getattr(message, "usage", None)
+    if u is None:
+        return None
+    out: dict = {}
+    for field in (
+        "input_tokens",
+        "output_tokens",
+        "cache_read_input_tokens",
+        "cache_creation_input_tokens",
+    ):
+        val = getattr(u, field, None)
+        if isinstance(val, int):
+            out[field] = val
+    return out or None
+
+
 class AnthropicClient(LLMClient):
     def __init__(self, api_key: str | None, model: str = "claude-opus-4-8") -> None:
         self.api_key = api_key
@@ -33,7 +61,7 @@ class AnthropicClient(LLMClient):
             # with thinking enabled tool_choice stays "auto" (forced tool use isn't
             # supported alongside thinking), so the system prompt insists on emit_patch.
             "thinking": {"type": "adaptive"},
-            "system": system,
+            "system": _cacheable_system(system),
             "messages": [{"role": "user", "content": user}],
         }
         if tools:
@@ -49,7 +77,9 @@ class AnthropicClient(LLMClient):
             elif block.type == "tool_use":
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
 
-        return LLMResponse(text="".join(text_parts), tool_calls=tool_calls)
+        return LLMResponse(
+            text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message)
+        )
 
     async def converse(
         self,
@@ -96,7 +126,7 @@ class AnthropicClient(LLMClient):
             "model": self.model,
             "max_tokens": 8192,
             "thinking": {"type": "adaptive"},
-            "system": system,
+            "system": _cacheable_system(system),
             "messages": api_messages,
         }
         if tools:
@@ -110,4 +140,6 @@ class AnthropicClient(LLMClient):
                 text_parts.append(block.text)
             elif block.type == "tool_use":
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
-        return LLMResponse(text="".join(text_parts), tool_calls=tool_calls)
+        return LLMResponse(
+            text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message)
+        )
