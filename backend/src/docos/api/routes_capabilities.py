@@ -75,8 +75,10 @@ def _cap(
 def _pdf_agpl_warning() -> list[str]:
     """Honest AGPL warning attached to every PDF capability still backed by PyMuPDF."""
     return [
-        "PDF parsing/page-ops/redaction/searchable-PDF still use PyMuPDF (AGPL-3.0) — a "
-        "closed-SaaS licence blocker until the PdfEngine migration completes."
+        "PDF parsing/redaction/searchable-PDF still use PyMuPDF (AGPL-3.0) by default — a "
+        "closed-SaaS licence blocker until the PdfEngine migration completes. Page-ops "
+        "(merge/split/rotate/encrypt/compress) and watermark have a permissive engine "
+        "(pypdf/pikepdf/reportlab) selectable via PDF_ENGINE=permissive."
     ]
 
 

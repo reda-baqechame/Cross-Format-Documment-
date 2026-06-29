@@ -53,6 +53,25 @@ def _original_text_by_box(data: bytes) -> dict[_BoxKey, str]:
     return out
 
 
+def _base14_font(node) -> str:
+    """Pick a built-in (base-14) PyMuPDF font that matches the run's family + bold/italic.
+
+    Original embedded font programs can't be reconstructed for re-inserted text, so we map to the
+    always-available base-14 set instead of a flat ``helv`` — preserving the *visible* style
+    (serif/mono, bold, italic) that drove the fidelity drift, with zero embedding risk.
+    """
+    name = (getattr(node, "font", "") or "").lower()
+    bold = bool(getattr(node, "bold", False)) or "bold" in name or "black" in name
+    italic = bool(getattr(node, "italic", False)) or "italic" in name or "oblique" in name
+    if any(s in name for s in ("courier", "mono", "consol")):
+        family = ("cour", "cobo", "coit", "cobi")
+    elif any(s in name for s in ("times", "serif", "georgia", "garamond", "roman", "minion")):
+        family = ("tiro", "tibo", "tiit", "tibi")
+    else:
+        family = ("helv", "hebo", "heit", "hebi")
+    return family[(1 if bold else 0) + (2 if italic else 0)]
+
+
 def _hex_to_rgb(color: str | None) -> tuple[float, float, float]:
     if not color or not color.startswith("#") or len(color) != 7:
         return (0.0, 0.0, 0.0)
@@ -88,7 +107,7 @@ def write_back_pdf(data: bytes, doc: CanonicalDocument) -> bytes:
             pdf.set_metadata({})  # belt-and-suspenders: clear the /Info dict explicitly
         original = _original_text_by_box(data)
         # Per page index: spans to remove (redaction) and spans to rewrite after.
-        rewrites: list[tuple[int, fitz.Rect, str, float, tuple[float, float, float]]] = []
+        rewrites: list[tuple[int, fitz.Rect, str, float, tuple[float, float, float], str]] = []
         touched: set[int] = set()
 
         for node in doc.nodes.values():
@@ -116,18 +135,20 @@ def write_back_pdf(data: bytes, doc: CanonicalDocument) -> bytes:
             touched.add(page_index)
             size = float(getattr(node, "size", None) or max(rect.height * 0.8, 6.0))
             color = _hex_to_rgb(getattr(node, "color", None))
-            rewrites.append((page_index, rect, current, size, color))
+            rewrites.append((page_index, rect, current, size, color, _base14_font(node)))
 
         for index in touched:
             pdf[index].apply_redactions()
 
-        for page_index, rect, text, size, color in rewrites:
+        for page_index, rect, text, size, color, fontname in rewrites:
             page = pdf[page_index]
             # Grow the box downward so slightly larger replacement text still fits.
             box = fitz.Rect(rect.x0, rect.y0, rect.x1, rect.y1 + rect.height * 2)
-            overflow = page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color)
+            overflow = page.insert_textbox(box, text, fontsize=size, fontname=fontname, color=color)
             if overflow < 0:  # didn't fit — fall back to baseline insert, shrinking as needed
-                page.insert_text(rect.bl, text, fontsize=min(size, rect.height), color=color)
+                page.insert_text(
+                    rect.bl, text, fontsize=min(size, rect.height), fontname=fontname, color=color
+                )
 
         return pdf.tobytes()
     finally:

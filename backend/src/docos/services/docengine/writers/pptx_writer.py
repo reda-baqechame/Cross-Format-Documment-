@@ -22,7 +22,31 @@ _BLANK_LAYOUT = 6  # the standard blank layout in the default template
 
 
 def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run")
+    parts: list[str] = []
+    for child in doc.children_of(block.id):
+        if child.type == "run":
+            parts.append(run_text(doc, child))
+        elif child.type == "footnote_reference" and not is_redacted(doc, child.id):
+            parts.append(f"[{getattr(child, 'marker', '')}]")
+        elif child.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(child, 'original_type', 'unknown')}]")
+    return "".join(parts)
+
+
+def _footnote_line(doc: CanonicalDocument, footnote: AnyNode) -> str:
+    if is_redacted(doc, footnote.id):
+        return ""
+    parts: list[str] = []
+    direct = _block_text(doc, footnote).strip()
+    if direct:
+        parts.append(direct)
+    for child in doc.children_of(footnote.id):
+        if child.type in ("paragraph", "heading", "table_cell"):
+            text = _block_text(doc, child).strip()
+            if text:
+                parts.append(text)
+    text = " ".join(parts).strip()
+    return f"{getattr(footnote, 'marker', '')}. {text}" if text else ""
 
 
 def _table_lines(doc: CanonicalDocument, tnode: AnyNode) -> list[str]:
@@ -90,6 +114,12 @@ def model_to_pptx(doc: CanonicalDocument, images: dict[str, bytes] | None = None
                             body.append(f"• {_block_text(doc, item)}")
                 elif child.type == "table":
                     body.extend(_table_lines(doc, child))
+                elif child.type == "footnote":
+                    line = _footnote_line(doc, child)
+                    if line:
+                        body.append(f"Footnote {line}")
+                elif child.type == "unsupported":
+                    body.append(f"[unsupported node: {getattr(child, 'original_type', 'unknown')}]")
                 elif child.type == "image":
                     if is_redacted(doc, child.id):
                         continue
@@ -121,6 +151,12 @@ def model_to_pptx(doc: CanonicalDocument, images: dict[str, bytes] | None = None
                         body.append(f"• {_block_text(doc, item)}")
             elif node.type == "table":
                 body.extend(_table_lines(doc, node))
+            elif node.type == "footnote":
+                line = _footnote_line(doc, node)
+                if line:
+                    body.append(f"Footnote {line}")
+            elif node.type == "unsupported":
+                body.append(f"[unsupported node: {getattr(node, 'original_type', 'unknown')}]")
         _add_slide(prs, title, body)
 
     buf = io.BytesIO()

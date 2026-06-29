@@ -33,6 +33,8 @@ def _lines_under(doc: CanonicalDocument, start_id: str) -> list[str]:
     """Visible text lines (reading order) for everything under ``start_id``."""
     lines: list[str] = []
     for node in doc.walk(start_id):
+        if node.type == "footnote_reference":
+            continue
         if node.type in ("paragraph", "heading", "list_item"):
             text = _block_text(doc, node)
             if text:
@@ -45,11 +47,36 @@ def _lines_under(doc: CanonicalDocument, start_id: str) -> list[str]:
             name = getattr(node, "field_name", "field")
             value = getattr(node, "value", "") or ""
             lines.append(f"{name}: {value}")
+        elif node.type == "footnote":
+            text = _footnote_text(doc, node)
+            if text:
+                lines.append(f"Footnote {getattr(node, 'marker', '')}: {text}")
     return lines
 
 
 def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run").strip()
+    parts: list[str] = []
+    for child in doc.children_of(block.id):
+        if child.type == "run":
+            parts.append(run_text(doc, child))
+        elif child.type == "footnote_reference":
+            parts.append(f"[{getattr(child, 'marker', '')}]")
+        elif child.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(child, 'original_type', 'unknown')}]")
+    return "".join(parts).strip()
+
+
+def _footnote_text(doc: CanonicalDocument, footnote: AnyNode) -> str:
+    lines: list[str] = []
+    direct = _block_text(doc, footnote)
+    if direct:
+        lines.append(direct)
+    for child in doc.children_of(footnote.id):
+        if child.type in ("paragraph", "heading", "table_cell"):
+            text = _block_text(doc, child)
+            if text:
+                lines.append(text)
+    return " ".join(lines).strip()
 
 
 # Pages with substantial extracted text use born-digital rendering; raster is only for scans.

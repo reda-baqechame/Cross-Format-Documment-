@@ -22,6 +22,7 @@ from docos.api import (
     routes_capabilities,
     routes_clm,
     routes_comments,
+    routes_documentops,
     routes_documents,
     routes_editor,
     routes_esign,
@@ -126,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_ops_agent.router)
     app.include_router(routes_agent.router)
     app.include_router(routes_packs.router)
+    app.include_router(routes_documentops.router)
     app.include_router(routes_approvals.router)
     app.include_router(routes_templates.router)
     app.include_router(routes_suggestions.router)

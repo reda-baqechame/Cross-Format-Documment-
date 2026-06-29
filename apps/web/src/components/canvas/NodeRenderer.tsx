@@ -148,6 +148,12 @@ export function NodeRenderer({
       return <ImageNode doc={doc} node={node} docId={docId} />;
     case "field":
       return <FieldNode node={node} />;
+    case "footnote_reference":
+      return <FootnoteReferenceNode node={node} />;
+    case "footnote":
+      return <FootnoteNode node={node}>{children}</FootnoteNode>;
+    case "unsupported":
+      return <UnsupportedNode node={node}>{children}</UnsupportedNode>;
     case "table":
       return <SelectableTable node={node}>{children}</SelectableTable>;
     case "table_row":
@@ -490,6 +496,53 @@ function FieldNode({ node }: { node: DocNode }) {
       <span className="text-xs uppercase text-slate-400">{node.field_name ?? "field"}</span>
       <span>{node.value ?? "—"}</span>
     </span>
+  );
+}
+
+function FootnoteReferenceNode({ node }: { node: DocNode }) {
+  return (
+    <sup
+      id={`node-${node.id}`}
+      className="mx-0.5 rounded bg-slate-100 px-1 text-[10px] font-semibold text-brand-700"
+      title={`Footnote ${node.marker ?? node.footnote_id ?? ""}`}
+    >
+      {node.marker ?? node.footnote_id ?? "?"}
+    </sup>
+  );
+}
+
+function FootnoteNode({ node, children }: { node: DocNode; children: React.ReactNode }) {
+  const select = useWorkspace((s) => s.select);
+  const selected = useWorkspace((s) => s.selectedNodeId === node.id);
+  return (
+    <aside
+      id={`node-${node.id}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) select(node.id);
+      }}
+      className={[
+        "mt-4 border-t border-slate-200 pt-2 text-xs leading-relaxed text-slate-600",
+        selected ? "rounded outline outline-2 outline-brand-300" : "",
+      ].join(" ")}
+    >
+      <span className="mr-2 align-super text-[10px] font-semibold text-brand-700">
+        {node.marker ?? node.footnote_id ?? "?"}
+      </span>
+      <span>{children}</span>
+    </aside>
+  );
+}
+
+function UnsupportedNode({ node, children }: { node: DocNode; children: React.ReactNode }) {
+  return (
+    <div
+      id={`node-${node.id}`}
+      data-node-type="unsupported"
+      className="my-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+    >
+      <div className="font-medium">Unsupported document feature: {node.original_type ?? "unknown"}</div>
+      {children && <div className="mt-2 text-slate-700">{children}</div>}
+    </div>
   );
 }
 

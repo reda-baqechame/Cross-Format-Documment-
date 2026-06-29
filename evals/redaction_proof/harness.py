@@ -206,6 +206,37 @@ def build_pdf_and_redact() -> bytes:
     return write_back_pdf(source, doc)
 
 
+def build_pdf_edit_and_redact() -> bytes:
+    """Mixed path: one span redacted (true removal) AND another span edited in the same write-back.
+
+    Guards that the fidelity-preserving edit rewrite never re-introduces or fails to remove the
+    redacted secret — redaction must hold even when the page is also being edited.
+    """
+    from reportlab.pdfgen import canvas
+
+    from docos.services.docengine.adapters.pdf import PdfAdapter
+    from docos.services.docengine.writers.pdf_writer import write_back_pdf
+
+    buf = io.BytesIO()
+    pdf = canvas.Canvas(buf, pagesize=(595.0, 842.0))
+    pdf.drawString(72, 760, f"{SECRET} confidential")
+    pdf.drawString(72, 730, "Editable line to change")
+    pdf.drawString(72, 700, f"keep {CONTROL} please")
+    pdf.save()
+    source = buf.getvalue()
+
+    doc = PdfAdapter().parse(source)
+    for node in doc.nodes.values():
+        if node.type != "run":
+            continue
+        text = getattr(node, "text", "") or ""
+        if SECRET in text:
+            doc.redaction.redacted_node_ids.append(node.id)
+        elif "Editable line" in text:
+            node.text = "Edited line replacement"
+    return write_back_pdf(source, doc)
+
+
 def run() -> list[FormatResult]:
     doc = build_redacted_document()
     results: list[FormatResult] = []
@@ -218,12 +249,15 @@ def run() -> list[FormatResult]:
                 control_present=bool(_find(data, CONTROL)),
             )
         )
-    pdf_bytes = build_pdf_and_redact()
-    results.append(
-        FormatResult(
-            fmt="pdf",
-            secret_locations=_find_pdf(pdf_bytes, SECRET),
-            control_present=bool(_find_pdf(pdf_bytes, CONTROL)),
+    for fmt, pdf_bytes in (
+        ("pdf", build_pdf_and_redact()),
+        ("pdf-edit", build_pdf_edit_and_redact()),
+    ):
+        results.append(
+            FormatResult(
+                fmt=fmt,
+                secret_locations=_find_pdf(pdf_bytes, SECRET),
+                control_present=bool(_find_pdf(pdf_bytes, CONTROL)),
+            )
         )
-    )
     return results

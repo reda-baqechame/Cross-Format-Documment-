@@ -122,11 +122,19 @@ class TestParity:
         assert _page_count(comp) == 3
         assert _extract_text(comp) == ["alpha", "beta", "gamma"]
 
-    def test_watermark_is_honestly_unimplemented(self, three_page_pdf: bytes) -> None:
-        # Watermark is not yet migrated permissively: it must NOT silently produce an unwatermarked
-        # file. It raises so the factory can fall back to PyMuPDF, keeping the capability honest.
-        with pytest.raises(NotImplementedError):
-            permissive_engine.watermark_pdf(three_page_pdf, "DRAFT")
+    def test_watermark_matches(self, three_page_pdf: bytes) -> None:
+        # Both engines stamp every page and preserve page count + the original page text.
+        mu = pymupdf_engine.watermark_pdf(three_page_pdf, "DRAFT")
+        pe = permissive_engine.watermark_pdf(three_page_pdf, "DRAFT")
+        assert _page_count(mu) == _page_count(pe) == 3
+        # Original text survives under the overlay…
+        assert all("alpha" in t or "beta" in t or "gamma" in t for t in _extract_text(pe))
+        # …and the watermark text is now present on the page.
+        assert any("DRAFT" in t for t in _extract_text(pe))
+
+    def test_watermark_requires_text(self, three_page_pdf: bytes) -> None:
+        with pytest.raises(ValueError):
+            permissive_engine.watermark_pdf(three_page_pdf, "  ")
 
 
 def test_validation_helpers_present():

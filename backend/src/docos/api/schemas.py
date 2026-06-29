@@ -27,6 +27,7 @@ from docos.services.semantic.extract import Extraction
 from docos.services.semantic.intelligence import DocumentInsight
 from docos.services.semantic.preview import PatchPreview
 from docos.services.semantic.reader import ChatTurn, Citation
+from docos.services.semantic.restyle import RestyleStyle
 from docos.services.semantic.skills.autopilot import AutopilotReport
 
 
@@ -444,6 +445,21 @@ class FindReplaceResponse(BaseModel):
     applied: bool
     occurrences: int  # total matches replaced
     nodes_changed: int  # distinct run nodes whose text changed
+    new_version_id: str | None
+
+
+class RestyleRequest(BaseModel):
+    """Apply inline formatting to many runs at once, as one reversible edit."""
+
+    scope: Literal["all", "headings", "body", "matching"] = "all"
+    find: str | None = Field(default=None, max_length=512)  # required when scope="matching"
+    style: RestyleStyle
+
+
+class RestyleResponse(BaseModel):
+    doc_id: str
+    applied: bool
+    nodes_changed: int
     new_version_id: str | None
 
 

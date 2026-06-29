@@ -59,8 +59,12 @@ def test_duplicate_invoice_number_is_flagged():
 
 
 def test_po_not_found_when_referenced_po_absent():
-    inv = _doc("Commercial Invoice", "Invoice number: INV-9", "PO Number: PO-MISSING",
-               "Total due: 5.00 USD")
+    inv = _doc(
+        "Commercial Invoice",
+        "Invoice number: INV-9",
+        "PO Number: PO-MISSING",
+        "Total due: 5.00 USD",
+    )
     report = check_ap([("d1", "inv", inv)])
     assert any(f.code == "po_not_found" for f in report.findings)
 
@@ -68,9 +72,46 @@ def test_po_not_found_when_referenced_po_absent():
 def test_ap_endpoint_owner_scoped(client):
     inv = client.post(
         "/documents",
-        files={"file": ("inv.txt", b"Commercial Invoice\nInvoice number: E-1\nTotal due: 9.00 USD",
-                        "text/plain")},
+        files={
+            "file": (
+                "inv.txt",
+                b"Commercial Invoice\nInvoice number: E-1\nTotal due: 9.00 USD",
+                "text/plain",
+            )
+        },
     ).json()["doc_id"]
     res = client.post("/packs/finance/ap-check", json={"doc_ids": [inv]})
     assert res.status_code == 200
     assert res.json()["document_count"] == 1
+
+
+def _upload(client, name, text):
+    return client.post("/documents", files={"file": (name, text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
+
+
+def test_finance_report_generates_downloadable_xlsx(client):
+    inv = _upload(
+        client,
+        "inv.txt",
+        "Commercial Invoice\nInvoice number: R-1\nPO Number: PO-3\nTotal due: 200.00 USD",
+    )
+    po = _upload(client, "po.txt", "Purchase Order\nPO Number: PO-3\nTotal due: 150.00 USD")
+    res = client.post("/packs/finance/report?format=xlsx", json={"doc_ids": [inv, po]})
+    assert res.status_code == 200
+    assert "spreadsheetml" in res.headers["content-type"]
+    assert res.headers["content-disposition"].endswith('finance_report.xlsx"')
+    assert res.content[:2] == b"PK"  # a real xlsx (zip) container
+
+
+def test_finance_report_pdf_and_errors(client):
+    inv = _upload(client, "inv.txt", "Commercial Invoice\nInvoice number: R-2\nTotal due: 9.00 USD")
+    pdf = client.post("/packs/finance/report?format=pdf", json={"doc_ids": [inv]})
+    assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
+
+    assert client.post("/packs/finance/report?format=xlsx", json={"doc_ids": []}).status_code == 422
+    assert client.post("/packs/nope/report", json={"doc_ids": [inv]}).status_code == 404
+    assert (
+        client.post("/packs/finance/report?format=exe", json={"doc_ids": [inv]}).status_code == 422
+    )

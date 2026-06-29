@@ -34,7 +34,12 @@ NodeType = Literal[
     "comment",
     "annotation",
     "metadata_block",
+    "footnote_reference",
+    "footnote",
+    "unsupported",
 ]
+
+KNOWN_NODE_TYPES = set(NodeType.__args__)
 
 
 class BaseNode(BaseModel):
@@ -160,6 +165,30 @@ class MetadataBlockNode(BaseNode):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
+class FootnoteReferenceNode(BaseNode):
+    """Inline marker that points at a first-class footnote body."""
+
+    type: Literal["footnote_reference"] = "footnote_reference"
+    footnote_id: str
+    marker: str
+
+
+class FootnoteNode(BaseNode):
+    """A note body preserved as normal child paragraphs/runs."""
+
+    type: Literal["footnote"] = "footnote"
+    footnote_id: str
+    marker: str
+
+
+class UnsupportedNode(BaseNode):
+    """Forward-compatible wrapper for node types this version does not know yet."""
+
+    type: Literal["unsupported"] = "unsupported"
+    original_type: str
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
 # Discriminated union used everywhere a node value is (de)serialized.
 AnyNode = Annotated[
     RootNode
@@ -176,6 +205,9 @@ AnyNode = Annotated[
     | FieldNode
     | CommentNode
     | AnnotationNode
-    | MetadataBlockNode,
+    | MetadataBlockNode
+    | FootnoteReferenceNode
+    | FootnoteNode
+    | UnsupportedNode,
     Field(discriminator="type"),
 ]

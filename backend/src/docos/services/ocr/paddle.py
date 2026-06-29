@@ -59,7 +59,11 @@ def _map_results(results: list) -> list[RunNode]:
                 id=new_node_id(),
                 text=text,
                 bbox=_quad_to_bbox(quad),
-                attrs={"confidence": conf100, "ocr_review": conf100 < _REVIEW_BELOW},
+                attrs={
+                    "confidence": conf100,
+                    "ocr_review": conf100 < _REVIEW_BELOW,
+                    "source_engine": "paddle",
+                },
             )
         )
     return runs

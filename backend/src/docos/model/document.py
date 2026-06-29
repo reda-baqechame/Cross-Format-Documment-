@@ -10,9 +10,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, PrivateAttr, TypeAdapter
+from pydantic import BaseModel, Field, PrivateAttr, TypeAdapter, model_validator
 
-from docos.model.nodes import AnyNode
+from docos.model.nodes import KNOWN_NODE_TYPES, AnyNode
 
 _NODE_ADAPTER: TypeAdapter[AnyNode] = TypeAdapter(AnyNode)
 
@@ -78,6 +78,50 @@ class CanonicalDocument(BaseModel):
     # blob storage — ``parse`` is sync while ``BlobStore.put`` is async, so adapters stash bytes
     # here keyed by ``ImageNode.blob_ref`` and the async upload route drains + persists them.
     _pending_assets: dict[str, bytes] = PrivateAttr(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _wrap_unknown_nodes(cls, data: Any) -> Any:
+        """Preserve future node types as visible unsupported nodes instead of crashing.
+
+        The canonical model is intentionally typed, but the lossless-model roadmap adds
+        new node types over time. Older readers must still load a document, show a
+        placeholder, and preserve child edges where possible.
+        """
+        if not isinstance(data, dict):
+            return data
+        nodes = data.get("nodes")
+        if not isinstance(nodes, dict):
+            return data
+        wrapped: dict[str, Any] = {}
+        changed = False
+        for node_id, node in nodes.items():
+            if not isinstance(node, dict):
+                wrapped[node_id] = node
+                continue
+            node_type = node.get("type")
+            if isinstance(node_type, str) and node_type not in KNOWN_NODE_TYPES:
+                raw = dict(node)
+                children = node.get("children")
+                wrapped[node_id] = {
+                    "id": str(node.get("id") or node_id),
+                    "type": "unsupported",
+                    "parent_id": node.get("parent_id"),
+                    "children": children if isinstance(children, list) else [],
+                    "bbox": node.get("bbox"),
+                    "reading_order": node.get("reading_order"),
+                    "attrs": node.get("attrs") if isinstance(node.get("attrs"), dict) else {},
+                    "tags": node.get("tags") if isinstance(node.get("tags"), list) else [],
+                    "original_type": node_type,
+                    "raw": raw,
+                }
+                changed = True
+            else:
+                wrapped[node_id] = node
+        if changed:
+            data = dict(data)
+            data["nodes"] = wrapped
+        return data
 
     # ── graph helpers ────────────────────────────────────────────────────────
     def add_node(self, node: AnyNode) -> AnyNode:

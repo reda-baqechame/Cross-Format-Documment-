@@ -14,6 +14,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Upload TXT/DOCX/PDF/XLSX/PPTX/RTF/MD/CSV/HTML/image (magic-byte validated, OOXML verified by package
   contents not extension, zip-bomb limits) — `services/ingestion`
 - ✅ First-class Markdown / CSV / HTML import adapters — `services/docengine/adapters`
+- ✅ Email (`.eml`/RFC-822), JSON, and XML import adapters (stdlib, offline; XML hardened against
+  billion-laughs/XXE) — `adapters/eml.py`, `adapters/json_adapter.py`, `adapters/xml_adapter.py`
 - ✅ Bulk/multi-file import (drag many files; per-file result) — `components/upload/UploadDropzone`
 - ✅ OCR structure extraction — `TesseractOcr` recognises positioned, confidence-scored word runs
   (`image_to_data` → `RunNode` + bbox + `attrs.confidence`/`ocr_review`), geometric reading order,
@@ -29,7 +31,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
   `routes_integrations.py`): real authorization-code handshake + token store + token-authenticated
   import through the shared ingest pipeline. Activate per provider with `<PROVIDER>_CLIENT_ID/SECRET`
   + `OAUTH_REDIRECT_BASE`; inert/not-connected without creds.
-- 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
+- 🔒 ODT / EPUB / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
 - 🟡 Handwriting OCR — **seam wired** (`services/ocr/handwriting.py`): calls a specialized model
   when `HANDWRITING_PROVIDER_URL` is set; otherwise standard OCR (honest "not connected").
 
@@ -40,6 +42,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
     — `services/docengine/adapters/docling.py`, `registry.default_registry`
   - ✅ **PaddleOCR** (Apache-2.0) — `OCR_ENGINE=paddle` for stronger multilingual OCR; degrades to
     Tesseract when absent. — `services/ocr/paddle.py`, `services/ocr/factory.py`
+  - ✅ **Multi-engine OCR consensus** — `OCR_ENGINE=consensus` runs every available engine and keeps
+    the highest-mean-confidence result (best-engine routing); equals Tesseract when alone.
+    — `services/ocr/consensus.py`
+  - ✅ **Source-engine + confidence provenance** on every OCR run (`attrs.source_engine`/`confidence`),
+    surfaced by the HITL review queue. — `services/ocr/tesseract.py`, `services/ocr/paddle.py`
+- ✅ **HITL review queue** — `GET /documents/{id}/review-items` lists low-confidence OCR words +
+  low-confidence typed fields (redaction-aware); correct via the existing patch endpoint.
+  — `services/semantic/review.py`
   - ✅ **Apache Tika** (Apache-2.0) — `TIKA_SERVER_URL` sidecar for detection / metadata / fallback
     text as a validation layer (never the primary parser). — `services/ingestion/tika.py`
   - ✅ **QPDF** preflight (Apache-2.0) — `QPDF_PREFLIGHT=true` repairs/linearizes PDFs before parse
@@ -61,6 +71,16 @@ This file is the source of truth for "don't forget anything." Update it as featu
   the nodes the model sees on large docs (`services/semantic/retrieval.py`); `POST /documents/{id}/patches/plan`
   returns a validated, non-committed before/after preview (`services/semantic/preview.py`) the UI approves
   before applying (`AiEditBar`). `set_table_cell` added to the AI op set. — `api/routes_patches.py`
+- ✅ **Document synthesis (deliverables, not just findings)** — generate a NEW document (exception
+  report / AP reconciliation / customs summary) from a pack's findings, downloadable as
+  PDF/XLSX/DOCX/HTML/MD via the existing writers. — `services/synthesis/report_builder.py`,
+  `POST /packs/{pack}/report?format=…`
+- ✅ **End-to-end DocumentOps run** — `POST /documentops/run` orchestrates classify → pack-compare →
+  synthesize → queryable audit trail (`GET /documentops/runs/{id}`); read-only, mutations stay
+  approval-gated. Killer demo: `evals/demo_import_export`. — `services/workflows/runner.py`,
+  `api/routes_documentops.py`
+- ✅ **Pack-extraction accuracy gate** — finance/import-export field + finding correctness measured
+  in CI. — `evals/pack_extraction`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by
@@ -195,7 +215,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
   unreachable; offline default stays NoopScanner — `services/ingestion/scanner.py`
-- ✅ Watermark (text stamp) — `pageops.watermark_pdf`
+- ✅ Watermark (text stamp) — `pageops.watermark_pdf`; **permissive (non-AGPL) engine** via
+  reportlab overlay + pypdf merge (`PDF_ENGINE=permissive`), parity-tested
+- ✅ PDF edit-fidelity: edited spans keep the original font family/weight (base-14 mapping, not a
+  flat default) — `writers/pdf_writer.py`; gated by `evals/pdf_fidelity`
+- ✅ PDF redaction proof: zero-recoverable-bytes corpus now covers the write-back path, including a
+  mixed edit+redact case — `evals/redaction_proof`
 - 🟡 DRM — **seam wired** (`services/drm`, `POST /documents/{id}/drm`): applies a rights-management
   provider when `DRM_PROVIDER_URL` is set, else 501 pointing to AES-256 Protect PDF (the honest
   local protection).
@@ -216,6 +241,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
 - ✅ Conversational multi-turn Q&A (history-biased retrieval, cited per turn) — `reader.chat`,
   `POST /documents/{id}/chat`
+- ✅ Global restyle — bulk inline formatting (bold/italic/underline/font/size/color) over a scope
+  (all/headings/body/matching), compiled to reversible `update_node` ops; `POST /documents/{id}/restyle`
+  — `services/semantic/restyle.py`
+- ✅ **Lossless model slice: DOCX footnotes** — first-class `footnote_reference` and `footnote`
+  nodes preserve body/table-cell footnotes on parse, re-emit real `word/footnotes.xml` on DOCX
+  export, render readable footnote sections in non-DOCX exports, and keep redacted note text out
+  of all outputs. Future node types now deserialize as visible `unsupported` placeholders instead
+  of crashing older readers.
 - ✅ Extract structured data on request — `services/semantic/extract.py`
 - ✅ Translate (LLM-backed)
 - ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`

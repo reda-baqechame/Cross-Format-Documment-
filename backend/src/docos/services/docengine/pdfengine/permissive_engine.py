@@ -7,9 +7,9 @@ falls back to the PyMuPDF engine.
 Parity-covered here (verified by ``tests/test_pdfengine_parity.py``):
     page_count, reorder_pages, delete_pages, extract_pages, rotate_pages, merge
     encrypt_pdf (AES-256 R6 via pikepdf), compress_pdf (pikepdf linearize + stream rewrite)
+    watermark_pdf (reportlab overlay merged with pypdf)
 
 NOT here (stay on PyMuPDF until fidelity parity is proven — see /api/capabilities warnings):
-    watermark_pdf            — needs text stamping; reportlab/pypdf content-stream writing TBD
     text/table extraction    — fitz ``get_text("dict")`` / ``find_tables()`` have no clean drop-in
     redaction write-back     — ``add_redact_annot``/``apply_redactions`` is essentially fitz-unique
     searchable-PDF writing   — invisible-text-layer (render_mode 3) needs pikepdf content streams
@@ -155,12 +155,31 @@ def compress_pdf(pdf: bytes) -> bytes:
 
 
 def watermark_pdf(pdf: bytes, text: str) -> bytes:
-    """Watermark is not yet implemented permissively (no clean text-stamping without reportlab).
+    """Stamp light-grey watermark text across the middle of every page (permissive).
 
-    Raises ``NotImplementedError`` so the factory can fall back to PyMuPDF rather than silently
-    producing an unwatermarked file. This keeps the capability honest: until a permissive
-    text-stamp path is benchmarked, watermarking stays on the AGPL engine.
+    Builds a per-page overlay with reportlab (BSD-3) sized to each page's media box, then merges it
+    on top of the page content with pypdf — no AGPL dependency. Matches the PyMuPDF engine's visual
+    (centred, light grey) so the two stay swappable.
     """
-    raise NotImplementedError(
-        "permissive watermark not implemented yet — reportlab/pypdf content-stream path pending"
-    )
+    if not text.strip():
+        raise ValueError("watermark text is required")
+    _require_pypdf()
+    try:
+        from reportlab.pdfgen import canvas
+    except ModuleNotFoundError as exc:  # pragma: no cover - reportlab is a core dependency
+        raise NotImplementedError("permissive watermark requires reportlab") from exc
+
+    # Clone into the writer first so pages are writer-attached before merge (the reliable path).
+    writer = PdfWriter(clone_from=_reader(pdf))
+    for page in writer.pages:
+        width = float(page.mediabox.width)
+        height = float(page.mediabox.height)
+        buf = io.BytesIO()
+        overlay_canvas = canvas.Canvas(buf, pagesize=(width, height))
+        overlay_canvas.setFillColorRGB(0.7, 0.7, 0.7)
+        overlay_canvas.setFont("Helvetica", 36)
+        overlay_canvas.drawCentredString(width / 2, height / 2, text)
+        overlay_canvas.save()
+        buf.seek(0)
+        page.merge_page(PdfReader(buf).pages[0])
+    return _writer_bytes(writer)
