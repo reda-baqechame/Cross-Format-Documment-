@@ -28,21 +28,73 @@ def _runs(doc: CanonicalDocument, block: AnyNode) -> list[AnyNode]:
 
 
 def _plain(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(run_text(doc, r) for r in _runs(doc, block)).strip()
+    return _inline_plain(doc, block).strip()
+
+
+def _inline_plain(doc: CanonicalDocument, block: AnyNode) -> str:
+    parts: list[str] = []
+    for child in doc.children_of(block.id):
+        if child.type == "run":
+            parts.append(run_text(doc, child))
+        elif child.type == "footnote_reference" and not is_redacted(doc, child.id):
+            parts.append(f"[{getattr(child, 'marker', '')}]")
+        elif child.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(child, 'original_type', 'unknown')}]")
+    return "".join(parts)
+
+
+def _footnote_lines(doc: CanonicalDocument) -> list[str]:
+    lines: list[str] = []
+    for note in doc.nodes.values():
+        if note.type != "footnote" or is_redacted(doc, note.id):
+            continue
+        text_parts: list[str] = []
+        direct = _inline_plain(doc, note).strip()
+        if direct:
+            text_parts.append(direct)
+        for child in doc.children_of(note.id):
+            if child.type in ("paragraph", "heading", "table_cell"):
+                text = _inline_plain(doc, child).strip()
+                if text:
+                    text_parts.append(text)
+        marker = getattr(note, "marker", "")
+        text = " ".join(text_parts).strip()
+        if text:
+            lines.append(f"{marker}. {text}")
+    return lines
 
 
 # ── Markdown ──────────────────────────────────────────────────────────────────
 def model_to_markdown(doc: CanonicalDocument) -> bytes:
     lines: list[str] = []
     for node in doc.children_of(doc.root_id):
+        if node.type == "footnote":
+            continue
         _md_block(lines, doc, node)
+    footnotes = _footnote_lines(doc)
+    if footnotes:
+        lines.append("## Footnotes")
+        lines.append("")
+        for line in footnotes:
+            marker, _, text = line.partition(". ")
+            lines.append(f"[^{marker}]: {text}")
+        lines.append("")
     text = "\n".join(lines).strip() + "\n"
     return text.encode("utf-8")
 
 
 def _md_runs(doc: CanonicalDocument, block: AnyNode) -> str:
     parts: list[str] = []
-    for r in _runs(doc, block):
+    for r in doc.children_of(block.id):
+        if r.type == "footnote_reference":
+            if not is_redacted(doc, r.id):
+                parts.append(f"[^{getattr(r, 'marker', '')}]")
+            continue
+        if r.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(r, 'original_type', 'unknown')}]")
+            continue
+        if r.type != "run":
+            continue
         text = run_text(doc, r)
         if not text:
             continue
@@ -89,6 +141,10 @@ def _md_block(lines: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
         if not is_redacted(doc, node.id):
             lines.append(f"**{getattr(node, 'field_name', 'field')}:** {node_text(doc, node)}")
             lines.append("")
+    elif kind == "unsupported":
+        lines.append(f"[unsupported node: {getattr(node, 'original_type', 'unknown')}]")
+        for child in doc.children_of(node.id):
+            _md_block(lines, doc, child)
 
 
 def _table_rows(doc: CanonicalDocument, tnode: AnyNode) -> list[list[str]]:
@@ -117,7 +173,20 @@ def _md_table(lines: list[str], doc: CanonicalDocument, tnode: AnyNode) -> None:
 def model_to_html(doc: CanonicalDocument) -> bytes:
     body: list[str] = []
     for node in doc.children_of(doc.root_id):
+        if node.type == "footnote":
+            continue
         _html_block(body, doc, node)
+    footnotes = _footnote_lines(doc)
+    if footnotes:
+        items = []
+        for line in footnotes:
+            marker, _, text = line.partition(". ")
+            items.append(f'<li id="fn-{html.escape(marker)}">{html.escape(text)}</li>')
+        body.append(
+            '<section class="footnotes"><h2>Footnotes</h2><ol>'
+            + "".join(items)
+            + "</ol></section>"
+        )
     title = html.escape(doc.meta.title or "Document")
     page = (
         '<!doctype html>\n<html>\n<head>\n<meta charset="utf-8">\n'
@@ -128,7 +197,18 @@ def model_to_html(doc: CanonicalDocument) -> bytes:
 
 def _html_runs(doc: CanonicalDocument, block: AnyNode) -> str:
     parts: list[str] = []
-    for r in _runs(doc, block):
+    for r in doc.children_of(block.id):
+        if r.type == "footnote_reference":
+            if not is_redacted(doc, r.id):
+                marker = html.escape(getattr(r, "marker", ""))
+                parts.append(f'<sup id="fnref-{marker}">{marker}</sup>')
+            continue
+        if r.type == "unsupported":
+            label = html.escape(getattr(r, "original_type", "unknown"))
+            parts.append(f'<span data-node-type="unsupported">[unsupported: {label}]</span>')
+            continue
+        if r.type != "run":
+            continue
         text = run_text(doc, r)
         if not text:
             continue
@@ -181,6 +261,11 @@ def _html_block(body: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
             name = html.escape(getattr(node, "field_name", "field"))
             value = html.escape(node_text(doc, node))
             body.append(f"<p><strong>{name}:</strong> {value}</p>")
+    elif kind == "unsupported":
+        label = html.escape(getattr(node, "original_type", "unknown"))
+        body.append(f'<div data-node-type="unsupported">[unsupported node: {label}]</div>')
+        for child in doc.children_of(node.id):
+            _html_block(body, doc, child)
 
 
 # ── RTF ─────────────────────────────────────────────────────────────────────────
@@ -205,7 +290,16 @@ def _rtf_escape(text: str) -> str:
 
 def _rtf_runs(doc: CanonicalDocument, block: AnyNode) -> str:
     parts: list[str] = []
-    for r in _runs(doc, block):
+    for r in doc.children_of(block.id):
+        if r.type == "footnote_reference":
+            if not is_redacted(doc, r.id):
+                parts.append("\\super " + _rtf_escape(getattr(r, "marker", "")) + "\\nosupersub ")
+            continue
+        if r.type == "unsupported":
+            parts.append(_rtf_escape(f"[unsupported: {getattr(r, 'original_type', 'unknown')}]"))
+            continue
+        if r.type != "run":
+            continue
         text = run_text(doc, r)
         if not text:
             continue
@@ -250,6 +344,11 @@ def _rtf_block(parts: list[str], doc: CanonicalDocument, node: AnyNode) -> None:
         if not is_redacted(doc, node.id):
             name = _rtf_escape(getattr(node, "field_name", "field"))
             parts.append("{\\b " + name + ":} " + _rtf_escape(node_text(doc, node)) + "\\par")
+    elif kind == "unsupported":
+        label = getattr(node, "original_type", "unknown")
+        parts.append(_rtf_escape(f"[unsupported node: {label}]") + "\\par")
+        for child in doc.children_of(node.id):
+            _rtf_block(parts, doc, child)
 
 
 def model_to_rtf(doc: CanonicalDocument) -> bytes:
@@ -257,7 +356,14 @@ def model_to_rtf(doc: CanonicalDocument) -> bytes:
     lists, tables (tab-separated), with redaction honored via ``run_text``."""
     parts: list[str] = []
     for node in doc.children_of(doc.root_id):
+        if node.type == "footnote":
+            continue
         _rtf_block(parts, doc, node)
+    footnotes = _footnote_lines(doc)
+    if footnotes:
+        parts.append("{\\b Footnotes}\\par")
+        for line in footnotes:
+            parts.append(_rtf_escape(line) + "\\par")
     rtf = "{\\rtf1\\ansi\\deff0\n" + "\n".join(parts) + "\n}"
     # Non-ASCII is already \uN?-escaped, so ASCII encoding is lossless here.
     return rtf.encode("ascii", errors="replace")

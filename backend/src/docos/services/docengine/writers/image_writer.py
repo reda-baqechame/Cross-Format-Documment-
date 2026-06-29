@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text
+from docos.services.docengine.writers.redaction import is_redacted, run_text
 
 _WIDTH = 816  # ~ US-Letter width at 96 dpi
 _MARGIN = 56
@@ -24,7 +24,15 @@ _MAX_HEIGHT = 20000  # guard against pathologically long documents
 
 
 def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run")
+    parts: list[str] = []
+    for child in doc.children_of(block.id):
+        if child.type == "run":
+            parts.append(run_text(doc, child))
+        elif child.type == "footnote_reference" and not is_redacted(doc, child.id):
+            parts.append(f"[{getattr(child, 'marker', '')}]")
+        elif child.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(child, 'original_type', 'unknown')}]")
+    return "".join(parts)
 
 
 def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_w: int) -> list[str]:
@@ -74,6 +82,19 @@ def _collect_lines(doc: CanonicalDocument, root_id: str | None = None) -> list[t
                     _block_text(doc, c) for c in doc.children_of(row.id) if c.type == "table_cell"
                 ]
                 out.append((" | ".join(cells), False))
+        elif kind == "footnote":
+            if not is_redacted(doc, node.id):
+                lines = [_block_text(doc, node).strip()]
+                for child in doc.children_of(node.id):
+                    if child.type in ("paragraph", "heading", "table_cell"):
+                        lines.append(_block_text(doc, child).strip())
+                text = " ".join(line for line in lines if line)
+                if text:
+                    out.append((f"Footnote {getattr(node, 'marker', '')}: {text}", False))
+        elif kind == "unsupported":
+            out.append((f"[unsupported node: {getattr(node, 'original_type', 'unknown')}]", False))
+            for child in doc.children_of(node.id):
+                visit(child)
 
     start = doc.nodes.get(root_id) if root_id else doc.nodes[doc.root_id]
     if start is None:

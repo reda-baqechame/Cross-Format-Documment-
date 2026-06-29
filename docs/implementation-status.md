@@ -31,7 +31,7 @@ This file is the source of truth for "don't forget anything." Update it as featu
   `routes_integrations.py`): real authorization-code handshake + token store + token-authenticated
   import through the shared ingest pipeline. Activate per provider with `<PROVIDER>_CLIENT_ID/SECRET`
   + `OAUTH_REDIRECT_BASE`; inert/not-connected without creds.
-- 🔒 ODT / EPUB / XML / JSON / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
+- 🔒 ODT / EPUB / Google Docs / Sheets / Slides imports — future adapters or OAuth integrations
 - 🟡 Handwriting OCR — **seam wired** (`services/ocr/handwriting.py`): calls a specialized model
   when `HANDWRITING_PROVIDER_URL` is set; otherwise standard OCR (honest "not connected").
 
@@ -244,6 +244,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Global restyle — bulk inline formatting (bold/italic/underline/font/size/color) over a scope
   (all/headings/body/matching), compiled to reversible `update_node` ops; `POST /documents/{id}/restyle`
   — `services/semantic/restyle.py`
+- ✅ **Lossless model slice: DOCX footnotes** — first-class `footnote_reference` and `footnote`
+  nodes preserve body/table-cell footnotes on parse, re-emit real `word/footnotes.xml` on DOCX
+  export, render readable footnote sections in non-DOCX exports, and keep redacted note text out
+  of all outputs. Future node types now deserialize as visible `unsupported` placeholders instead
+  of crashing older readers.
 - ✅ Extract structured data on request — `services/semantic/extract.py`
 - ✅ Translate (LLM-backed)
 - ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`

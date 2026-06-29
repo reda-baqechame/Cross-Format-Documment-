@@ -21,7 +21,10 @@ export type NodeType =
   | "field"
   | "comment"
   | "annotation"
-  | "metadata_block";
+  | "metadata_block"
+  | "footnote_reference"
+  | "footnote"
+  | "unsupported";
 
 export interface BBox {
   x0: number;
@@ -77,6 +80,11 @@ export interface DocNode {
   options?: string[];
   validation_pattern?: string | null;
   default_value?: string | null;
+  // footnotes / forward-compatible node wrapper
+  footnote_id?: string;
+  marker?: string;
+  original_type?: string;
+  raw?: Record<string, unknown>;
 }
 
 export interface DocumentMeta {

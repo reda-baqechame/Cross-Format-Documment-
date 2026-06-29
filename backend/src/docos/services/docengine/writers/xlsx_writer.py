@@ -16,14 +16,41 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from docos.model.document import CanonicalDocument
 from docos.model.nodes import AnyNode
-from docos.services.docengine.writers.redaction import run_text, spreadsheet_text
+from docos.services.docengine.writers.redaction import is_redacted, run_text, spreadsheet_text
 
 # openpyxl rejects sheet titles over 31 chars or containing []:*?/\
 _BAD_TITLE = set("[]:*?/\\")
 
 
 def _block_text(doc: CanonicalDocument, block: AnyNode) -> str:
-    return "".join(run_text(doc, r) for r in doc.children_of(block.id) if r.type == "run")
+    parts: list[str] = []
+    for child in doc.children_of(block.id):
+        if child.type == "run":
+            parts.append(run_text(doc, child))
+        elif child.type == "footnote_reference" and not is_redacted(doc, child.id):
+            parts.append(f"[{getattr(child, 'marker', '')}]")
+        elif child.type == "unsupported":
+            parts.append(f"[unsupported: {getattr(child, 'original_type', 'unknown')}]")
+    return "".join(parts)
+
+
+def _footnote_lines(doc: CanonicalDocument) -> list[str]:
+    lines: list[str] = []
+    for note in doc.nodes.values():
+        if note.type != "footnote" or is_redacted(doc, note.id):
+            continue
+        parts: list[str] = []
+        direct = _block_text(doc, note).strip()
+        if direct:
+            parts.append(direct)
+        for child in doc.children_of(note.id):
+            if child.type in ("paragraph", "heading", "table_cell"):
+                text = _block_text(doc, child).strip()
+                if text:
+                    parts.append(text)
+        if parts:
+            lines.append(f"{getattr(note, 'marker', '')}. {' '.join(parts)}")
+    return lines
 
 
 def _content_nodes(doc: CanonicalDocument) -> list[AnyNode]:
@@ -104,9 +131,12 @@ def model_to_xlsx(doc: CanonicalDocument) -> bytes:
                 text = _block_text(doc, node)
                 if text:
                     loose_text.append(text)
+        elif kind == "unsupported":
+            loose_text.append(f"[unsupported node: {getattr(node, 'original_type', 'unknown')}]")
 
     if pending_heading:
         loose_text.append(pending_heading)
+    loose_text.extend(_footnote_lines(doc))
     if loose_text:
         ws = wb.create_sheet(title=_safe_title("Text", used_titles))
         for i, line in enumerate(loose_text, start=1):

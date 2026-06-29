@@ -29,9 +29,16 @@ regardless of nesting, and JSONB storage stays simple.
 | `FieldNode` | form/template fields: `field_name`, `field_kind`, `value` |
 | `CommentNode` / `AnnotationNode` | review artifacts |
 | `MetadataBlockNode` | structured embedded metadata |
+| `FootnoteReferenceNode` | inline note marker: `footnote_id`, `marker` |
+| `FootnoteNode` | note body: `footnote_id`, `marker`, normal paragraph/run children |
+| `UnsupportedNode` | forward-compatible wrapper: `original_type`, `raw` |
 
 Every node also carries `bbox`, `reading_order`, `tags` (semantic/a11y), and `attrs`
 (format-specific extras preserved on round-trip so fidelity is never silently lost).
+
+Unknown future node types deserialize as `UnsupportedNode` instead of failing validation. The raw
+payload and child edges are preserved so older readers can display a visible placeholder and keep
+known descendants reachable while newer versions add first-class node classes.
 
 ## Reversible patches (`patch.py`)
 
