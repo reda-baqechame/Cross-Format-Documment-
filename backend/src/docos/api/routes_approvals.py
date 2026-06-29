@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,20 +19,21 @@ from docos.api.access import get_owned_document
 from docos.api.session import Actor, get_actor
 from docos.db.models import ApprovalStep
 from docos.deps import db_session, get_provenance
+from docos.services.auth.users import get_user
 from docos.services.collab import approvals
 
 router = APIRouter(prefix="/documents", tags=["approvals"])
 
 
 class StartWorkflowRequest(BaseModel):
-    approvers: list[str]
+    approvers: list[str] = Field(min_length=1, max_length=100)
     ordered: bool = True
 
 
 class DecisionRequest(BaseModel):
-    approver: str
+    approver: str = Field(min_length=1, max_length=200)
     decision: str  # "approve" | "reject"
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=2_000)
 
 
 def _steps(session: Session, doc_id: str) -> list[ApprovalStep]:
@@ -108,7 +109,7 @@ def start_workflow(
     get_provenance(session).record_event(
         doc_id,
         "approval.started",
-        actor="api",
+        actor=actor.user_id or actor.session_id,
         detail={"workflow_id": workflow_id, "approvers": names, "ordered": body.ordered},
     )
     session.commit()
@@ -125,12 +126,27 @@ def decide(
     _require_doc(session, doc_id, actor)
     if body.decision not in ("approve", "reject"):
         raise HTTPException(status_code=422, detail="decision must be 'approve' or 'reject'")
-
+    if actor.user_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="approval decisions require the approver's account or recipient portal link",
+        )
+    user = get_user(session, actor.user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="authenticated user no longer exists")
     steps = _steps(session, doc_id)
     if approvals.overall_state(steps) in ("none", "approved", "rejected"):
         raise HTTPException(status_code=409, detail="no approval workflow is awaiting a decision")
 
     approver = body.approver.strip()
+    identities = {user.email.casefold()}
+    if user.name:
+        identities.add(user.name.strip().casefold())
+    if approver.casefold() not in identities:
+        raise HTTPException(
+            status_code=403,
+            detail="the authenticated account does not match this approver",
+        )
     if not approvals.can_act(steps, approver):
         raise HTTPException(
             status_code=409,
@@ -145,7 +161,7 @@ def decide(
     get_provenance(session).record_event(
         doc_id,
         f"approval.{step.status}",
-        actor="api",
+        actor=actor.user_id,
         detail={"workflow_id": step.workflow_id, "approver": approver, "note": body.note},
     )
     session.commit()
@@ -156,7 +172,7 @@ def decide(
         get_provenance(session).record_event(
             doc_id,
             f"approval.workflow_{final}",
-            actor="api",
+            actor=actor.user_id,
             detail={"workflow_id": steps[0].workflow_id},
         )
         session.commit()

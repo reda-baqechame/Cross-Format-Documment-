@@ -9,9 +9,10 @@ one rejection never blocks the others — the classic "send for signature to N p
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,15 +22,20 @@ from docos.api.routes_share import create_recipient_share
 from docos.api.session import Actor, get_actor
 from docos.db.models import ApprovalStep, BulkSendPacket, Document, DocumentShare
 from docos.deps import db_session, get_provenance
+from docos.services.auth.share_tokens import recover_share_token
 from docos.services.collab import approvals
 from docos.services.templates import library
+from docos.settings import get_settings
 
 router = APIRouter(prefix="/documents", tags=["bulk-send"])
 
 
+Recipient = Annotated[str, Field(min_length=1, max_length=200)]
+
+
 class BulkSendRequest(BaseModel):
-    recipients: list[str]
-    message: str | None = None
+    recipients: list[Recipient] = Field(min_length=1, max_length=100)
+    message: str | None = Field(default=None, max_length=2_000)
 
 
 class PacketView(BaseModel):
@@ -69,7 +75,15 @@ def _portal_url(session: Session, packet_doc_id: str, recipient: str) -> str | N
         .order_by(DocumentShare.created_at.desc())
         .limit(1)
     )
-    return f"/portal/{share.token}" if share else None
+    if share is None:
+        return None
+    token = recover_share_token(
+        share.token,
+        share.token_ciphertext,
+        secret=get_settings().signing_secret,
+        share_id=share.id,
+    )
+    return f"/portal/{token}"
 
 
 @router.post("/{doc_id}/bulk-send", response_model=BulkSendBatch)
@@ -128,7 +142,7 @@ def bulk_send(
                 message=body.message,
             )
         )
-        share = create_recipient_share(
+        create_recipient_share(
             session,
             doc_id=copy.doc_id,
             actor=actor,
@@ -146,7 +160,7 @@ def bulk_send(
                 recipient=recipient,
                 packet_doc_id=copy.doc_id,
                 state="in_progress",
-                portal_url=f"/portal/{share.token}",
+                portal_url=_portal_url(session, copy.doc_id, recipient),
             )
         )
 

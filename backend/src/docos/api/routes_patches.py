@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from docos.api._apply import apply_and_commit
+from docos.api.patch_security import validate_image_blob_refs
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import (
     FindReplaceRequest,
@@ -81,9 +82,11 @@ async def create_patch(
                 raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
             if op.target_id is not None and op.target_id not in doc.nodes:
                 raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
+        ops = [Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops]
+        validate_image_blob_refs(doc_id, ops)
         patch = ReversiblePatch(
             id=new_patch_id(),
-            patches=[Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops],
+            patches=ops,
             inverse=[],
             intent=body.instruction,
             created_at=datetime.now(UTC),
@@ -159,6 +162,7 @@ async def plan_patch(
             if op.op in _TARGETED_OPS and op.target_id is None:
                 raise HTTPException(status_code=422, detail=f"op '{op.op}' requires a target_id")
         ops = [Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops]
+        validate_image_blob_refs(doc_id, ops)
         intent = body.instruction
     else:
         if not get_settings().ai_enabled:
@@ -203,6 +207,14 @@ async def find_replace(
         match_case=body.match_case,
         whole_word=body.whole_word,
     )
+    if occurrences > 10_000:
+        raise HTTPException(status_code=413, detail="replace operation matches too many values")
+    output_bytes = sum(len(item.after.encode("utf-8")) for item in replacements)
+    max_output_bytes = get_settings().max_upload_mb * 1024 * 1024
+    if output_bytes > max_output_bytes:
+        raise HTTPException(
+            status_code=413, detail="replace operation would exceed document limits"
+        )
 
     patch = ReversiblePatch(
         id=new_patch_id(),
@@ -220,6 +232,7 @@ async def find_replace(
         doc_id,
         doc,
         patch,
+        actor=actor,
         event="text.replaced",
         detail={"occurrences": occurrences, "nodes_changed": len(replacements)},
     )

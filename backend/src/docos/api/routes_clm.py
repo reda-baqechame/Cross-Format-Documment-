@@ -129,7 +129,13 @@ def insert_clause(
         created_at=datetime.now(UTC),
     )
     new_version_id, _updated = apply_and_commit(
-        session, doc_id, doc, patch, event="clause.inserted", detail={"blocks": len(ops)}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="clause.inserted",
+        detail={"blocks": len(ops)},
     )
     return InsertClauseResponse(doc_id=doc_id, inserted=len(ops), new_version_id=new_version_id)
 

@@ -76,7 +76,13 @@ def add_comment(
 
     patch, comment_id = comments.add_comment_patch(doc, body.target_id, text, body.author)
     _, updated = apply_and_commit(
-        session, doc_id, doc, patch, event="comment.added", detail={"comment_id": comment_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="comment.added",
+        detail={"comment_id": comment_id},
     )
     return CommentCreatedResponse(
         doc_id=doc_id, comment_id=comment_id, threads=comments.list_threads(updated)
@@ -99,7 +105,13 @@ def reply(
 
     patch, reply_id = comments.reply_patch(doc, comment_id, text, body.author)
     _, updated = apply_and_commit(
-        session, doc_id, doc, patch, event="comment.replied", detail={"comment_id": comment_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="comment.replied",
+        detail={"comment_id": comment_id},
     )
     return CommentCreatedResponse(
         doc_id=doc_id, comment_id=reply_id, threads=comments.list_threads(updated)
@@ -118,7 +130,13 @@ def resolve(
     _require_comment(doc, comment_id)
     patch = comments.resolve_patch(doc, comment_id, body.resolved)
     _, updated = apply_and_commit(
-        session, doc_id, doc, patch, event="comment.resolved", detail={"comment_id": comment_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="comment.resolved",
+        detail={"comment_id": comment_id},
     )
     return CommentsResponse(doc_id=doc_id, threads=comments.list_threads(updated))
 
@@ -134,6 +152,12 @@ def delete_comment(
     _require_comment(doc, comment_id)
     patch = comments.delete_patch(doc, comment_id)
     _, updated = apply_and_commit(
-        session, doc_id, doc, patch, event="comment.deleted", detail={"comment_id": comment_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="comment.deleted",
+        detail={"comment_id": comment_id},
     )
     return CommentsResponse(doc_id=doc_id, threads=comments.list_threads(updated))

@@ -13,14 +13,20 @@ class LocalBlobStore(BlobStore):
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:
-        # keys may contain "/" to namespace; keep them within root
-        safe = key.replace("..", "_")
-        path = self.root / safe
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Keys may contain "/" for namespaces, but may never escape the root.
+        relative = Path(key)
+        if not key or relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("invalid blob key")
+        root = self.root.resolve()
+        path = (root / relative).resolve()
+        if path != root and root not in path.parents:
+            raise ValueError("blob key escapes storage root")
         return path
 
     async def put(self, key: str, data: bytes) -> str:
-        self._path(key).write_bytes(data)
+        path = self._path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
         return key
 
     async def get(self, key: str) -> bytes:

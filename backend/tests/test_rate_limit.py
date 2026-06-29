@@ -49,6 +49,21 @@ def test_same_client_cannot_bypass_limit_by_rotating_session(monkeypatch):
     assert exc.value.status_code == 429
 
 
+def test_forwarded_ip_headers_cannot_rotate_the_client_bucket(monkeypatch):
+    ratelimit.reset()
+    monkeypatch.setattr(ratelimit, "get_settings", lambda: _settings(True, 1))
+    ratelimit.enforce_upload_rate(
+        _Req(host="10.0.0.8", headers={"x-forwarded-for": "198.51.100.1"}),
+        Actor(session_id="a"),
+    )
+    with pytest.raises(HTTPException) as exc:
+        ratelimit.enforce_upload_rate(
+            _Req(host="10.0.0.8", headers={"x-forwarded-for": "198.51.100.2"}),
+            Actor(session_id="b"),
+        )
+    assert exc.value.status_code == 429
+
+
 def test_disabled_flag_never_limits(monkeypatch):
     ratelimit.reset()
     monkeypatch.setattr(ratelimit, "get_settings", lambda: _settings(False, 1))

@@ -18,6 +18,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docos.api.access import owner_clause
 from docos.api.ratelimit import enforce_op_rate, enforce_upload_rate
 from docos.api.routes_documents import ingest_bytes
 from docos.api.schemas import (
@@ -36,6 +37,7 @@ from docos.deps import (
     get_registry,
 )
 from docos.services import integrations
+from docos.services.auth.secret_store import seal, unseal
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.ingestion.interface import IngestionGateway
 from docos.settings import get_settings
@@ -58,7 +60,11 @@ def _token_for(session: Session, actor: Actor, name: str) -> IntegrationToken | 
         session.execute(
             select(IntegrationToken).where(
                 IntegrationToken.provider == name,
-                IntegrationToken.owner_session_id == actor.session_id,
+                owner_clause(
+                    IntegrationToken.owner_session_id,
+                    IntegrationToken.owner_user_id,
+                    actor,
+                ),
             )
         )
         .scalars()
@@ -125,8 +131,13 @@ def callback(
         provider=name,
         access_token="",
     )
-    row.access_token = str(tokens.get("access_token", ""))
-    row.refresh_token = tokens.get("refresh_token")
+    context = f"integration:{row.id}:{name}"
+    row.access_token = seal(
+        str(tokens.get("access_token", "")), secret=settings.signing_secret, context=context
+    ) or ""
+    row.refresh_token = seal(
+        tokens.get("refresh_token"), secret=settings.signing_secret, context=context
+    )
     row.updated_at = datetime.now(UTC)
     session.add(row)
     session.commit()
@@ -163,7 +174,15 @@ async def import_file(
     if token is None:
         raise HTTPException(status_code=401, detail=f"{name} is not connected")
     try:
-        data = integrations.download(body.file_url, token.access_token)
+        settings = get_settings()
+        access_token = unseal(
+            token.access_token,
+            secret=settings.signing_secret,
+            context=f"integration:{token.id}:{name}",
+        )
+        if not access_token:
+            raise ValueError("stored provider credential is empty")
+        data = integrations.download(name, body.file_url, access_token, gateway.max_bytes)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"download failed: {exc}") from exc
     record, version_id, detected = await ingest_bytes(

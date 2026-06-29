@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -19,9 +20,11 @@ from docos.db.models import ApprovalStep, DocumentShare, DocumentVersion
 from docos.deps import db_session, get_provenance
 from docos.model.serialize import from_dict
 from docos.services.auth.passwords import hash_password
+from docos.services.auth.share_tokens import protect_share_token, recover_share_token
 from docos.services.billing.plans import require_portal_access
 from docos.services.collab import approvals
 from docos.services.provenance import readiness
+from docos.settings import get_settings
 
 router = APIRouter(tags=["share"])
 _PORTAL_RATE = [Depends(enforce_portal_rate)]
@@ -51,6 +54,7 @@ class ShareListResponse(BaseModel):
 
 
 class PortalApproveRequest(BaseModel):
+    decision: Literal["approve", "reject"] = "approve"
     note: str | None = None
 
 
@@ -85,14 +89,26 @@ def _portal_path(token: str) -> str:
 
 
 def _share_view(share: DocumentShare) -> ShareView:
+    if share.token_ciphertext is None:
+        token = share.token
+        share.token, share.token_ciphertext = protect_share_token(
+            token, secret=get_settings().signing_secret, share_id=share.id
+        )
+    else:
+        token = recover_share_token(
+            share.token,
+            share.token_ciphertext,
+            secret=get_settings().signing_secret,
+            share_id=share.id,
+        )
     return ShareView(
         id=share.id,
-        token=share.token,
+        token=token,
         document_id=share.document_id,
         permission=share.permission,
         recipient_label=share.recipient_label,
         expires_at=share.expires_at,
-        portal_url=_portal_path(share.token),
+        portal_url=_portal_path(token),
         revoked=share.revoked,
     )
 
@@ -112,10 +128,15 @@ def create_share(
     if body.expires_in_days is not None and body.expires_in_days > 0:
         expires_at = datetime.now(UTC) + timedelta(days=body.expires_in_days)
     token = secrets.token_urlsafe(24)
+    share_id = f"share_{uuid.uuid4().hex[:16]}"
+    token_lookup, token_ciphertext = protect_share_token(
+        token, secret=get_settings().signing_secret, share_id=share_id
+    )
     share = DocumentShare(
-        id=f"share_{uuid.uuid4().hex[:16]}",
+        id=share_id,
         document_id=doc_id,
-        token=token,
+        token=token_lookup,
+        token_ciphertext=token_ciphertext,
         permission=body.permission,
         pin_hash=hash_password(body.pin) if body.pin else None,
         recipient_label=body.recipient_label,
@@ -149,7 +170,9 @@ def list_shares(
         )
         .order_by(DocumentShare.created_at.desc())
     ).all()
-    return ShareListResponse(doc_id=doc_id, shares=[_share_view(s) for s in rows])
+    views = [_share_view(s) for s in rows]
+    session.commit()
+    return ShareListResponse(doc_id=doc_id, shares=views)
 
 
 @router.delete("/documents/{doc_id}/shares/{share_id}")
@@ -266,13 +289,15 @@ def portal_approve(
         raise HTTPException(status_code=409, detail=f"{approver} cannot sign off yet")
 
     step = next(s for s in steps if s.approver == approver and s.status == approvals.PENDING)
-    step.status = approvals.APPROVED
+    step.status = (
+        approvals.APPROVED if body.decision == "approve" else approvals.REJECTED
+    )
     step.note = body.note
     step.decided_at = datetime.now(UTC)
     provenance = get_provenance(session)
     provenance.record_event(
         access.document.id,
-        "approval.approved",
+        f"approval.{step.status}",
         actor=f"portal:{token[:8]}",
         detail={"workflow_id": step.workflow_id, "approver": approver, "via": "share"},
     )
@@ -280,10 +305,10 @@ def portal_approve(
 
     steps = _approval_steps(session, access.document.id)
     final = approvals.overall_state(steps)
-    if final == "approved":
+    if final in ("approved", "rejected"):
         provenance.record_event(
             access.document.id,
-            "approval.workflow_approved",
+            f"approval.workflow_{final}",
             actor=f"portal:{token[:8]}",
             detail={"workflow_id": steps[0].workflow_id},
         )
@@ -301,10 +326,15 @@ def create_recipient_share(
 ) -> DocumentShare:
     """Used by bulk-send to mint a portal link per recipient."""
     token = secrets.token_urlsafe(24)
+    share_id = f"share_{uuid.uuid4().hex[:16]}"
+    token_lookup, token_ciphertext = protect_share_token(
+        token, secret=get_settings().signing_secret, share_id=share_id
+    )
     share = DocumentShare(
-        id=f"share_{uuid.uuid4().hex[:16]}",
+        id=share_id,
         document_id=doc_id,
-        token=token,
+        token=token_lookup,
+        token_ciphertext=token_ciphertext,
         permission=permission,
         recipient_label=recipient,
         expires_at=datetime.now(UTC) + timedelta(days=90),

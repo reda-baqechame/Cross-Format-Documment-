@@ -46,6 +46,12 @@ const STRIP_REQUEST = new Set([
   "content-length",
   "transfer-encoding",
   "expect",
+  // Client-supplied forwarding headers are not trustworthy. Let the upstream
+  // server/edge derive the peer address instead of forwarding spoofable values.
+  "x-forwarded-for",
+  "x-real-ip",
+  "cf-connecting-ip",
+  "fly-client-ip",
 ]);
 const STRIP_RESPONSE = new Set([
   "content-encoding",

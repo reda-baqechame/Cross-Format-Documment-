@@ -8,13 +8,24 @@ per-provider file *picker* would need each vendor's SDK — out of scope, docume
 
 from __future__ import annotations
 
+import ipaddress
 from dataclasses import dataclass
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
 from docos.settings import Settings
 
 _TIMEOUT_S = 30.0
+_MAX_REDIRECTS = 3
+
+_DOWNLOAD_HOST_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "gdrive": ("googleapis.com", "googleusercontent.com"),
+    "dropbox": ("dropboxapi.com", "dropboxusercontent.com"),
+    "box": ("box.com", "boxcloud.com"),
+    "onedrive": ("microsoft.com", "sharepoint.com", "1drv.com"),
+    "slack": ("slack.com", "slack-files.com"),
+}
 
 
 @dataclass(frozen=True)
@@ -126,13 +137,56 @@ def exchange_code(settings: Settings, name: str, code: str) -> dict:
     return resp.json()
 
 
-def download(file_url: str, access_token: str) -> bytes:
-    """Token-authenticated download of a provider content URL. Raises on error."""
-    resp = httpx.get(
-        file_url,
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=_TIMEOUT_S,
-        follow_redirects=True,
-    )
-    resp.raise_for_status()
-    return resp.content
+def validate_download_url(name: str, file_url: str) -> str:
+    """Return a provider-owned HTTPS URL or raise before credentials are attached."""
+
+    parsed = urlsplit(file_url)
+    host = (parsed.hostname or "").rstrip(".").lower()
+    if (
+        parsed.scheme != "https"
+        or not host
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        raise ValueError("provider download URL must be credential-free HTTPS")
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("provider download URL cannot use an IP address")
+    suffixes = _DOWNLOAD_HOST_SUFFIXES.get(name, ())
+    if not any(host == suffix or host.endswith(f".{suffix}") for suffix in suffixes):
+        raise ValueError(f"download URL is not owned by the {name} provider")
+    return file_url
+
+
+def download(name: str, file_url: str, access_token: str, max_bytes: int) -> bytes:
+    """Download from a provider allowlist with redirect and response-size controls."""
+
+    current = validate_download_url(name, file_url)
+    with httpx.Client(timeout=_TIMEOUT_S, follow_redirects=False) as client:
+        for redirect_count in range(_MAX_REDIRECTS + 1):
+            with client.stream(
+                "GET", current, headers={"Authorization": f"Bearer {access_token}"}
+            ) as resp:
+                if resp.is_redirect:
+                    location = resp.headers.get("location")
+                    if not location or redirect_count >= _MAX_REDIRECTS:
+                        raise ValueError("provider download exceeded the redirect limit")
+                    current = validate_download_url(name, urljoin(current, location))
+                    continue
+                resp.raise_for_status()
+                content_length = resp.headers.get("content-length")
+                if content_length and int(content_length) > max_bytes:
+                    raise ValueError("provider file exceeds the upload size limit")
+                chunks: list[bytes] = []
+                total = 0
+                for chunk in resp.iter_bytes():
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise ValueError("provider file exceeds the upload size limit")
+                    chunks.append(chunk)
+                return b"".join(chunks)
+    raise ValueError("provider download failed")

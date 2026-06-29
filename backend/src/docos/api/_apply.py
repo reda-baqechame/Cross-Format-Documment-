@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from docos.api.session import Actor
 from docos.db.models import Document
 from docos.deps import get_orchestrator, get_provenance
 from docos.model.document import CanonicalDocument
@@ -21,6 +22,7 @@ def apply_and_commit(
     doc: CanonicalDocument,
     patch: ReversiblePatch,
     *,
+    actor: Actor,
     event: str,
     detail: dict | None = None,
 ) -> tuple[str | None, CanonicalDocument]:
@@ -34,7 +36,10 @@ def apply_and_commit(
 
     if not patch.patches:
         provenance.record_event(
-            doc_id, event, actor="api", detail={**(detail or {}), "applied": False}
+            doc_id,
+            event,
+            actor=actor.user_id or actor.session_id,
+            detail={**(detail or {}), "applied": False},
         )
         session.commit()
         return None, doc
@@ -45,7 +50,10 @@ def apply_and_commit(
     if record is not None:
         record.current_version_id = new_version_id
     provenance.record_event(
-        doc_id, event, actor="api", detail={**(detail or {}), "patch_id": patch.id, "applied": True}
+        doc_id,
+        event,
+        actor=actor.user_id or actor.session_id,
+        detail={**(detail or {}), "patch_id": patch.id, "applied": True},
     )
     session.commit()
     return new_version_id, updated

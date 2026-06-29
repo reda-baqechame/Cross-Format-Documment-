@@ -51,7 +51,11 @@ def test_import_downloads_and_ingests_with_stub(client, monkeypatch):
     # Pretend the session has a stored token, and stub the provider download to return a txt file.
     from docos.db.models import IntegrationToken
 
-    monkeypatch.setattr(integrations, "download", lambda url, token: b"Imported from the cloud.\n")
+    monkeypatch.setattr(
+        integrations,
+        "download",
+        lambda name, url, token, max_bytes: b"Imported from the cloud.\n",
+    )
 
     # Seed a token by hitting the DB through a connected provider row.
     # Simplest: monkeypatch _token_for to return a fake token object.
@@ -66,7 +70,7 @@ def test_import_downloads_and_ingests_with_stub(client, monkeypatch):
     )
     res = client.post(
         "/integrations/dropbox/import",
-        json={"file_url": "https://content/file", "filename": "note.txt"},
+        json={"file_url": "https://content.dropboxapi.com/file", "filename": "note.txt"},
     )
     assert res.status_code == 200
     doc_id = res.json()["doc_id"]
