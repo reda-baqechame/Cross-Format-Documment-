@@ -17,6 +17,8 @@ from docos.api.schemas import (
     AskRequest,
     AskResponse,
     AutopilotResponse,
+    ChatRequest,
+    ChatResponse,
     ClassifyResponse,
     DiffResponse,
     ExtractResponse,
@@ -49,6 +51,28 @@ async def ask_document(
     use_llm = get_settings().effective_llm_provider != "noop"
     result = await reader.answer(doc, body.question, get_llm_client(), use_llm=use_llm)
     return AskResponse(
+        doc_id=doc_id,
+        answer=result.answer,
+        citations=result.citations,
+        used_llm=result.used_llm,
+    )
+
+
+@router.post("/{doc_id}/chat", response_model=ChatResponse)
+async def chat_document(
+    doc_id: str,
+    body: ChatRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+    _rate: None = Depends(enforce_op_rate),
+) -> ChatResponse:
+    """Multi-turn Q&A: answer a follow-up with conversation history, citing the nodes used."""
+    _record, doc = _load_latest(session, doc_id, actor)
+    use_llm = get_settings().effective_llm_provider != "noop"
+    result = await reader.chat(
+        doc, body.history, body.question, get_llm_client(), use_llm=use_llm
+    )
+    return ChatResponse(
         doc_id=doc_id,
         answer=result.answer,
         citations=result.citations,

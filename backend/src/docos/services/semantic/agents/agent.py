@@ -65,6 +65,8 @@ class AgentRun(BaseModel):
     # Set by the iterative agent loop (executor.py); the deterministic path leaves them empty.
     answer: str = ""
     citations: list[dict] = []
+    # Tallied token usage across the loop's LLM turns, when the provider reports it (else None).
+    usage: dict | None = None
 
 
 def _wants_modification(goal: str) -> bool:

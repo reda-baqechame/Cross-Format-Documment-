@@ -60,13 +60,19 @@ def test_embedding_ranking_beats_keyword_on_synonymy(monkeypatch):
         return [0.0, 0.0, 0.0]
 
     class FakeProvider(embeddings.EmbeddingProvider):
+        model = "fake"
+
         def embed(self, texts):
             return [_vec(t) for t in texts]
 
     monkeypatch.setattr(embeddings, "get_embedding_provider", lambda: FakeProvider())
-    embeddings._embed_one_cached.cache_clear()
+    monkeypatch.setattr(embeddings, "embeddings_enabled", lambda: True)
+    monkeypatch.setattr(embeddings, "_disk", lambda: None)  # keep the cache off the repo tree
+    embeddings.clear_cache()
 
+    # A pure-synonym query ("salary") shares no keyword with the doc ("compensation"); only the
+    # embedding leg of the fusion can surface it — which is exactly the BM25 gap we're closing.
     doc = _doc("Annual compensation is $150,000.", "The weather is nice today.")
-    hits = search.semantic_retrieve(doc, "what is the salary?", k=1)
+    hits = search.semantic_retrieve(doc, "salary", k=1)
     assert hits and "compensation" in hits[0][1].lower()
-    embeddings._embed_one_cached.cache_clear()
+    embeddings.clear_cache()

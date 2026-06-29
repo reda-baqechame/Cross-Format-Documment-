@@ -16,6 +16,20 @@ class LLMResponse(BaseModel):
     text: str
     tool_calls: list[dict] = []
     raw: dict | None = None
+    # Token usage for this call when the provider reports it (e.g. input_tokens / output_tokens /
+    # cache_read_input_tokens). ``None`` offline. Lets the agent surface cost without a meter.
+    usage: dict | None = None
+
+
+def merge_usage(total: dict | None, add: dict | None) -> dict | None:
+    """Sum two token-usage dicts key-wise (for tallying a multi-turn agent loop). ``None``-safe."""
+    if not add:
+        return total
+    out = dict(total or {})
+    for key, value in add.items():
+        if isinstance(value, (int, float)):
+            out[key] = out.get(key, 0) + value
+    return out
 
 
 # A turn in a multi-step tool-calling conversation. Provider-agnostic so the agent loop never

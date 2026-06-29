@@ -58,6 +58,8 @@ sentry = ["sentry-sdk>=2.0"]
 # lazily and activate only when present. Install separately when upgrading extraction quality:
 #   pip install "docling>=2.0"                 # MIT
 #   pip install "paddleocr>=2.7" "paddlepaddle>=2.6"   # Apache-2.0
+#   pip install "fastembed>=0.3"               # Apache-2.0 (weights MIT) — offline semantic search
+#                                              # (EMBEDDING_PROVIDER=local, no API key); lazy-imported
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

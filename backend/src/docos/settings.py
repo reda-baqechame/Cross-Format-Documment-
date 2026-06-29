@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PrivacyMode = Literal["offline", "enterprise", "cloud"]
 BlobBackend = Literal["local", "s3"]
 LLMProvider = Literal["noop", "openai", "anthropic"]
-EmbeddingProvider = Literal["none", "openai"]
+EmbeddingProvider = Literal["none", "openai", "local"]
 Scanner = Literal["heuristic", "clamav", "noop"]
 BlobEncryption = Literal["none", "aesgcm"]
 OfficeEditorProvider = Literal["local", "onlyoffice"]
@@ -110,9 +110,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
 
     # embeddings / semantic search (default-off: retrieval stays deterministic BM25 until a
-    # provider is configured, then semantic ranking turns on with a keyword fallback).
+    # provider is configured, then semantic ranking turns on, fused with BM25 — never replacing
+    # it). ``openai`` needs OPENAI_API_KEY; ``local`` runs fully offline (no key) via fastembed +
+    # BAAI/bge-small-en-v1.5 — install with ``uv sync --extra embeddings``.
     embedding_provider: EmbeddingProvider = "none"
     embedding_model: str = ""
+    # Persistent, content-addressed embedding cache so vectors survive restarts / multi-process
+    # deploys (the per-process LRU sits on top). Set empty to disable the on-disk layer.
+    embedding_cache_dir: str = "./data/embeddings"
 
     # e-signature (HMAC key; override in production via SIGNING_SECRET)
     signing_secret: str = "docos-dev-signing-secret"
