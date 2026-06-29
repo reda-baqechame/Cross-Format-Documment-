@@ -24,6 +24,8 @@ from docos.api.schemas import (
     PatchPlanResponse,
     PatchRequest,
     PatchResponse,
+    RestyleRequest,
+    RestyleResponse,
     SensitiveScanResponse,
     SignatureResponse,
     SignRequest,
@@ -36,6 +38,7 @@ from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.find_replace import plan_find_replace
 from docos.services.provenance import accessibility, pii, sensitive, signing
 from docos.services.semantic.preview import build_preview
+from docos.services.semantic.restyle import build_restyle_patch
 
 router = APIRouter(prefix="/documents", tags=["semantic"])
 
@@ -182,6 +185,42 @@ async def plan_patch(
         intent=intent,
         ops=[PatchOpDTO(op=o.op, target_id=o.target_id, payload=o.payload) for o in ops],
         preview=build_preview(doc, ops),
+    )
+
+
+@router.post("/{doc_id}/restyle", response_model=RestyleResponse)
+async def restyle(
+    doc_id: str,
+    body: RestyleRequest,
+    session: Session = Depends(db_session),
+    actor: Actor = Depends(get_actor),
+) -> RestyleResponse:
+    """Apply inline formatting across many runs as one reversible, audited edit.
+
+    Deterministic and offline: compiled over the canonical model (redacted runs skipped) into
+    ``update_node`` ops through the standard apply → commit → audit path, so the bulk restyle is
+    versioned and undoable like any other edit.
+    """
+    _record, doc = _load_latest(session, doc_id, actor)
+    try:
+        patch = build_restyle_patch(doc, body.style, scope=body.scope, find=body.find)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    new_version_id, _updated = apply_and_commit(
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="text.restyled",
+        detail={"scope": body.scope, "nodes_changed": len(patch.patches)},
+    )
+    return RestyleResponse(
+        doc_id=doc_id,
+        applied=new_version_id is not None,
+        nodes_changed=len(patch.patches),
+        new_version_id=new_version_id,
     )
 
 

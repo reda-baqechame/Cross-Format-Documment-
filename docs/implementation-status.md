@@ -241,6 +241,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
 - ✅ Conversational multi-turn Q&A (history-biased retrieval, cited per turn) — `reader.chat`,
   `POST /documents/{id}/chat`
+- ✅ Global restyle — bulk inline formatting (bold/italic/underline/font/size/color) over a scope
+  (all/headings/body/matching), compiled to reversible `update_node` ops; `POST /documents/{id}/restyle`
+  — `services/semantic/restyle.py`
 - ✅ Extract structured data on request — `services/semantic/extract.py`
 - ✅ Translate (LLM-backed)
 - ✅ Multi-document "notebook" (corpus Q&A, cross-doc citations) — `services/semantic/corpus.py`, `routes_notebook.py`
