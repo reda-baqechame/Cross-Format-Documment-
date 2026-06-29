@@ -23,7 +23,7 @@ from docos.api._apply import apply_and_commit
 from docos.api.access import get_owned_document
 from docos.api.ratelimit import enforce_op_rate
 from docos.api.routes_documents import _load_latest
-from docos.api.routes_export import _render_export, _signature_valid
+from docos.api.routes_export import _render_export, _safe_filename, _signature_valid
 from docos.api.schemas import CleanResponse, ReadinessResponse, RedactionAuditResponse
 from docos.api.session import Actor, get_actor
 from docos.deps import blob_store_dep, db_session, get_registry
@@ -74,6 +74,7 @@ def readiness_report_download(
     record, doc = _load_latest(session, doc_id, actor)
     report = readiness.build_report(doc)
     title = record.title or doc_id
+    filename = _safe_filename(title, doc_id)
 
     if format == "json":
         import json
@@ -83,7 +84,7 @@ def readiness_report_download(
             content=payload,
             media_type="application/json",
             headers={
-                "Content-Disposition": f'attachment; filename="{title}-readiness-report.json"'
+                "Content-Disposition": f'attachment; filename="{filename}-readiness-report.json"'
             },
         )
 
@@ -91,7 +92,7 @@ def readiness_report_download(
     return Response(
         content=html,
         media_type="text/html; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{title}-readiness-report.html"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}-readiness-report.html"'},
     )
 
 
@@ -150,6 +151,7 @@ async def clean_document(
         doc_id,
         doc,
         patch,
+        actor=actor,
         event="document.cleaned",
         detail={"fixes": len(ops)},
     )

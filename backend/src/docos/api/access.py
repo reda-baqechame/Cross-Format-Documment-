@@ -22,6 +22,8 @@ from docos.db.models import (
     WorkflowRecipe,
     WorkflowRun,
 )
+from docos.services.auth.share_tokens import protect_share_token, token_digest
+from docos.settings import get_settings
 
 
 def owner_clause(session_id_col, user_id_col, actor: Actor):
@@ -104,7 +106,12 @@ class ShareAccess:
 
 def get_valid_share(session: Session, token: str, *, pin: str | None = None) -> ShareAccess:
     """Resolve a portal token to a document; 404 on invalid/expired/revoked shares."""
-    share = session.scalar(select(DocumentShare).where(DocumentShare.token == token))
+    digest = token_digest(token, secret=get_settings().signing_secret)
+    share = session.scalar(
+        select(DocumentShare).where(
+            or_(DocumentShare.token == digest, DocumentShare.token == token)
+        )
+    )
     if share is None or share.revoked:
         raise HTTPException(status_code=404, detail="share link not found")
     if share.expires_at is not None:
@@ -119,4 +126,9 @@ def get_valid_share(session: Session, token: str, *, pin: str | None = None) -> 
     document = session.get(Document, share.document_id)
     if document is None or document.current_version_id is None:
         raise HTTPException(status_code=404, detail="document not found")
+    if share.token_ciphertext is None:
+        share.token, share.token_ciphertext = protect_share_token(
+            token, secret=get_settings().signing_secret, share_id=share.id
+        )
+        session.commit()
     return ShareAccess(share=share, document=document)

@@ -161,6 +161,7 @@ def detect_fields(
         doc_id,
         doc,
         patch,
+        actor=actor,
         event="fields.detected",
         detail={"detected": len(ops)},
     )
@@ -202,6 +203,7 @@ def create_field(
         doc_id,
         doc,
         patch,
+        actor=actor,
         event="field.created",
         detail={"field_name": body.field_name},
     )
@@ -231,7 +233,13 @@ def update_field(
         created_at=datetime.now(UTC),
     )
     version_id, _updated = apply_and_commit(
-        session, doc_id, doc, patch, event="field.updated", detail={"node_id": field_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="field.updated",
+        detail={"node_id": field_id},
     )
     return _patch_response(doc_id, patch, version_id)
 
@@ -255,7 +263,13 @@ def delete_field(
         created_at=datetime.now(UTC),
     )
     version_id, _updated = apply_and_commit(
-        session, doc_id, doc, patch, event="field.deleted", detail={"node_id": field_id}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="field.deleted",
+        detail={"node_id": field_id},
     )
     return _patch_response(doc_id, patch, version_id)
 

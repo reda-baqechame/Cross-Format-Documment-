@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
-  decideApproval,
   getApprovals,
   startApprovals,
   type WorkflowStatus,
@@ -45,12 +44,6 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
       setNames("");
       setShowNewForm(false);
     },
-  });
-
-  const decide = useMutation({
-    mutationFn: (v: { approver: string; decision: "approve" | "reject" }) =>
-      decideApproval(docId, v.approver, v.decision),
-    onSuccess: set,
   });
 
   const w = workflow.data;
@@ -125,22 +118,7 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
                     {s.approver}
                   </span>
                   {isCurrent && (
-                    <span className="flex gap-1">
-                      <button
-                        onClick={() => decide.mutate({ approver: s.approver, decision: "approve" })}
-                        disabled={decide.isPending}
-                        className="rounded bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-500"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => decide.mutate({ approver: s.approver, decision: "reject" })}
-                        disabled={decide.isPending}
-                        className="rounded bg-red-600 px-2 py-0.5 text-xs text-white hover:bg-red-500"
-                      >
-                        Reject
-                      </button>
-                    </span>
+                    <span className="text-xs text-amber-700">Recipient action required</span>
                   )}
                 </li>
               );
@@ -164,11 +142,9 @@ export function ApprovalsPanel({ docId }: { docId: string }) {
         </div>
       )}
 
-      {(start.isError || decide.isError) && (
+      {start.isError && (
         <p role="alert" className="text-xs text-red-600">
-          {(start.error ?? decide.error) instanceof Error
-            ? (start.error ?? decide.error)!.message
-            : String(start.error ?? decide.error)}
+          {start.error instanceof Error ? start.error.message : String(start.error)}
         </p>
       )}
     </aside>

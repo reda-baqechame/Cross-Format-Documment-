@@ -339,6 +339,7 @@ class DocumentShare(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
     token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    token_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
     permission: Mapped[str] = mapped_column(String, default="view")  # view|comment|sign
     pin_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     recipient_label: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from docos.api.access import get_owned_document
+from docos.api.patch_security import validate_image_blob_refs
 from docos.api.routes_documents import _load_latest
 from docos.api.schemas import PatchOpDTO
 from docos.api.session import Actor, get_actor
@@ -30,7 +31,17 @@ router = APIRouter(prefix="/documents", tags=["suggestions"])
 
 # Ops that act on an existing node and therefore require a valid ``target_id``.
 _TARGETED_OPS = frozenset(
-    {"set_text", "update_node", "retag", "redact", "unredact", "remove_node", "move_node"}
+    {
+        "set_text",
+        "update_node",
+        "retag",
+        "redact",
+        "unredact",
+        "remove_node",
+        "move_node",
+        "replace_image",
+        "set_image_attrs",
+    }
 )
 
 
@@ -103,10 +114,14 @@ def create_suggestion(
     for op in body.ops:
         if op.op in _TARGETED_OPS and (op.target_id is None or op.target_id not in doc.nodes):
             raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
+        if op.target_id is not None and op.target_id not in doc.nodes:
+            raise HTTPException(status_code=422, detail=f"unknown target_id for op '{op.op}'")
 
+    ops = [Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops]
+    validate_image_blob_refs(doc_id, ops)
     patch = ReversiblePatch(
         id=new_patch_id(),
-        patches=[Patch(op=o.op, target_id=o.target_id, payload=o.payload) for o in body.ops],
+        patches=ops,
         inverse=[],
         intent=body.intent,
         created_by=body.author or "system",
@@ -156,6 +171,7 @@ def accept_suggestion(
                 status_code=409,
                 detail="suggestion no longer applies (a target node is gone)",
             )
+    validate_image_blob_refs(doc_id, patch.patches)
 
     orchestrator = get_orchestrator()
     provenance = get_provenance(session)

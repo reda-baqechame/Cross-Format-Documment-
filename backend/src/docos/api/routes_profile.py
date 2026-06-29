@@ -113,6 +113,12 @@ def autofill_document(
         created_at=datetime.now(UTC),
     )
     new_version_id, _updated = apply_and_commit(
-        session, doc_id, doc, patch, event="fields.autofilled", detail={"filled": len(ops)}
+        session,
+        doc_id,
+        doc,
+        patch,
+        actor=actor,
+        event="fields.autofilled",
+        detail={"filled": len(ops)},
     )
     return AutofillResponse(doc_id=doc_id, filled=len(ops), new_version_id=new_version_id)

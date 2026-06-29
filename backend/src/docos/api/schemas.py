@@ -307,7 +307,7 @@ class ConnectResponse(BaseModel):
 
 
 class IntegrationImportRequest(BaseModel):
-    file_url: str = Field(min_length=1)
+    file_url: str = Field(min_length=1, max_length=2048)
     filename: str | None = Field(default=None, max_length=255)
 
 
@@ -397,8 +397,8 @@ class PatchOpDTO(BaseModel):
 class PatchRequest(BaseModel):
     """Either a natural-language ``instruction`` (LLM path) or explicit ``ops``."""
 
-    instruction: str | None = None
-    ops: list[PatchOpDTO] | None = None
+    instruction: str | None = Field(default=None, max_length=10_000)
+    ops: list[PatchOpDTO] | None = Field(default=None, max_length=1_000)
 
     @model_validator(mode="after")
     def _require_one(self) -> PatchRequest:
@@ -431,8 +431,8 @@ class PatchPlanResponse(BaseModel):
 class FindReplaceRequest(BaseModel):
     """Replace every occurrence of ``find`` with ``replace`` across the document."""
 
-    find: str
-    replace: str = ""
+    find: str = Field(min_length=1, max_length=512)
+    replace: str = Field(default="", max_length=10_000)
     match_case: bool = False
     whole_word: bool = False
 

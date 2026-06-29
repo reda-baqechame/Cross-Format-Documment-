@@ -37,10 +37,8 @@ def test_one_recipient_decision_does_not_affect_others(client):
     ).json()
     alice = next(p for p in batch["packets"] if p["recipient"] == "alice")
 
-    client.post(
-        f"/documents/{alice['packet_doc_id']}/approvals/decision",
-        json={"approver": "alice", "decision": "approve"},
-    )
+    decision = client.post(f"{alice['portal_url']}/approve", json={"decision": "approve"})
+    assert decision.status_code == 200
 
     listed = client.get(f"/documents/{doc_id}/bulk-send").json()
     assert len(listed["batches"]) == 1

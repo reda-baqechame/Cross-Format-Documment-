@@ -40,10 +40,14 @@ def reset() -> None:
 
 
 def _client_key(request: Request) -> str:
-    for header in ("x-forwarded-for", "x-real-ip", "cf-connecting-ip", "fly-client-ip"):
-        value = request.headers.get(header)
-        if value:
-            return value.split(",", 1)[0].strip()
+    """Return the transport peer, never an untrusted forwarding header.
+
+    Forwarded-IP headers are only meaningful when a separately configured trusted
+    proxy boundary reconstructs them. This offline-first service has no such trust
+    configuration, so accepting them here lets any direct client mint rate-limit
+    identities. ASGI/Uvicorn may already expose a trusted proxy-derived peer in
+    ``request.client``; that is the only value this limiter consumes.
+    """
     return request.client.host if request.client else "unknown"
 
 
