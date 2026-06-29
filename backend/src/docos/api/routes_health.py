@@ -24,6 +24,14 @@ from docos.storage.blob import BlobStore
 router = APIRouter(tags=["system"])
 
 
+def _migration_revision(session: Session) -> str:
+    try:
+        revision = session.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        return str(revision) if revision else "untracked"
+    except Exception:  # noqa: BLE001 - create_all test databases intentionally have no stamp
+        return "untracked"
+
+
 @router.get("/live")
 def live() -> dict[str, str]:
     """Liveness: the process is running. Used to restart hung containers, not to gate traffic."""
@@ -41,6 +49,8 @@ def health(
         db_status = f"error: {exc}"
     return HealthCheck(
         status="ok",
+        deployed_revision=settings.deployed_revision,
+        migration_head=_migration_revision(session),
         privacy_mode=settings.privacy_mode,
         blob_backend=settings.blob_backend,
         db=db_status,
@@ -64,6 +74,7 @@ async def ready(
     response: Response,
     session: Session = Depends(db_session),
     blob_store: BlobStore = Depends(blob_store_dep),
+    settings: Settings = Depends(settings_dep),
 ) -> ReadyCheck:
     """Deep readiness: required tables exist and blob storage is writable.
 
@@ -76,7 +87,15 @@ async def ready(
     gates: list[bool] = []
 
     # Core tables must exist (proves migrations created the schema, not just that the DB opens).
-    for table in ("documents", "document_versions", "users", "document_shares", "subscriptions"):
+    for table in (
+        "documents",
+        "document_versions",
+        "users",
+        "document_shares",
+        "subscriptions",
+        "workflow_recipes",
+        "workflow_runs",
+    ):
         try:
             session.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
             checks[f"table:{table}"] = "ok"
@@ -97,13 +116,17 @@ async def ready(
         gates.append(False)
 
     # Informational: which Alembic revision (if any) is stamped.
-    try:
-        rev = session.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        checks["migrations"] = f"at {rev}" if rev else "no revision stamped"
-    except Exception:  # noqa: BLE001 - no alembic_version table (e.g. create_all) is not fatal
-        checks["migrations"] = "no alembic stamp"
+    migration_head = _migration_revision(session)
+    checks["migrations"] = (
+        f"at {migration_head}" if migration_head != "untracked" else "no alembic stamp"
+    )
 
     ok = all(gates)
     if not ok:
         response.status_code = 503
-    return ReadyCheck(ok=ok, checks=checks)
+    return ReadyCheck(
+        ok=ok,
+        deployed_revision=settings.deployed_revision,
+        migration_head=migration_head,
+        checks=checks,
+    )

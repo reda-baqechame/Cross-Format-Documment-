@@ -32,6 +32,8 @@ from docos.services.semantic.skills.autopilot import AutopilotReport
 
 class HealthCheck(BaseModel):
     status: str
+    deployed_revision: str = "unknown"
+    migration_head: str = "unknown"
     privacy_mode: str
     blob_backend: str
     db: str
@@ -63,6 +65,8 @@ class ReadyCheck(BaseModel):
     not applied. Railway points its healthcheck here so a broken deploy never reports healthy."""
 
     ok: bool
+    deployed_revision: str = "unknown"
+    migration_head: str = "unknown"
     checks: dict[str, str]
 
 
