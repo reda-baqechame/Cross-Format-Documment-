@@ -173,7 +173,11 @@ def build_table_nodes(image: bytes, *, parent_id: str, languages: str = "eng") -
                 parent_id=cnode.id,
                 text=text,
                 bbox=BBox(x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys)) if cell_words else None,
-                attrs={"confidence": round(conf, 1), "ocr_review": conf < _REVIEW_BELOW},
+                attrs={
+                    "confidence": round(conf, 1),
+                    "ocr_review": conf < _REVIEW_BELOW,
+                    "source_engine": "tesseract",
+                },
             )
             cnode.children.append(run.id)
             rnode.children.append(cnode.id)
@@ -208,7 +212,11 @@ class TesseractOcr(OcrStructureService):
                     id=new_node_id(),
                     text=w.text,
                     bbox=BBox(x0=w.x0, y0=w.y0, x1=w.x1, y1=w.y1),
-                    attrs={"confidence": round(w.conf, 1), "ocr_review": w.conf < _REVIEW_BELOW},
+                    attrs={
+                        "confidence": round(w.conf, 1),
+                        "ocr_review": w.conf < _REVIEW_BELOW,
+                        "source_engine": "tesseract",
+                    },
                 )
             )
         return runs

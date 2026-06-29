@@ -40,6 +40,14 @@ This file is the source of truth for "don't forget anything." Update it as featu
     — `services/docengine/adapters/docling.py`, `registry.default_registry`
   - ✅ **PaddleOCR** (Apache-2.0) — `OCR_ENGINE=paddle` for stronger multilingual OCR; degrades to
     Tesseract when absent. — `services/ocr/paddle.py`, `services/ocr/factory.py`
+  - ✅ **Multi-engine OCR consensus** — `OCR_ENGINE=consensus` runs every available engine and keeps
+    the highest-mean-confidence result (best-engine routing); equals Tesseract when alone.
+    — `services/ocr/consensus.py`
+  - ✅ **Source-engine + confidence provenance** on every OCR run (`attrs.source_engine`/`confidence`),
+    surfaced by the HITL review queue. — `services/ocr/tesseract.py`, `services/ocr/paddle.py`
+- ✅ **HITL review queue** — `GET /documents/{id}/review-items` lists low-confidence OCR words +
+  low-confidence typed fields (redaction-aware); correct via the existing patch endpoint.
+  — `services/semantic/review.py`
   - ✅ **Apache Tika** (Apache-2.0) — `TIKA_SERVER_URL` sidecar for detection / metadata / fallback
     text as a validation layer (never the primary parser). — `services/ingestion/tika.py`
   - ✅ **QPDF** preflight (Apache-2.0) — `QPDF_PREFLIGHT=true` repairs/linearizes PDFs before parse
@@ -61,6 +69,16 @@ This file is the source of truth for "don't forget anything." Update it as featu
   the nodes the model sees on large docs (`services/semantic/retrieval.py`); `POST /documents/{id}/patches/plan`
   returns a validated, non-committed before/after preview (`services/semantic/preview.py`) the UI approves
   before applying (`AiEditBar`). `set_table_cell` added to the AI op set. — `api/routes_patches.py`
+- ✅ **Document synthesis (deliverables, not just findings)** — generate a NEW document (exception
+  report / AP reconciliation / customs summary) from a pack's findings, downloadable as
+  PDF/XLSX/DOCX/HTML/MD via the existing writers. — `services/synthesis/report_builder.py`,
+  `POST /packs/{pack}/report?format=…`
+- ✅ **End-to-end DocumentOps run** — `POST /documentops/run` orchestrates classify → pack-compare →
+  synthesize → queryable audit trail (`GET /documentops/runs/{id}`); read-only, mutations stay
+  approval-gated. Killer demo: `evals/demo_import_export`. — `services/workflows/runner.py`,
+  `api/routes_documentops.py`
+- ✅ **Pack-extraction accuracy gate** — finance/import-export field + finding correctness measured
+  in CI. — `evals/pack_extraction`
 - ✅ Parse to structured model (nodes, reading order, tables)
 - ✅ Table extraction — PDF tables detected via PyMuPDF `find_tables()` → `TableNode`/`TableRow`/
   `TableCell` in the canonical model (dedup vs text blocks, reading-order preserved), exported by
@@ -195,7 +213,12 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Accessibility auto-remediation (auto-tag headings, reading order, alt-text) — reversible — `services/provenance/accessibility.py`
 - ✅ Malware scan — ClamAV (INSTREAM) wired and **fails closed** when configured but
   unreachable; offline default stays NoopScanner — `services/ingestion/scanner.py`
-- ✅ Watermark (text stamp) — `pageops.watermark_pdf`
+- ✅ Watermark (text stamp) — `pageops.watermark_pdf`; **permissive (non-AGPL) engine** via
+  reportlab overlay + pypdf merge (`PDF_ENGINE=permissive`), parity-tested
+- ✅ PDF edit-fidelity: edited spans keep the original font family/weight (base-14 mapping, not a
+  flat default) — `writers/pdf_writer.py`; gated by `evals/pdf_fidelity`
+- ✅ PDF redaction proof: zero-recoverable-bytes corpus now covers the write-back path, including a
+  mixed edit+redact case — `evals/redaction_proof`
 - 🟡 DRM — **seam wired** (`services/drm`, `POST /documents/{id}/drm`): applies a rights-management
   provider when `DRM_PROVIDER_URL` is set, else 501 pointing to AES-256 Protect PDF (the honest
   local protection).

@@ -13,11 +13,30 @@ from docos.services.ocr.tesseract import TesseractOcr
 from docos.settings import get_settings
 
 
-def get_ocr_service() -> OcrStructureService:
-    """Return the configured OCR engine, falling back to Tesseract when Paddle is unavailable."""
-    if get_settings().ocr_engine == "paddle":
-        from docos.services.ocr.paddle import PaddleOcr, paddle_available
+def _paddle_or_none() -> OcrStructureService | None:
+    from docos.services.ocr.paddle import PaddleOcr, paddle_available
 
-        if paddle_available():
-            return PaddleOcr()
+    return PaddleOcr() if paddle_available() else None
+
+
+def get_ocr_service() -> OcrStructureService:
+    """Return the configured OCR engine.
+
+    ``paddle`` uses PaddleOCR when installed; ``consensus`` runs every available engine and keeps
+    the most confident result. Both degrade silently to the always-present Tesseract, so OCR is
+    never a hard dependency.
+    """
+    engine = get_settings().ocr_engine
+    if engine == "paddle":
+        paddle = _paddle_or_none()
+        if paddle is not None:
+            return paddle
+    elif engine == "consensus":
+        from docos.services.ocr.consensus import ConsensusOcr
+
+        engines = [TesseractOcr()]
+        paddle = _paddle_or_none()
+        if paddle is not None:
+            engines.append(paddle)
+        return ConsensusOcr(engines)
     return TesseractOcr()

@@ -13,6 +13,7 @@ Capability migration status (per the parity bake-off in ``tests/test_pdfengine_p
     page_count / merge / reorder / delete / extract / rotate — permissive parity (pypdf)
     encrypt (AES-256 R6)                              — permissive parity (pikepdf)
     compress                                          — permissive parity (pikepdf linearize)
+    watermark                                         — permissive parity (reportlab + pypdf)
     text/table extraction, redaction, searchable-PDF  — PyMuPDF only (hard to replace; stays
                                                          behind the boundary, honestly flagged
                                                          in /api/capabilities until parity)

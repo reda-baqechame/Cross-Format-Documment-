@@ -32,7 +32,7 @@ CollabBackend = Literal["memory", "redis"]
 # works offline with zero extra dependencies, and upgrades to a richer engine only when that
 # engine is installed/configured (the same activatable-seam pattern used across the app).
 ParserEngine = Literal["native", "docling"]
-OcrEngine = Literal["tesseract", "paddle"]
+OcrEngine = Literal["tesseract", "paddle", "consensus"]
 IngestMode = Literal["sync", "async"]
 PiiEngine = Literal["regex", "presidio"]
 PdfRenderEngine = Literal["pymupdf", "pdfium"]

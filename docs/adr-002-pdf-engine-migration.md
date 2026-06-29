@@ -17,6 +17,7 @@ invariant; we never ship a silent fidelity regression).
 |---|---|---|
 | Page rendering (raster) | `get_pixmap`, `Matrix` | ✅ **Already migrated** — `pdfium.py` (`PDF_RENDER_ENGINE=pdfium`, pypdfium2, Apache/BSD). |
 | Structural page-ops, encrypt, compress | (via `pageops`) | ✅ **Already migrated** — `pdfengine/permissive_engine.py` (pypdf + pikepdf), parity-tested. |
+| Watermark | `insert_textbox` overlay | ✅ **Migrated** — `permissive_engine.watermark_pdf` (reportlab overlay + pypdf merge), parity-tested. |
 | **Rich text parse** | `get_text("dict")` → blocks/lines/spans with bold/italic/font/size/color/bbox | ⚠️ **No drop-in.** pypdfium2 exposes characters/positions but **not** span formatting. |
 | **Table detection** | `find_tables()` | ⚠️ **No equivalent** in pypdfium2/pypdf. |
 | **Redaction burn-in** | `add_redact_annot` + `apply_redactions` + `scrub` | ⚠️ **Effectively fitz-unique** — true content removal from the PDF content stream. |
