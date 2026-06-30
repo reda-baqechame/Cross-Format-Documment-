@@ -41,6 +41,15 @@ ENV PYTHONUNBUFFERED=1 \
     BLOB_BACKEND=local \
     LOCAL_BLOB_DIR=/app/data/blobs
 
+# Bake the deploy revision into the image so /api/health and /api/ready can prove which commit
+# is live (the post-merge production smoke gates on this). Railway exposes its provided variables
+# — including RAILWAY_GIT_COMMIT_SHA — as Docker build args, so declaring the ARG captures the
+# commit at build time. We persist it as SOURCE_COMMIT (a settings fallback) rather than
+# re-exporting RAILWAY_GIT_COMMIT_SHA, so a real runtime value from Railway still takes
+# precedence. Empty when built outside Railway (e.g. locally), which settings reads as "unknown".
+ARG RAILWAY_GIT_COMMIT_SHA=""
+ENV SOURCE_COMMIT=${RAILWAY_GIT_COMMIT_SHA}
+
 WORKDIR /app
 
 RUN python3 -m venv /opt/venv
