@@ -83,14 +83,10 @@ def _open_ok(fmt: str, output: bytes) -> tuple[bool, str]:
 
 
 def _pdf_page_count(output: bytes) -> int:
-    # Prefer the permissive engine (pypdfium2); fall back to PyMuPDF only if it isn't importable.
+    # pypdfium2 is a pinned core dependency, so the permissive engine is always available.
     from docos.services.docengine import pdfium
 
-    if pdfium.pdfium_available():
-        return pdfium.page_count(output)
-    import fitz
-
-    return fitz.open(stream=output, filetype="pdf").page_count
+    return pdfium.page_count(output)
 
 
 def _output_text(fmt: str, output: bytes) -> str:
@@ -101,16 +97,7 @@ def _output_text(fmt: str, output: bytes) -> str:
         limit = get_settings().max_validation_pdf_pages
         from docos.services.docengine import pdfium
 
-        if pdfium.pdfium_available():
-            return pdfium.extract_text(output, max_pages=limit)
-        import fitz
-
-        doc = fitz.open(stream=output, filetype="pdf")
-        try:
-            count = doc.page_count if limit is None else min(doc.page_count, limit)
-            return "\n".join(doc[i].get_text() for i in range(count))
-        finally:
-            doc.close()
+        return pdfium.extract_text(output, max_pages=limit)
     if fmt in _OOXML_FORMATS:
         # Scan the decompressed package parts directly — catches any text the high-level
         # reader would skip, so a "removed" string can't hide in an unread part.
