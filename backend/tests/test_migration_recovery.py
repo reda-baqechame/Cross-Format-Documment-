@@ -67,7 +67,7 @@ def test_upgrade_recovers_partially_applied_sqlite_migrations(tmp_path: Path) ->
             row[1] for row in connection.execute("PRAGMA table_info('document_shares')")
         }
 
-    assert revision == ("0013",)
+    assert revision == ("0014",)
     assert {"workflow_recipes", "workflow_runs"} <= tables
     assert {
         "ix_workflow_recipes_owner_session_id",
@@ -80,6 +80,8 @@ def test_upgrade_recovers_partially_applied_sqlite_migrations(tmp_path: Path) ->
         "ix_workflow_runs_owner_user_id",
     } <= run_indexes
     assert "token_ciphertext" in share_columns
+    # Migration 0014 added the expert packet-audit tables; they must exist after head.
+    assert {"packets", "packet_documents", "packet_audit_runs"} <= tables
 
     _run_alembic(database_url, "downgrade", "0011")
     _run_alembic(database_url, "upgrade", "head")
