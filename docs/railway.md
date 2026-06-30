@@ -10,10 +10,14 @@ Deploy **one service** from the repo root. The root [`Dockerfile`](../Dockerfile
 
 ```json
 {
-  "build":  { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "build":  { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile", "watchPatterns": ["**"] },
   "deploy": { "startCommand": "/app/railway-single-service-start.sh", "healthcheckPath": "/api/ready" }
 }
 ```
+
+The image contains both `apps/web` and `backend`, so the service intentionally watches the entire
+repository. A backend-only migration or dependency change must redeploy the same production image;
+package-scoped monorepo watch paths are unsafe for this topology.
 
 **Health endpoints.** The container exposes three:
 

@@ -1,7 +1,7 @@
 /**
  * Resolve the backend URL for the server-side /api proxy.
  *
- * Single-service Railway and local dev: the API runs beside the web server, so localhost is valid.
+ * Single-service Railway bundles this web package and the backend in one image, so localhost is valid.
  * Split-service Railway: set API_PROXY_TARGET to the private API service URL.
  */
 
