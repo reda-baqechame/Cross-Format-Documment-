@@ -102,13 +102,13 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://localhost:8077/health >/dev/null && break; sleep 1; done
           python -m venv /tmp/st
           /tmp/st/bin/pip install --quiet "schemathesis==3.39.16"
-          # Provider-gated webhook/callback/translate seams correctly return 501 (Not Implemented)
+          # Provider-gated webhook/callback/translate/DRM seams correctly return 501 (Not Implemented)
           # in offline mode; that 5xx would trip not_a_server_error, so they are excluded here and
           # covered by their own integration tests instead.
           /tmp/st/bin/st run http://localhost:8077/openapi.json \
             --experimental=openapi-3.1 \
             --checks not_a_server_error \
-            --exclude-path-regex '(webhook|/translate|/integrations/)' \
+            --exclude-path-regex '(webhook|/translate|/integrations/|/drm)' \
             --hypothesis-suppress-health-check filter_too_much \
             --hypothesis-max-examples 12 \
             --hypothesis-deadline 10000
