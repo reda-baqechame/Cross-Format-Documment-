@@ -523,6 +523,23 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "pack_audit",
+            "Expert packet audit (evidence-bound findings + readiness verdict)",
+            # The expert spine: cited extraction → fact graph → rules → ExpertReport with a
+            # deterministic verdict. Verified by tests/unit/test_expert_spine.py (cited mismatch
+            # findings, correct verdict derivation, anti-hallucination guard).
+            state="verified",
+            engine="expert:spine",
+            engine_version="1.0",
+            proof_id="test:expert_spine",
+            limitations=[
+                "First-class packet API (/packets) with evidence-bound findings, readiness "
+                "verdict, and reversible fix plans. import_export vertical is expert-grade "
+                "(cited currency/total/weight/origin/HS/missing-doc rules); the remaining "
+                "verticals still use the uncited legacy pack adapters until their deep rebuild."
+            ],
+        ),
+        _cap(
             "workflow_recipes",
             "User-defined workflow recipes (save + run)",
             state="verified",

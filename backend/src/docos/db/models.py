@@ -406,3 +406,48 @@ class WorkflowRun(Base):
     status: Mapped[str] = mapped_column(String, default="completed")  # completed|failed
     results: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+# ── Expert packet audit ────────────────────────────────────────────────────────
+# A packet is a named group of documents audited together by one expert vertical
+# (import/export, AP, contracts, ...). Each audit run persists its findings and
+# evidence so a buyer gets a stable, citable, replayable report. All tables inherit
+# the same owner_session_id/owner_user_id isolation model as documents.
+
+
+class Packet(Base):
+    """A group of documents audited together as one business packet."""
+
+    __tablename__ = "packets"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    pack: Mapped[str] = mapped_column(String, nullable=False)  # vertical, e.g. import_export
+    owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class PacketDocument(Base):
+    """Membership: which documents belong to which packet."""
+
+    __tablename__ = "packet_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    packet_id: Mapped[str] = mapped_column(ForeignKey("packets.id"), index=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class PacketAuditRun(Base):
+    """One execution of an expert audit over a packet — the latest run is the live report."""
+
+    __tablename__ = "packet_audit_runs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    packet_id: Mapped[str] = mapped_column(ForeignKey("packets.id"), index=True)
+    pack: Mapped[str] = mapped_column(String, nullable=False)
+    verdict: Mapped[str] = mapped_column(String, nullable=False)  # ready|needs_review|blocked
+    readiness_score: Mapped[float] = mapped_column(Integer, nullable=False)  # 0..10000 (bps)
+    report: Mapped[dict] = mapped_column(JSON, nullable=False)  # full ExpertReport
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
