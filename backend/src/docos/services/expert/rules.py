@@ -144,9 +144,7 @@ def money_disagreement(
         title=title,
         explanation=explanation_template.format(
             roles=roles,
-            values=", ".join(
-                f"{f.unit or ''} {float(f.value):,.2f}".strip() for f in money_facts
-            ),
+            values=", ".join(f"{f.unit or ''} {float(f.value):,.2f}".strip() for f in money_facts),
             spread=spread,
         ),
         evidence=evidence,
@@ -156,13 +154,29 @@ def money_disagreement(
 
 
 def currency_disagreement(ctx: PacketContext) -> ExpertFinding | None:
-    """Block when documents declare different currency codes for the same money field."""
+    """Block when documents declare different currency codes for the same money field.
+
+    Currency can be carried either as a money fact's ``.unit`` or as a separate ``currency``
+    text fact (verticals extract both). Detect a disagreement across either source.
+    """
     seen: dict[str, list] = {}
+    # money facts carrying a currency unit — only consider units that look like a currency
+    # code (3 letters), so weight/quantity units like 'kg'/'lb' are not mistaken for currency.
+    _MONEY_FIELDS = {
+        "total_amount",
+        "amount",
+        "subtotal",
+        "coverage_limit",
+        "premium",
+        "deductible",
+    }
     for f in ctx.facts.facts:
-        if f.unit and f.unit not in seen:
-            seen[f.unit] = []
-        if f.unit:
-            seen[f.unit].append(f)
+        if f.unit and f.field in _MONEY_FIELDS and isinstance(f.unit, str) and len(f.unit) == 3:
+            seen.setdefault(f.unit.upper(), []).append(f)
+    # explicit 'currency' text facts (e.g. value="USD")
+    for f in ctx.facts.by_field("currency"):
+        code = str(f.value).upper()
+        seen.setdefault(code, []).append(f)
     currencies = {c for c, fs in seen.items() if fs and c is not None}
     if len(currencies) <= 1:
         return None
