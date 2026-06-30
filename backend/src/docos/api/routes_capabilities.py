@@ -534,9 +534,11 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             proof_id="test:expert_spine",
             limitations=[
                 "First-class packet API (/packets) with evidence-bound findings, readiness "
-                "verdict, and reversible fix plans. import_export vertical is expert-grade "
-                "(cited currency/total/weight/origin/HS/missing-doc rules); the remaining "
-                "verticals still use the uncited legacy pack adapters until their deep rebuild."
+                "verdict, and reversible fix plans. All five verticals are now expert-grade "
+                "(cited rules): import_export (currency/total/weight/origin/HS/missing-doc), "
+                "ap (3-way match + duplicate-invoice), contracts (clause + risk review), "
+                "hr (offer extraction + onboarding completeness), insurance (coverage/expiry/"
+                "claim-within-period). Offline and deterministic; no LLM required."
             ],
         ),
         _cap(

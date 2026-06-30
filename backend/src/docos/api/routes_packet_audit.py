@@ -24,13 +24,21 @@ from docos.db.models import DocumentVersion, Packet, PacketAuditRun, PacketDocum
 from docos.deps import db_session
 from docos.model.serialize import from_dict
 from docos.services.expert.schemas import ExpertReport
+from docos.services.expert.verticals import ap as ap_vertical
+from docos.services.expert.verticals import contracts as contracts_vertical
+from docos.services.expert.verticals import hr as hr_vertical
 from docos.services.expert.verticals import import_export as ie_vertical
+from docos.services.expert.verticals import insurance as insurance_vertical
 
 router = APIRouter(tags=["packets"])
 
 # Registry of available expert verticals by pack id.
 _VERTICALS = {
     "import_export": ie_vertical,
+    "ap": ap_vertical,
+    "contracts": contracts_vertical,
+    "hr": hr_vertical,
+    "insurance": insurance_vertical,
 }
 
 

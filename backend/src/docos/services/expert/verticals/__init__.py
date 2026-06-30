@@ -5,6 +5,6 @@ findings. Contrast with ``docos.services.packs`` (the legacy, uncited determinis
 which remain available unchanged for backward compatibility.
 """
 
-from docos.services.expert.verticals import import_export
+from docos.services.expert.verticals import ap, contracts, hr, import_export, insurance
 
-__all__ = ["import_export"]
+__all__ = ["ap", "contracts", "hr", "import_export", "insurance"]
