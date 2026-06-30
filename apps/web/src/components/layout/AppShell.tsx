@@ -19,6 +19,9 @@ export function AppShell({
             <Logo subtitle={subtitle} />
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/packets" className="hidden text-sm font-medium text-slate-500 hover:text-slate-800 sm:block">
+              Command Center
+            </Link>
             <Link href="/pricing" className="hidden text-sm font-medium text-slate-500 hover:text-slate-800 sm:block">
               Pricing
             </Link>

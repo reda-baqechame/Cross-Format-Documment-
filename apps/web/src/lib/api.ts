@@ -1953,6 +1953,120 @@ export async function listBulkSends(docId: string): Promise<BulkSendBatch[]> {
   return res.batches;
 }
 
+// ── Expert packet audit (Command Center) ──────────────────────────────────────
+// A packet is a group of related business documents audited together by one expert
+// vertical (import/export, AP, contracts, HR, insurance). Every finding cites its
+// source span (document + page + node + raw text); see docs/benchmarks/packet-audit.md.
+
+export interface Packet {
+  id: string;
+  name: string;
+  pack: string;
+  document_ids: string[];
+  created_at: string;
+}
+
+export interface EvidenceRef {
+  document_id: string;
+  document_type: string | null;
+  page_number: number | null;
+  node_id: string | null;
+  field_name: string | null;
+  raw_text: string;
+  normalized_value: string | null;
+  bbox: [number, number, number, number] | null;
+}
+
+export interface ExpertFinding {
+  id: string;
+  type: string;
+  severity: "info" | "warning" | "blocking";
+  title: string;
+  explanation: string;
+  business_impact: string | null;
+  recommended_action: string | null;
+  evidence: EvidenceRef[];
+  confidence: number;
+  detection_method: string;
+  human_review_required: boolean;
+  fix_available: boolean;
+  rule_code: string | null;
+}
+
+export interface ExtractedField {
+  name: string;
+  value: string;
+  document_id: string;
+  document_type: string | null;
+  confidence: number;
+  evidence: EvidenceRef;
+}
+
+export interface ExpertReport {
+  packet_id: string;
+  pack: string;
+  verdict: "ready" | "needs_review" | "blocked";
+  readiness_score: number;
+  executive_summary: string;
+  documents_detected: { document_id: string; title: string | null; document_type: string | null; confidence: number }[];
+  missing_documents: { document_type: string; label: string; severity: string; why_required: string }[];
+  extracted_fields: ExtractedField[];
+  findings: ExpertFinding[];
+  recommended_actions: { title: string; detail: string; severity: string; related_findings: string[]; auto_fixable: boolean }[];
+  generated_at: string;
+}
+
+export const PACKET_PACKS = [
+  { id: "import_export", label: "Import / Export packet", hint: "Invoice, packing list, bill of lading, certificate of origin" },
+  { id: "ap", label: "AP / Invoice packet", hint: "Invoice ↔ purchase order matching, duplicate detection" },
+  { id: "contracts", label: "Contracts packet", hint: "Clause extraction + risk review (governing law, liability, renewal)" },
+  { id: "hr", label: "HR onboarding packet", hint: "Offer extraction + I-9 / W-4 / NDA completeness" },
+  { id: "insurance", label: "Insurance packet", hint: "Coverage, expiry, claim-within-period checks" },
+] as const;
+
+export async function listPackets(): Promise<Packet[]> {
+  return json<Packet[]>(await apiFetch("/packets"));
+}
+
+export async function createPacket(name: string, pack: string): Promise<Packet> {
+  return json<Packet>(
+    await apiFetch("/packets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, pack }),
+    }),
+  );
+}
+
+export async function addPacketDocuments(packetId: string, documentIds: string[]): Promise<Packet> {
+  return json<Packet>(
+    await apiFetch(`/packets/${packetId}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ document_ids: documentIds }),
+    }),
+  );
+}
+
+export async function runPacketAudit(packetId: string): Promise<ExpertReport> {
+  return json<ExpertReport>(await apiFetch(`/packets/${packetId}/audit`, { method: "POST" }));
+}
+
+export async function getPacketReport(packetId: string): Promise<ExpertReport> {
+  return json<ExpertReport>(await apiFetch(`/packets/${packetId}/report`));
+}
+
+export async function getPacketScore(packetId: string): Promise<{
+  verdict: string;
+  readiness_score: number;
+  blocking: number;
+  warning: number;
+  info: number;
+  human_review_required: number;
+}> {
+  return json(await apiFetch(`/packets/${packetId}/score`));
+}
+
 // Auth
 export interface UserView {
   id: string;
