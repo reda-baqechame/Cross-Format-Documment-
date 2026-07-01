@@ -44,7 +44,9 @@ def test_from_readiness_wraps_findings_and_score():
     assert result.job_type == "clean_before_send"
     assert result.verdict == "needs_review"
     assert 0 <= result.score <= 100
-    assert result.proof_report_url.endswith("readiness/report?format=html")
+    assert result.proof_report_url.endswith("proof-report?format=html")
+    assert result.blocking_count >= 0
+    assert result.warning_count >= 0
     assert result.fix_plans_available >= 1
 
 

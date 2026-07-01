@@ -2328,8 +2328,8 @@ export async function startCheckout(plan: "pro" | "team"): Promise<{ checkout_ur
 
 export function downloadReadinessReport(docId: string, _report?: ReadinessResponse): void {
   const a = document.createElement("a");
-  a.href = `${BASE}/documents/${docId}/readiness/report?format=html`;
-  a.download = `${docId}-readiness-report.html`;
+  a.href = `${BASE}/documents/${docId}/proof-report?format=html`;
+  a.download = `${docId}-proof-report.html`;
   document.body.appendChild(a);
   a.click();
   a.remove();

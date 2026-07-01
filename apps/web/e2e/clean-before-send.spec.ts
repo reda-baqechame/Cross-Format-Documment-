@@ -14,7 +14,10 @@ test("clean before send surfaces verify findings and proof report", async ({ pag
 
   await expect(page).toHaveURL(/\/documents\//, { timeout: 30_000 });
 
-  await page.getByRole("button", { name: "Verify" }).click();
+  await page
+    .getByRole("navigation", { name: "Document command center" })
+    .getByRole("button", { name: "Command center: Verify" })
+    .click();
   await expect(page.getByText(/needs review|fix before|blocked|ready/i).first()).toBeVisible({
     timeout: 15_000,
   });
@@ -27,6 +30,6 @@ test("clean before send surfaces verify findings and proof report", async ({ pag
   await page.getByRole("button", { name: /Download proof report/i }).click();
   const download = await downloadPromise;
   if (download) {
-    expect(download.suggestedFilename()).toMatch(/readiness-report\.html$/);
+    expect(download.suggestedFilename()).toMatch(/proof-report\.html$/);
   }
 });

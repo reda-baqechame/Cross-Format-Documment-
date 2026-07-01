@@ -27,6 +27,7 @@ export function DocumentCommandCenter({
         <button
           key={m.id}
           type="button"
+          aria-label={`Command center: ${m.label}`}
           onClick={() => onTabChange(m.id)}
           className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
             activeTab === m.id

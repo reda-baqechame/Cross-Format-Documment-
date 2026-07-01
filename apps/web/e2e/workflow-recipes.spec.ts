@@ -10,7 +10,10 @@ test("recipe manager creates, runs, edits, reviews, and deletes a guarded recipe
   await page.getByRole("button", { name: "No file handy? Try a sample document" }).click();
   await expect(page).toHaveURL(/\/documents\/doc_/, { timeout: 30_000 });
 
-  await page.getByRole("button", { name: "Automate", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Document command center" })
+    .getByRole("button", { name: "Command center: Automate" })
+    .click();
   await page.getByRole("button", { name: "Saved recipes" }).click();
   await expect(page.getByRole("heading", { name: "Build a recipe" })).toBeVisible();
 
