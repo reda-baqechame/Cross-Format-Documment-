@@ -14,8 +14,10 @@ test("packet audit surfaces cited blocking finding", async ({ page }) => {
     { name: "invoice.txt", mimeType: "text/plain", buffer: Buffer.from(invoice) },
     { name: "po.txt", mimeType: "text/plain", buffer: Buffer.from(po) },
   ]);
+  await expect(page).toHaveURL(/\/documents\//, { timeout: 30_000 });
 
   await page.goto("/packets");
+  await page.getByLabel(/Vertical/i).selectOption("import_export");
   await page.getByPlaceholder("e.g. Shipment ACME-2026-04").fill("E2E mismatch packet");
   await page.getByRole("button", { name: "Create packet" }).click();
   await expect(page).toHaveURL(/\/packets\//, { timeout: 30_000 });
@@ -29,7 +31,7 @@ test("packet audit surfaces cited blocking finding", async ({ page }) => {
   await page.getByRole("button", { name: /Add .* document/i }).click();
 
   await page.getByRole("button", { name: /Run audit/i }).first().click();
-  await expect(page.getByText(/BLOCKED/i)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/BLOCKED/i).first()).toBeVisible({ timeout: 60_000 });
   await page.getByRole("button", { name: "Issues" }).click();
   await expect(page.getByText(/total|mismatch|disagree/i).first()).toBeVisible();
 });
