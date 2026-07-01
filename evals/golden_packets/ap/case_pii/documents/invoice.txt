@@ -1,0 +1,3 @@
+Commercial Invoice
+Contact: finance@example.com
+Total: CAD 100.00

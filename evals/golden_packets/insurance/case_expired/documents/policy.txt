@@ -1,0 +1,4 @@
+Policy No: POL-1
+Coverage limit $1,000,000.00
+Effective date: 2020-01-01
+Expiration date: 2020-12-31

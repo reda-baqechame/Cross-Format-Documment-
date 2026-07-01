@@ -1,0 +1,3 @@
+Commercial Invoice
+Invoice No: INV-G2
+Total: CAD 14,920.00

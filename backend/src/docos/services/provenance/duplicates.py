@@ -76,10 +76,7 @@ def group_duplicates(
         if len(members) < 2:
             continue
         sims = [
-            pair_scores.get((min(a, b), max(a, b)), 0.0)
-            for a in members
-            for b in members
-            if a < b
+            pair_scores.get((min(a, b), max(a, b)), 0.0) for a in members for b in members if a < b
         ]
         groups.append(
             DuplicateGroup(

@@ -27,13 +27,32 @@ from docos.services.semantic.skills import autopilot
 
 # Goal keywords that imply the user wants the document changed (vs. just read/analyzed).
 _MODIFY_TERMS = (
-    "edit", "change", "fix", "replace", "rewrite", "update", "set ", "correct",
-    "redact", "remove", "delete", "clean", "sanitize", "fill",
+    "edit",
+    "change",
+    "fix",
+    "replace",
+    "rewrite",
+    "update",
+    "set ",
+    "correct",
+    "redact",
+    "remove",
+    "delete",
+    "clean",
+    "sanitize",
+    "fill",
 )
 
 # Goal keywords that imply a domain review/validation (pull in the matching business pack).
 _REVIEW_TERMS = (
-    "review", "validate", "check", "risk", "contract", "onboard", "compliance", "audit",
+    "review",
+    "validate",
+    "check",
+    "risk",
+    "contract",
+    "onboard",
+    "compliance",
+    "audit",
 )
 
 
@@ -119,8 +138,12 @@ async def run_agent(
         result = tool.run(doc)
         steps.append(
             AgentStep(
-                tool=tool.name, kind=tool.kind, label=tool.label, status="done",
-                summary=result.summary, data=result.data,
+                tool=tool.name,
+                kind=tool.kind,
+                label=tool.label,
+                status="done",
+                summary=result.summary,
+                data=result.data,
             )
         )
 
@@ -132,7 +155,9 @@ async def run_agent(
         proposed = preview_service.build_preview(doc, patch.patches)
         steps.append(
             AgentStep(
-                tool="modify", kind="mutate", label="Propose edits",
+                tool="modify",
+                kind="mutate",
+                label="Propose edits",
                 status="proposed" if patch.patches else "skipped",
                 summary=(
                     f"Proposed {proposed.change_count} reversible change(s) — preview shown, "
@@ -149,7 +174,9 @@ async def run_agent(
         if action.tool in ("approval-route", "export"):
             steps.append(
                 AgentStep(
-                    tool=action.tool, kind="action", label=action.label,
+                    tool=action.tool,
+                    kind="action",
+                    label=action.label,
                     status="requires_approval" if action.requires_approval else "proposed",
                     summary=action.reason,
                     requires_approval=action.requires_approval,

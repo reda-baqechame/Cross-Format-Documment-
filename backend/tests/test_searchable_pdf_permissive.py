@@ -29,9 +29,7 @@ def _pdfium_text(data: bytes) -> str:
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(data)
-    return "\n".join(
-        pdf.get_page(i).get_textpage().get_text_range() for i in range(len(pdf))
-    )
+    return "\n".join(pdf.get_page(i).get_textpage().get_text_range() for i in range(len(pdf)))
 
 
 def _doc(*paragraphs: str) -> tuple[CanonicalDocument, dict[str, str]]:

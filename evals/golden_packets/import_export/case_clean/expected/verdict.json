@@ -1,0 +1,5 @@
+{
+  "pack": "import_export",
+  "expected_verdict": "ready",
+  "expected_blocking": []
+}

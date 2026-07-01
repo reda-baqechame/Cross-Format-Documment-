@@ -26,6 +26,7 @@ packages/shared-types/src/generated.ts
 # Generated test binaries (see scripts/generate-production-fixtures.py)
 scripts/production-fixtures/
 
+.env
 .env.local
 .env.*.local
 

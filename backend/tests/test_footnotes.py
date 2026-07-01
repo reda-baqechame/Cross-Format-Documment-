@@ -138,8 +138,7 @@ def _docx_fixture_with_footnote(
         {
             "PartName": "/word/footnotes.xml",
             "ContentType": (
-                "application/vnd.openxmlformats-officedocument."
-                "wordprocessingml.footnotes+xml"
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"
             ),
         },
     )

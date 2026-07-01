@@ -27,9 +27,7 @@ _TIMEOUT_S = 30
 
 # The EICAR anti-malware test string (not real malware) — the industry-standard way to prove a
 # scanner is actually inspecting content. https://www.eicar.org/download-anti-malware-testfile/
-_EICAR = (
-    rb"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
-)
+_EICAR = rb"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
 
 # Native-executable magics that should never appear at the start of a document upload.
 _EXEC_MAGICS: tuple[tuple[bytes, str], ...] = (

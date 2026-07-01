@@ -99,9 +99,7 @@ def check_onboarding(docs: list[tuple[str, str | None, CanonicalDocument]]) -> H
     """Extract offer terms + verify onboarding-packet completeness (deterministic, offline)."""
     texts = {did: _visible_text(doc) for did, _, doc in docs}
     offers = [
-        extract_offer_fields(did, title, doc)
-        for did, title, doc in docs
-        if _is_offer(texts[did])
+        extract_offer_fields(did, title, doc) for did, title, doc in docs if _is_offer(texts[did])
     ]
     findings: list[PacketFinding] = []
 

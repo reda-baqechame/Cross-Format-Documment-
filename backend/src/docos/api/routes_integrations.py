@@ -132,9 +132,10 @@ def callback(
         access_token="",
     )
     context = f"integration:{row.id}:{name}"
-    row.access_token = seal(
-        str(tokens.get("access_token", "")), secret=settings.signing_secret, context=context
-    ) or ""
+    row.access_token = (
+        seal(str(tokens.get("access_token", "")), secret=settings.signing_secret, context=context)
+        or ""
+    )
     row.refresh_token = seal(
         tokens.get("refresh_token"), secret=settings.signing_secret, context=context
     )

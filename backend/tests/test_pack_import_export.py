@@ -52,8 +52,12 @@ def test_extract_shipment_fields_pulls_currency_total_hs_origin():
 
 
 def test_packet_flags_currency_and_total_mismatch():
-    inv = _doc("Commercial Invoice", "Total due: 8,420.00 USD", "HS Code: 851713",
-               "Country of origin: China")
+    inv = _doc(
+        "Commercial Invoice",
+        "Total due: 8,420.00 USD",
+        "HS Code: 851713",
+        "Country of origin: China",
+    )
     po = _doc("Purchase Order", "PO Number: PO-9012", "Total due: 7,900.00 EUR")
     report = check_packet([("d1", "Invoice", inv), ("d2", "PO", po)])
     codes = {f.code for f in report.findings}
@@ -84,8 +88,13 @@ def test_packet_checklist_reports_missing_documents():
 def test_pack_endpoint_owner_scoped(client):
     inv = client.post(
         "/documents",
-        files={"file": ("inv.txt", b"Commercial Invoice\nTotal due: 100.00 USD\nHS Code: 851713",
-                        "text/plain")},
+        files={
+            "file": (
+                "inv.txt",
+                b"Commercial Invoice\nTotal due: 100.00 USD\nHS Code: 851713",
+                "text/plain",
+            )
+        },
     ).json()["doc_id"]
     res = client.post("/packs/import-export/check", json={"doc_ids": [inv]})
     assert res.status_code == 200

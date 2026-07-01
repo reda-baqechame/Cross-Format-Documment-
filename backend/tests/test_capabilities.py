@@ -52,7 +52,13 @@ def test_capabilities_returns_all_state_fields():
 
 def test_valid_state_vocabulary_only():
     allowed = {
-        "verified", "degraded", "provider_gated", "disabled", "broken", "claim_without_proof",
+        "verified",
+        "expert_verified",
+        "degraded",
+        "provider_gated",
+        "disabled",
+        "broken",
+        "claim_without_proof",
     }
     with TestClient(create_app()) as client:
         data = _caps(client)
@@ -61,12 +67,12 @@ def test_valid_state_vocabulary_only():
 
 
 def test_verified_capability_carries_proof_id():
-    """A 'verified' capability (except collaboration, which is presence-only) must cite a proof."""
+    """A 'verified' or 'expert_verified' capability must cite a proof."""
     with TestClient(create_app()) as client:
         data = _caps(client)
     for cap in data["capabilities"]:
-        if cap["state"] == "verified" and cap["id"] != "collaboration":
-            assert cap["proof_id"], f"{cap['id']} is verified but has no proof_id"
+        if cap["state"] in ("verified", "expert_verified") and cap["id"] != "collaboration":
+            assert cap["proof_id"], f"{cap['id']} is {cap['state']} but has no proof_id"
 
 
 def test_provider_gated_when_env_unset():

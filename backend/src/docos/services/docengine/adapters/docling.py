@@ -100,9 +100,7 @@ def _ordered_items(d: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     if ordered:
         return ordered
     return [
-        (kind, item)
-        for kind in ("texts", "tables", "pictures")
-        for item in (d.get(kind, []) or [])
+        (kind, item) for kind in ("texts", "tables", "pictures") for item in (d.get(kind, []) or [])
     ]
 
 
@@ -138,10 +136,14 @@ def _add_table_item(
     cells = data.get("table_cells") or data.get("cells") or []
     if not cells:
         return
-    num_rows = int(data.get("num_rows") or (max((c.get("start_row_offset_idx", 0) for c in cells),
-                                                default=-1) + 1))
-    num_cols = int(data.get("num_cols") or (max((c.get("start_col_offset_idx", 0) for c in cells),
-                                                default=-1) + 1))
+    num_rows = int(
+        data.get("num_rows")
+        or (max((c.get("start_row_offset_idx", 0) for c in cells), default=-1) + 1)
+    )
+    num_cols = int(
+        data.get("num_cols")
+        or (max((c.get("start_col_offset_idx", 0) for c in cells), default=-1) + 1)
+    )
     if num_rows <= 0 or num_cols <= 0:
         return
     table = TableNode(

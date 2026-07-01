@@ -1,0 +1,5 @@
+{
+  "pack": "import_export",
+  "expected_verdict": "blocked",
+  "expected_blocking": ["total_mismatch"]
+}

@@ -84,6 +84,4 @@ def build_review_queue(
                 )
             )
 
-    return ReviewQueue(
-        doc_id=doc.doc_id, ocr_floor=ocr_floor, field_floor=field_floor, items=items
-    )
+    return ReviewQueue(doc_id=doc.doc_id, ocr_floor=ocr_floor, field_floor=field_floor, items=items)

@@ -100,9 +100,18 @@ class TestParity:
         mu = pymupdf_engine.merge([three_page_pdf, three_page_pdf])
         pe = permissive_engine.merge([three_page_pdf, three_page_pdf])
         assert _page_count(mu) == _page_count(pe) == 6
-        assert _extract_text(mu) == _extract_text(pe) == [
-            "alpha", "beta", "gamma", "alpha", "beta", "gamma",
-        ]
+        assert (
+            _extract_text(mu)
+            == _extract_text(pe)
+            == [
+                "alpha",
+                "beta",
+                "gamma",
+                "alpha",
+                "beta",
+                "gamma",
+            ]
+        )
 
     def test_encrypt_reopens_with_password(self, three_page_pdf: bytes) -> None:
         enc = permissive_engine.encrypt_pdf(three_page_pdf, "secret123")

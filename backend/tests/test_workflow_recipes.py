@@ -106,9 +106,9 @@ def test_recipe_crud_and_run_endpoint(client):
 
 
 def test_run_unknown_recipe_is_404(client):
-    doc_id = client.post(
-        "/documents", files={"file": ("d.txt", b"hi", "text/plain")}
-    ).json()["doc_id"]
+    doc_id = client.post("/documents", files={"file": ("d.txt", b"hi", "text/plain")}).json()[
+        "doc_id"
+    ]
     res = client.post("/recipes/wf_missing/run", json={"doc_id": doc_id})
     assert res.status_code == 404
 
@@ -151,9 +151,7 @@ def test_recipe_update_rejects_unknown_tools_without_changing_recipe(client):
         "/recipes", json={"name": "Safe", "steps": [{"tool": "classify"}]}
     ).json()["id"]
 
-    response = client.patch(
-        f"/recipes/{recipe_id}", json={"steps": [{"tool": "does_not_exist"}]}
-    )
+    response = client.patch(f"/recipes/{recipe_id}", json={"steps": [{"tool": "does_not_exist"}]})
     assert response.status_code == 422
     assert client.get(f"/recipes/{recipe_id}").json()["steps"][0]["tool"] == "classify"
 
@@ -189,9 +187,9 @@ def test_register_claims_recipe_and_run_for_authenticated_cross_session_access(m
     doc_id = first_session.post(
         "/documents", files={"file": ("a.txt", b"Invoice 42", "text/plain")}
     ).json()["doc_id"]
-    run_id = first_session.post(
-        f"/recipes/{recipe_id}/run", json={"doc_id": doc_id}
-    ).json()["run_id"]
+    run_id = first_session.post(f"/recipes/{recipe_id}/run", json={"doc_id": doc_id}).json()[
+        "run_id"
+    ]
 
     email = f"recipe_{uuid.uuid4().hex[:10]}@example.com"
     registered = first_session.post(
@@ -208,9 +206,7 @@ def test_register_claims_recipe_and_run_for_authenticated_cross_session_access(m
     assert run is not None and run.owner_user_id == registered.json()["user"]["id"]
 
     second_session = make_client()
-    login = second_session.post(
-        "/auth/login", json={"email": email, "password": "password123"}
-    )
+    login = second_session.post("/auth/login", json={"email": email, "password": "password123"})
     assert login.status_code == 200, login.text
     assert second_session.get(f"/recipes/{recipe_id}").status_code == 200
     assert second_session.get(f"/recipes/{recipe_id}/runs/{run_id}").status_code == 200

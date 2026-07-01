@@ -1,0 +1,5 @@
+{
+  "pack": "ap",
+  "expected_verdict": "blocked",
+  "expected_blocking": ["sensitive_exposed"]
+}

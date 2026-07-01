@@ -25,9 +25,7 @@ REQUIRED_DOC_TYPES: tuple[tuple[str, str], ...] = (
 )
 
 _CURRENCY = re.compile(r"\b(USD|EUR|GBP|CNY|JPY|CAD|AUD|CHF|HKD|MAD|AED)\b")
-_AMOUNT = re.compile(
-    r"(?:total|amount\s*due|grand\s*total)[^\d]{0,20}([\d][\d,]*\.?\d{0,2})", re.I
-)
+_AMOUNT = re.compile(r"(?:total|amount\s*due|grand\s*total)[^\d]{0,20}([\d][\d,]*\.?\d{0,2})", re.I)
 _HS_CODE = re.compile(r"\b(?:hs\s*code|hts|tariff)[^\d]{0,10}(\d{6,10})", re.I)
 _ORIGIN = re.compile(
     r"(?:country\s*of\s*origin|origin)\s*[:\-]?\s*([A-Za-z][A-Za-z .]{2,30})", re.I

@@ -56,20 +56,29 @@ def _change_for(doc: CanonicalDocument, op: Patch) -> PatchChange:
     if op.op in ("set_text", "set_table_cell"):
         before = node_search_text(doc, node) if node is not None else ""
         return PatchChange(
-            op=op.op, target_id=op.target_id, label=label,
-            before=_snippet(before), after=_snippet(str(op.payload.get("text", ""))),
+            op=op.op,
+            target_id=op.target_id,
+            label=label,
+            before=_snippet(before),
+            after=_snippet(str(op.payload.get("text", ""))),
         )
     if op.op == "redact":
         before = node_search_text(doc, node) if node is not None else ""
         return PatchChange(
-            op=op.op, target_id=op.target_id, label=label,
-            before=_snippet(before), after="(removed from exports)",
+            op=op.op,
+            target_id=op.target_id,
+            label=label,
+            before=_snippet(before),
+            after="(removed from exports)",
         )
     if op.op == "remove_node":
         before = node_search_text(doc, node) if node is not None else ""
         return PatchChange(
-            op=op.op, target_id=op.target_id, label=label,
-            before=_snippet(before) or (node.type if node else ""), after="(deleted)",
+            op=op.op,
+            target_id=op.target_id,
+            label=label,
+            before=_snippet(before) or (node.type if node else ""),
+            after="(deleted)",
         )
     if op.op == "update_node":
         changed = ", ".join(f"{k}={v}" for k, v in op.payload.items())
@@ -78,8 +87,11 @@ def _change_for(doc: CanonicalDocument, op: Patch) -> PatchChange:
         before = ", ".join(node.tags) if node is not None else ""
         after = ", ".join(op.payload.get("tags", []))
         return PatchChange(
-            op=op.op, target_id=op.target_id, label=label,
-            before=_snippet(before), after=_snippet(after),
+            op=op.op,
+            target_id=op.target_id,
+            label=label,
+            before=_snippet(before),
+            after=_snippet(after),
         )
     if op.op == "sanitize_metadata":
         return PatchChange(op=op.op, target_id=None, label=label, after="strip embedded metadata")

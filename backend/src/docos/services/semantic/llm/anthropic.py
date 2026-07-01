@@ -77,9 +77,7 @@ class AnthropicClient(LLMClient):
             elif block.type == "tool_use":
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
 
-        return LLMResponse(
-            text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message)
-        )
+        return LLMResponse(text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message))
 
     async def converse(
         self,
@@ -140,6 +138,4 @@ class AnthropicClient(LLMClient):
                 text_parts.append(block.text)
             elif block.type == "tool_use":
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
-        return LLMResponse(
-            text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message)
-        )
+        return LLMResponse(text="".join(text_parts), tool_calls=tool_calls, usage=_usage(message))

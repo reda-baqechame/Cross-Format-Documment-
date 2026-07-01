@@ -190,7 +190,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
 - ✅ Send-Ready Check / Document X-Ray — one verdict (ready/needs-fixes/blocked) composing the
   PII scan, hidden-metadata risk, unapplied redactions and unfilled fields in a single
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
-  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` (downloadable report)
+  `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` (downloadable report).
+  Readiness items now also emit `expert_findings` (same shape as packet audit) via
+  `services/expert/readiness_bridge.py`; health panel links to Command Center for multi-doc packs.
 - ✅ Clean Before You Send — `POST /documents/{id}/clean` applies the auto-fixes (strip hidden
   metadata + true-redact PII) as one reversible patch, re-checks, and returns the post-clean
   verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
@@ -226,6 +228,13 @@ This file is the source of truth for "don't forget anything." Update it as featu
   local protection).
 
 ## G. Compare, review & collaborate
+- ✅ **Expert Command Center** — `/packets` UI + `POST/GET /packets/*` API: create multi-doc
+  business packs, run evidence-bound expert audits across five verticals (import/export, AP,
+  contracts, HR, insurance), view cited findings + fact graph, plan/apply reversible fixes
+  (metadata scrub + cited redaction), download clean ZIP export with validation headers, and
+  export HTML expert reports — `services/expert/`, `api/routes_packet_audit.py`,
+  `components/packets/PacketWorkspace.tsx`. CI gates: `evals/packet_audit` (L1 synthetic) +
+  `evals/golden_packets` (L2 file-backed, human-reviewed fixtures).
 - ✅ Version DAG + audit log
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
@@ -322,7 +331,8 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
 - ✅ Stress test lane: `pytest -m stress` covers primary uploads, malformed/oversized files,
   patch/undo loops, editor sessions, destructive-action planning, and template variables.
 - ✅ Browser E2E lane: Playwright smoke covers the task grid, template workflow entry, signup/login/pricing
-  pages, and wired marketing sections — `e2e/task-grid.spec.ts`, `e2e/auth-portal.spec.ts`.
+  pages, wired marketing sections, and packet-audit Command Center happy path — `e2e/task-grid.spec.ts`,
+  `e2e/auth-portal.spec.ts`, `e2e/packet-audit.spec.ts`.
 - ✅ Production smokes: read-only home/health/OpenAPI (`smoke:production`), client-packet API/UI,
   editor smoke, auth/billing/portal OpenAPI seam (`smoke:production:auth`).
 - ✅ Embedded editor session APIs: `/documents/{id}/editor/session`,

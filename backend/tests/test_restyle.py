@@ -43,9 +43,7 @@ def test_restyle_headings_scope_targets_only_heading_runs():
 
 def test_restyle_matching_scope():
     doc, hid, pid = _doc()
-    patch = build_restyle_patch(
-        doc, RestyleStyle(italic=True), scope="matching", find="TOTAL"
-    )
+    patch = build_restyle_patch(doc, RestyleStyle(italic=True), scope="matching", find="TOTAL")
     assert {p.target_id for p in patch.patches} == {pid}
 
 
@@ -66,9 +64,9 @@ def test_restyle_requires_a_style_field():
 
 
 def _upload(client, text):
-    return client.post(
-        "/documents", files={"file": ("d.txt", text.encode(), "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": ("d.txt", text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_restyle_endpoint_applies_and_is_undoable(client):

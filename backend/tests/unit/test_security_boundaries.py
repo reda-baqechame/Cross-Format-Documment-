@@ -42,8 +42,6 @@ def test_local_blob_store_rejects_absolute_and_parent_paths(tmp_path):
 def test_secret_store_round_trip_and_context_binding():
     protected = seal("credential", secret="test-secret", context="integration:one")
     assert protected and protected.startswith("enc:v1:") and "credential" not in protected
-    assert (
-        unseal(protected, secret="test-secret", context="integration:one") == "credential"
-    )
+    assert unseal(protected, secret="test-secret", context="integration:one") == "credential"
     with pytest.raises(InvalidTag):
         unseal(protected, secret="test-secret", context="integration:two")

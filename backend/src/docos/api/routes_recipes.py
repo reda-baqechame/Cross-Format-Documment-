@@ -58,9 +58,7 @@ class RecipeUpdateRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
     trigger: Literal["manual"] | None = None
-    steps: list[RecipeStep] | None = Field(
-        default=None, min_length=1, max_length=MAX_RECIPE_STEPS
-    )
+    steps: list[RecipeStep] | None = Field(default=None, min_length=1, max_length=MAX_RECIPE_STEPS)
 
     @field_validator("name")
     @classmethod
@@ -192,15 +190,11 @@ def _run_out(run: WorkflowRun) -> RecipeRunOut:
     )
 
 
-def _get_owned_recipe(
-    session: Session, recipe_id: str, actor: Actor
-) -> WorkflowRecipe:
+def _get_owned_recipe(session: Session, recipe_id: str, actor: Actor) -> WorkflowRecipe:
     recipe = session.scalar(
         select(WorkflowRecipe).where(
             WorkflowRecipe.id == recipe_id,
-            owner_clause(
-                WorkflowRecipe.owner_session_id, WorkflowRecipe.owner_user_id, actor
-            ),
+            owner_clause(WorkflowRecipe.owner_session_id, WorkflowRecipe.owner_user_id, actor),
         )
     )
     if recipe is None:

@@ -25,8 +25,9 @@ def _doc_with_runs(texts: list[str]) -> CanonicalDocument:
         doc_id="d",
         root_id="root",
         nodes=nodes,
-        meta=DocumentMeta(source_format="txt", source_mime="text/plain", created_at=now,
-                          modified_at=now),
+        meta=DocumentMeta(
+            source_format="txt", source_mime="text/plain", created_at=now, modified_at=now
+        ),
     )
 
 

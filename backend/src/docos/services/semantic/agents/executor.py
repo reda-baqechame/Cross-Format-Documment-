@@ -124,9 +124,7 @@ async def run_agent_loop(
             answer = resp.text.strip()
             break
 
-        messages.append(
-            {"role": "assistant", "content": resp.text, "tool_calls": resp.tool_calls}
-        )
+        messages.append({"role": "assistant", "content": resp.text, "tool_calls": resp.tool_calls})
         results: list[dict] = []
         for call in resp.tool_calls:
             name = call.get("name", "")
@@ -143,8 +141,11 @@ async def run_agent_loop(
                 )
                 steps.append(
                     AgentStep(
-                        tool="search", kind="read", label="Search & cite",
-                        status="done", summary=f"{len(hits)} passage(s) found",
+                        tool="search",
+                        kind="read",
+                        label="Search & cite",
+                        status="done",
+                        summary=f"{len(hits)} passage(s) found",
                         data={"hits": [{"node_id": n, "text": t} for n, t in hits]},
                     )
                 )
@@ -156,7 +157,9 @@ async def run_agent_loop(
                 proposed = preview_service.build_preview(doc, patch.patches)
                 steps.append(
                     AgentStep(
-                        tool="modify", kind="mutate", label="Propose edits",
+                        tool="modify",
+                        kind="mutate",
+                        label="Propose edits",
                         status="proposed" if patch.patches else "skipped",
                         summary=(
                             f"Proposed {proposed.change_count} reversible change(s) — preview "
@@ -167,7 +170,8 @@ async def run_agent_loop(
                 )
                 results.append(
                     {
-                        "id": cid, "name": name,
+                        "id": cid,
+                        "name": name,
                         "content": (
                             f"Proposed {proposed.change_count} change(s); preview returned, "
                             "awaiting user approval (not committed)."
@@ -181,15 +185,17 @@ async def run_agent_loop(
                     r = tool.run(doc)
                     steps.append(
                         AgentStep(
-                            tool=name, kind="read", label=tool.label,
-                            status="done", summary=r.summary, data=r.data,
+                            tool=name,
+                            kind="read",
+                            label=tool.label,
+                            status="done",
+                            summary=r.summary,
+                            data=r.data,
                         )
                     )
                     results.append({"id": cid, "name": name, "content": r.summary})
                 else:
-                    results.append(
-                        {"id": cid, "name": name, "content": f"unknown tool '{name}'"}
-                    )
+                    results.append({"id": cid, "name": name, "content": f"unknown tool '{name}'"})
 
         messages.append({"role": "tool", "tool_results": results})
     else:

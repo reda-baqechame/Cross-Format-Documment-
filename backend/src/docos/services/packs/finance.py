@@ -134,8 +134,7 @@ def check_ap(docs: list[tuple[str, str | None, CanonicalDocument]]) -> APReport:
     matched = sum(1 for m in matches if m.matched_po_doc_id)
     if errors:
         summary = (
-            f"{errors} blocking AP issue(s); "
-            f"{matched}/{len(invoices)} invoice(s) matched to a PO."
+            f"{errors} blocking AP issue(s); {matched}/{len(invoices)} invoice(s) matched to a PO."
         )
     else:
         summary = f"{matched}/{len(invoices)} invoice(s) matched to a PO; no blocking issues."

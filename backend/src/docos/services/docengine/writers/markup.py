@@ -183,9 +183,7 @@ def model_to_html(doc: CanonicalDocument) -> bytes:
             marker, _, text = line.partition(". ")
             items.append(f'<li id="fn-{html.escape(marker)}">{html.escape(text)}</li>')
         body.append(
-            '<section class="footnotes"><h2>Footnotes</h2><ol>'
-            + "".join(items)
-            + "</ol></section>"
+            '<section class="footnotes"><h2>Footnotes</h2><ol>' + "".join(items) + "</ol></section>"
         )
     title = html.escape(doc.meta.title or "Document")
     page = (

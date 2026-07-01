@@ -53,3 +53,24 @@ exception.**
 - No fidelity/redaction regression is introduced by a premature swap.
 - The remaining work is bounded and explicit (above), each gated by a parity/proof suite.
 - `render` and `page-ops/encrypt/compress` are already off AGPL today.
+
+## Progress log
+
+- **2026-06-30** — Two more AGPL touchpoints removed/closed on the
+  `expert/packet-audit-and-engine-hardening` branch:
+  - **Searchable-PDF permissive path proven.** The reportlab (BSD-3) writer was already
+    wired behind `PDF_ENGINE=permissive`; `tests/test_searchable_pdf_permissive.py` now
+    proves it emits genuinely selectable text (verified with pypdfium2, not fitz),
+    honors redaction (true removal carries through), and stamps `ReportLab` as Producer
+    (guarding against silent fallback to the AGPL engine). Decision (3) above is closed.
+  - **`provenance/validation.py` no longer imports fitz.** The redaction-proof output
+    scan (`_pdf_page_count`, `_output_text`) used to fall back to PyMuPDF; pypdfium2 is a
+    pinned core dependency, so the fallback was dead weight and is removed.
+
+- **Remaining blockers for full AGPL removal** (tracked, deliberately deferred): the
+  rich-text parse + table detection path (`adapters/pdf.py`, target Docling) and the
+  redaction burn-in path (`writers/pdf_writer.py`, target pikepdf content-stream surgery
+  with a recoverable-string proof corpus). These are security/fidelity-critical and are
+  not attempted in this branch; PyMuPDF stays honestly gated behind the
+  `/capabilities` warning and the license-gate exception until each ships with parity green.
+

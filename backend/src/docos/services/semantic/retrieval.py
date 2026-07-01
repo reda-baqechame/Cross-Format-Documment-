@@ -107,9 +107,7 @@ def rank_nodes(doc: CanonicalDocument, query: str, *, k: int = 200) -> list[str]
 
     scores = bm25_scores([toks for _, toks in candidates], q_terms)
     # Highest score first; ties keep document order (stable, deterministic).
-    scored = [
-        (scores[i], i, candidates[i][0].id) for i in range(len(candidates)) if scores[i] > 0
-    ]
+    scored = [(scores[i], i, candidates[i][0].id) for i in range(len(candidates)) if scores[i] > 0]
     scored.sort(key=lambda s: (-s[0], s[1]))
     return [nid for _, _, nid in scored[:k]]
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
+from docos.services.expert.schemas import ExpertFinding
 from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.duplicates import DuplicateGroup
 from docos.services.provenance.health import DocumentHealth
@@ -76,6 +77,7 @@ class ReadyCheck(BaseModel):
 # produces a correct artifact (a passing production-matrix outcome), never merely an HTTP 200.
 CapabilityState = Literal[
     "verified",  # real workflow produces a correct, independently-checked artifact
+    "expert_verified",  # passes human-reviewed golden corpus (evals/golden_packets)
     "degraded",  # works but at reduced fidelity/quality; honesty warning attached
     "provider_gated",  # needs an external provider/credential not currently configured
     "disabled",  # intentionally off
@@ -169,6 +171,7 @@ class ReadinessResponse(BaseModel):
 
     doc_id: str
     report: ReadinessReport
+    expert_findings: list[ExpertFinding] = Field(default_factory=list)
 
 
 class CleanResponse(BaseModel):

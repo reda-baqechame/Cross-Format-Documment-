@@ -58,7 +58,9 @@ def _cap(
     limitations: list[str] | None = None,
     warnings: list[str] | None = None,
 ) -> Capability:
-    last_verified_at = _matrix_verified_at() if (proof_id and state == "verified") else None
+    last_verified_at = (
+        _matrix_verified_at() if (proof_id and state in ("verified", "expert_verified")) else None
+    )
     return Capability(
         id=cid,
         name=name,
@@ -247,7 +249,8 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             "OCR (scans/images)",
             state="verified",
             engine=f"ocr:{settings.ocr_engine}",
-            engine_version=ocr_versions.get("paddleocr") if settings.ocr_engine == "paddle"
+            engine_version=ocr_versions.get("paddleocr")
+            if settings.ocr_engine == "paddle"
             else ocr_versions.get("pytesseract"),
             proof_id="Searchable PDF (PNG scan)",
             limitations=[
@@ -292,9 +295,7 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
                 else f"embeddings:{settings.embedding_provider}"
             ),
             engine_version=settings.embedding_model or None,
-            proof_id=(
-                None if settings.embedding_provider == "none" else "eval:search_retrieval"
-            ),
+            proof_id=(None if settings.embedding_provider == "none" else "eval:search_retrieval"),
             limitations=[
                 "Embedding semantic search is default-off; retrieval falls back to BM25 keyword "
                 "ranking until EMBEDDING_PROVIDER is configured. Cosine ranking over cached "
@@ -520,6 +521,24 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
                 "Deterministic declarations extraction (policy/claim number, coverage limit, "
                 "premium, deductible, effective/expiration dates) with expiry, missing-coverage, "
                 "and claim-within-coverage-period checks; fully offline, no LLM required."
+            ],
+        ),
+        _cap(
+            "pack_audit",
+            "Expert packet audit (evidence-bound findings + readiness verdict)",
+            # The expert spine: cited extraction → fact graph → rules → ExpertReport with a
+            # deterministic verdict. Verified by tests/unit/test_expert_spine.py (cited mismatch
+            # findings, correct verdict derivation, anti-hallucination guard).
+            state="expert_verified",
+            engine="expert:spine",
+            engine_version="1.0",
+            proof_id="eval:packet_audit+golden_packets",
+            limitations=[
+                "First-class packet API (/packets): cited findings, readiness verdict, "
+                "reversible fix plans (metadata scrub + cited redaction), clean ZIP export with "
+                "validation headers, and HTML expert report. Five verticals on the expert spine; "
+                "golden fixture eval + CI gate (evals/packet_audit, evals/golden_packets). "
+                "Offline and deterministic; no LLM required."
             ],
         ),
         _cap(
