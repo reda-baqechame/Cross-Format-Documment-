@@ -542,6 +542,30 @@ def capabilities(settings: Settings = Depends(get_settings)) -> CapabilitiesResp
             ],
         ),
         _cap(
+            "document_ops_clean",
+            "Clean Before Send (single-document verify + proof report)",
+            state="expert_verified",
+            engine="expert:readiness",
+            engine_version="1.0",
+            proof_id="eval:golden_documents",
+            limitations=[
+                "GET /documents/{id}/readiness and /proof-report with expert findings; "
+                "golden_documents fixture eval + E2E clean-before-send smoke."
+            ],
+        ),
+        _cap(
+            "document_ops_autopilot",
+            "DocumentOps autopilot (run/apply + batch clean/audit)",
+            state="expert_verified",
+            engine="expert:autopilot",
+            engine_version="1.0",
+            proof_id="test:expert_ops_api",
+            limitations=[
+                "POST /documents/{id}/autopilot/run|apply, PATCH findings review, "
+                "POST /jobs/batch-clean|batch-audit. Deterministic offline orchestration."
+            ],
+        ),
+        _cap(
             "workflow_recipes",
             "User-defined workflow recipes (save + run)",
             state="verified",

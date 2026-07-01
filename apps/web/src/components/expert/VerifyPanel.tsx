@@ -11,6 +11,7 @@ import { FindingsList } from "@/components/expert/FindingsList";
 import { VerdictCard } from "@/components/expert/VerdictCard";
 import {
   cleanDocument,
+  createRecipe,
   exportUrl,
   fetchReadiness,
   fetchRedactionAudit,
@@ -18,6 +19,8 @@ import {
   type EvidenceRef,
   type ExportFormat,
 } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
+import { friendlyApiError } from "@/lib/upload";
 
 type VerifyTab = "overview" | "issues" | "fixes" | "export";
 
@@ -31,6 +34,7 @@ const TABS: { id: VerifyTab; label: string }[] = [
 /** Unified Verify surface — same expert spine as Command Center, for single documents. */
 export function VerifyPanel({ docId }: { docId: string }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [tab, setTab] = useState<VerifyTab>("overview");
   const [activeEvidence, setActiveEvidence] = useState<EvidenceRef[] | null>(null);
   const [cleaned, setCleaned] = useState<CleanResponse | null>(null);
@@ -56,6 +60,20 @@ export function VerifyPanel({ docId }: { docId: string }) {
       setCleaned(result);
       refresh();
     },
+  });
+
+  const saveRecipe = useMutation({
+    mutationFn: () =>
+      createRecipe({
+        name: "Clean Before Send",
+        steps: [
+          { tool: "classify", params: {} },
+          { tool: "sensitive_scan", params: {} },
+          { tool: "intelligence", params: {} },
+        ],
+      }),
+    onSuccess: () => toast.success("Saved Clean Before Send recipe."),
+    onError: (err) => toast.error(friendlyApiError(err, "Could not save recipe.")),
   });
 
   if (readiness.isLoading || !readiness.data) {
@@ -161,6 +179,14 @@ export function VerifyPanel({ docId }: { docId: string }) {
               <li>Fix plans available: {result.fix_plans_available ?? 0}</li>
             </ul>
           )}
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            disabled={saveRecipe.isPending}
+            onClick={() => saveRecipe.mutate()}
+          >
+            Save as recipe
+          </button>
         </div>
       )}
 

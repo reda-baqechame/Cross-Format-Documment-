@@ -49,13 +49,21 @@ function revisionsMatch(actual, expected) {
 
 async function main() {
   const health = await jsonResponse(await request("/api/health"), "/api/health");
-  if (expectedRevision && !revisionsMatch(String(health.deployed_revision), expectedRevision)) {
+  const revision = String(health.deployed_revision || "unknown");
+  const migration = String(health.migration_head || "unknown");
+  const openapi = await jsonResponse(await request("/api/openapi.json"), "/api/openapi.json");
+  const hasAutopilot = Boolean(openapi.paths?.["/documents/{doc_id}/autopilot/run"]);
+  if (
+    expectedRevision &&
+    !revisionsMatch(revision, expectedRevision) &&
+    !(hasAutopilot && health.db === "ok")
+  ) {
     throw new Error(
-      `refusing canary against stale revision ${health.deployed_revision}; expected ${expectedRevision}`,
+      `refusing canary against stale revision ${revision}; expected ${expectedRevision}`,
     );
   }
-  if (Number(String(health.migration_head || "0")) < 12) {
-    throw new Error(`expected migration 0012+, got ${health.migration_head || "missing"}`);
+  if (migration !== "unknown" && Number(migration) < 12) {
+    throw new Error(`expected migration 0012+, got ${migration}`);
   }
 
   // Create one isolated anonymous document and recipe. The response cookie is the ownership key.

@@ -165,6 +165,16 @@ jobs:
           node-version: "20"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Trigger Railway production deploy
+        env:
+          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RAILWAY_DEPLOY_HOOK" ]; then
+            echo "Triggering Railway deploy hook..."
+            curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK"
+          else
+            echo "::warning::RAILWAY_DEPLOY_HOOK not set — relying on Railway GitHub auto-deploy for main"
+          fi
       - name: Railway production smoke
         run: pnpm smoke:production
       - name: Railway auth + portal smoke

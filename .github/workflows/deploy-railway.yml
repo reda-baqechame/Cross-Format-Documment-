@@ -1,0 +1,27 @@
+name: Deploy Railway production
+
+# Optional: triggers a Railway deploy hook after CI passes on main.
+# Set repository secret RAILWAY_DEPLOY_HOOK to the hook URL from Railway → Service → Settings → Deploy Hook.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Railway deploy hook
+        env:
+          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RAILWAY_DEPLOY_HOOK" ]; then
+            echo "RAILWAY_DEPLOY_HOOK not configured — skip (use Railway GitHub integration or add the secret)."
+            exit 0
+          fi
+          curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK"
+          echo "Deploy hook triggered."

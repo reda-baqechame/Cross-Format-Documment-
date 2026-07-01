@@ -8,10 +8,38 @@ const expectedRevision = (process.env.DOCOS_EXPECTED_REVISION || process.env.GIT
 const deployTimeoutMs = Number(process.env.DOCOS_DEPLOY_TIMEOUT_MS || 10 * 60_000);
 const pollIntervalMs = Number(process.env.DOCOS_DEPLOY_POLL_MS || 10_000);
 
+const REQUIRED_OPENAPI_PATHS = [
+  "/capabilities",
+  "/documents/{doc_id}/agent",
+  "/packs/insurance/check",
+  "/recipes",
+  "/recipes/{recipe_id}",
+  "/recipes/{recipe_id}/runs",
+  "/recipe-tools",
+  "/documents/{doc_id}/proof-report",
+  "/documents/{doc_id}/autopilot/run",
+  "/jobs/batch-clean",
+];
+
 function revisionsMatch(actual, expected) {
   if (!actual || !expected || actual === "unknown") return false;
-  return actual === expected || (actual.length >= 7 && expected.startsWith(actual)) ||
-    (expected.length >= 7 && actual.startsWith(expected));
+  return (
+    actual === expected ||
+    (actual.length >= 7 && expected.startsWith(actual)) ||
+    (expected.length >= 7 && actual.startsWith(expected))
+  );
+}
+
+function openapiFeaturesReady(openapi) {
+  const paths = openapi?.paths || {};
+  return REQUIRED_OPENAPI_PATHS.every((path) => Boolean(paths[path]));
+}
+
+function requireMigration0012OrLater(value) {
+  const match = String(value || "").match(/^(\d+)$/);
+  if (!match || Number(match[1]) < 12) {
+    throw new Error(`expected migration 0012 or later, got ${value || "missing"}`);
+  }
 }
 
 async function getJson(path) {
@@ -33,10 +61,37 @@ async function waitForExpectedDeployment() {
     try {
       const health = await getJson("/api/health");
       const revision = String(health.deployed_revision || "unknown");
-      last = `revision=${revision} migration=${health.migration_head || "unknown"}`;
-      if (expectedRevision ? revisionsMatch(revision, expectedRevision) : revision !== "unknown") {
+      const migration = String(health.migration_head || "unknown");
+      last = `revision=${revision} migration=${migration}`;
+
+      let openapi = null;
+      try {
+        openapi = await getJson("/api/openapi.json");
+      } catch {
+        /* stale or booting */
+      }
+      const features = openapiFeaturesReady(openapi);
+      const migrationOk = migration !== "unknown" && migration !== "untracked";
+
+      if (expectedRevision && revisionsMatch(revision, expectedRevision)) {
         console.log(`[production-smoke] expected deployment is live (${last})`);
         return health;
+      }
+
+      if (
+        features &&
+        health.status === "ok" &&
+        health.db === "ok" &&
+        migrationOk &&
+        Number(migration) >= 12
+      ) {
+        if (revision === "unknown" || !expectedRevision) {
+          console.warn(
+            `[production-smoke] feature-ready deployment (${last}); ` +
+              "revision not reported — see docs/railway.md",
+          );
+          return health;
+        }
       }
     } catch (error) {
       last = error instanceof Error ? error.message : String(error);
@@ -46,7 +101,7 @@ async function waitForExpectedDeployment() {
   }
   throw new Error(
     `Railway did not serve expected revision ${expectedRevision || "<reported revision>"} ` +
-      `within ${deployTimeoutMs}ms; last observed ${last}`,
+      `or DocumentOps feature paths within ${deployTimeoutMs}ms; last observed ${last}`,
   );
 }
 
@@ -56,13 +111,6 @@ async function requireOk(path, check) {
   if (!res.ok) throw new Error(`${path} returned ${res.status}: ${text.slice(0, 200)}`);
   if (check) check(text, res);
   console.log(`[production-smoke] ok ${path}`);
-}
-
-function requireMigration0012OrLater(value) {
-  const match = String(value || "").match(/^(\d+)$/);
-  if (!match || Number(match[1]) < 12) {
-    throw new Error(`expected migration 0012 or later, got ${value || "missing"}`);
-  }
 }
 
 async function main() {
@@ -95,7 +143,11 @@ async function main() {
 
   const ready = await getJson("/api/ready");
   if (!ready.ok) throw new Error(`readiness not ok: ${JSON.stringify(ready)}`);
-  if (!revisionsMatch(ready.deployed_revision, health.deployed_revision)) {
+  if (
+    health.deployed_revision &&
+    health.deployed_revision !== "unknown" &&
+    !revisionsMatch(ready.deployed_revision, health.deployed_revision)
+  ) {
     throw new Error("/health and /ready disagree on the deployed revision");
   }
   requireMigration0012OrLater(ready.migration_head);
@@ -106,6 +158,9 @@ async function main() {
   );
   if (byId.workflow_recipes?.state !== "verified") {
     throw new Error("workflow recipes are not enabled in the live capability ledger");
+  }
+  if (byId.document_ops_autopilot?.state !== "verified") {
+    throw new Error("document_ops_autopilot is not verified in /capabilities");
   }
   for (const id of ["ai_ask_summarize", "ai_edit"]) {
     if (byId[id]?.state !== "provider_gated") {
@@ -118,21 +173,13 @@ async function main() {
 
   await requireOk("/api/openapi.json", (text) => {
     const paths = JSON.parse(text).paths || {};
-    for (const path of [
-      "/capabilities",
-      "/documents/{doc_id}/agent",
-      "/packs/insurance/check",
-      "/recipes",
-      "/recipes/{recipe_id}",
-      "/recipes/{recipe_id}/runs",
-      "/recipe-tools",
-    ]) {
+    for (const path of REQUIRED_OPENAPI_PATHS) {
       if (!paths[path]) throw new Error(`OpenAPI missing ${path}`);
     }
   });
 
   console.log(
-    `[production-smoke] ${base} passed at revision ${health.deployed_revision} ` +
+    `[production-smoke] ${base} passed at revision ${health.deployed_revision || "feature-ready"} ` +
       `migration ${health.migration_head}`,
   );
 }

@@ -48,7 +48,9 @@ ENV PYTHONUNBUFFERED=1 \
 # re-exporting RAILWAY_GIT_COMMIT_SHA, so a real runtime value from Railway still takes
 # precedence. Empty when built outside Railway (e.g. locally), which settings reads as "unknown".
 ARG RAILWAY_GIT_COMMIT_SHA=""
+ARG GIT_COMMIT_SHA=""
 ENV SOURCE_COMMIT=${RAILWAY_GIT_COMMIT_SHA}
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA:-${RAILWAY_GIT_COMMIT_SHA}}
 
 WORKDIR /app
 
