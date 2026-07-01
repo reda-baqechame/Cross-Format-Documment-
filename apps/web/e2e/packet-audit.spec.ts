@@ -1,20 +1,35 @@
 import { expect, test } from "@playwright/test";
 
+async function uploadText(
+  page: import("@playwright/test").Page,
+  name: string,
+  text: string,
+): Promise<string> {
+  const res = await page.request.post("/api/documents", {
+    multipart: {
+      file: {
+        name,
+        mimeType: "text/plain",
+        buffer: Buffer.from(text),
+      },
+    },
+  });
+  expect(res.ok()).toBeTruthy();
+  const body = await res.json();
+  return body.doc_id as string;
+}
+
 test("packet audit surfaces cited blocking finding", async ({ page }) => {
   const health = await page.request.get("/api/health");
   test.skip(!health.ok(), "Backend API is required.");
-
-  await page.goto("/");
 
   const invoice =
     "Commercial Invoice\nInvoice No: E2E-1\nTotal: CAD 14,920.00\n";
   const po = "Purchase Order\nPO No: E2E-PO\nTotal: CAD 13,780.00\n";
 
-  await page.locator('input[type="file"][multiple]').setInputFiles([
-    { name: "invoice.txt", mimeType: "text/plain", buffer: Buffer.from(invoice) },
-    { name: "po.txt", mimeType: "text/plain", buffer: Buffer.from(po) },
-  ]);
-  await expect(page).toHaveURL(/\/documents\//, { timeout: 30_000 });
+  await page.goto("/");
+  await uploadText(page, "invoice.txt", invoice);
+  await uploadText(page, "po.txt", po);
 
   await page.goto("/packets");
   await page.getByLabel(/Vertical/i).selectOption("import_export");
