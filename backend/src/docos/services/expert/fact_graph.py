@@ -84,9 +84,7 @@ class FactGraph:
 _CURRENCY_TOKEN = re.compile(r"\b(USD|EUR|GBP|CNY|JPY|CAD|AUD|CHF|HKD|MAD|AED)\b")
 _NUMBER = re.compile(r"-?[\d][\d,]*\.?\d{0,2}")
 _WEIGHT_UNIT = re.compile(r"\b(kgs?|lbs?|kilograms?|pounds?|kg|lb)\b", re.I)
-_INCOTERMS = re.compile(
-    r"\b(EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF)\b"
-)
+_INCOTERMS = re.compile(r"\b(EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF)\b")
 
 
 def parse_money(raw: str) -> tuple[float | None, str | None]:

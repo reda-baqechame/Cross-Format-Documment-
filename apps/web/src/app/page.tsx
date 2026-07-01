@@ -87,6 +87,9 @@ export default function HomePage() {
               <Link href="/tasks/client-packet-readiness" className="btn-primary">
                 Check a client packet
               </Link>
+              <Link href="/packets" className="btn-secondary">
+                Command Center
+              </Link>
               <Link href="#tools" className="btn-secondary">
                 Browse all tools
               </Link>

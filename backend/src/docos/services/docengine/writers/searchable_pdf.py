@@ -129,9 +129,7 @@ def _draw_text(canvas, lines: list[str], page_width: float, page_height: float, 
     canvas.drawText(text)
 
 
-def _permissive_searchable_pdf(
-    doc: CanonicalDocument, page_images: dict[int, bytes]
-) -> bytes:
+def _permissive_searchable_pdf(doc: CanonicalDocument, page_images: dict[int, bytes]) -> bytes:
     """Build the searchable PDF with reportlab (BSD-3) — no AGPL dependency."""
     from reportlab.lib.utils import ImageReader
     from reportlab.pdfgen import canvas as rl_canvas
@@ -165,9 +163,7 @@ def _permissive_searchable_pdf(
     return buf.getvalue()
 
 
-def _pymupdf_searchable_pdf(
-    doc: CanonicalDocument, page_images: dict[int, bytes]
-) -> bytes:
+def _pymupdf_searchable_pdf(doc: CanonicalDocument, page_images: dict[int, bytes]) -> bytes:
     """Legacy PyMuPDF (AGPL) impl, behind the engine switch until parity becomes the default."""
     import fitz
 

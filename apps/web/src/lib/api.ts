@@ -203,6 +203,7 @@ export interface ReadinessReport {
 export interface ReadinessResponse {
   doc_id: string;
   report: ReadinessReport;
+  expert_findings?: ExpertFinding[];
 }
 
 /** One verdict on whether a document is safe + complete to send (read-only). */
@@ -2065,6 +2066,49 @@ export async function getPacketScore(packetId: string): Promise<{
   human_review_required: number;
 }> {
   return json(await apiFetch(`/packets/${packetId}/score`));
+}
+
+export interface FixPlanView {
+  finding_id: string;
+  document_id: string;
+  title: string;
+  auto_fixable: boolean;
+  patch_count: number;
+}
+
+export async function planPacketFixes(packetId: string): Promise<{ plans: FixPlanView[] }> {
+  return json(await apiFetch(`/packets/${packetId}/fixes/plan`, { method: "POST" }));
+}
+
+export async function applyPacketFixes(
+  packetId: string,
+  findingIds: string[],
+): Promise<{ applied_finding_ids: string[] }> {
+  return json(
+    await apiFetch(`/packets/${packetId}/fixes/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finding_ids: findingIds }),
+    }),
+  );
+}
+
+export function downloadPacketExport(packetId: string, format: "zip" | "pdf" = "zip"): void {
+  const a = document.createElement("a");
+  a.href = `${BASE}/packets/${packetId}/export?format=${format}`;
+  a.download = `packet-${packetId}.${format === "pdf" ? "pdf" : "zip"}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+export function downloadPacketReportHtml(packetId: string): void {
+  const a = document.createElement("a");
+  a.href = `${BASE}/packets/${packetId}/report/download?format=html`;
+  a.download = `packet-${packetId}-report.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // Auth

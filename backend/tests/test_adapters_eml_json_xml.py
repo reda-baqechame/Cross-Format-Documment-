@@ -72,9 +72,7 @@ def _upload(client, name, data, mime):
 
 def test_upload_eml_json_xml_end_to_end(client):
     # The sniffer keys text formats off the extension; uploads must parse end-to-end.
-    eml = _upload(
-        client, "mail.eml", b"Subject: Hi\r\n\r\nbody text here", "message/rfc822"
-    )
+    eml = _upload(client, "mail.eml", b"Subject: Hi\r\n\r\nbody text here", "message/rfc822")
     assert eml.status_code == 200, eml.text
 
     js = _upload(client, "data.json", b'{"a": 1, "b": "two"}', "application/json")
@@ -87,7 +85,8 @@ def test_upload_eml_json_xml_end_to_end(client):
 def test_new_adapters_are_redaction_aware():
     doc = JsonAdapter().parse(b'{"secret": "TOPSECRET-1", "public": "ok"}')
     secret = next(
-        n.id for n in doc.nodes.values()
+        n.id
+        for n in doc.nodes.values()
         if n.type == "run" and "TOPSECRET-1" in (getattr(n, "text", "") or "")
     )
     doc.redaction.redacted_node_ids.append(secret)

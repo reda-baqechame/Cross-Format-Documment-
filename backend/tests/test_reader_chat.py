@@ -59,8 +59,6 @@ def test_chat_offline_is_deterministic_and_cited():
 def test_chat_never_returns_redacted_text():
     doc, run_ids = _doc("Public mission statement.", "Secret salary is $250,000.")
     doc.redaction.redacted_node_ids.append(run_ids[1])  # redact the salary line
-    res = asyncio.run(
-        reader.chat(doc, [], "What is the salary?", LocalNoopClient(), use_llm=False)
-    )
+    res = asyncio.run(reader.chat(doc, [], "What is the salary?", LocalNoopClient(), use_llm=False))
     assert "250,000" not in res.answer
     assert all("250,000" not in c.excerpt for c in res.citations)

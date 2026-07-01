@@ -52,17 +52,12 @@ def test_upgrade_recovers_partially_applied_sqlite_migrations(tmp_path: Path) ->
         revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
         tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         recipe_indexes = {
-            row[1]
-            for row in connection.execute("PRAGMA index_list('workflow_recipes')")
+            row[1] for row in connection.execute("PRAGMA index_list('workflow_recipes')")
         }
-        run_indexes = {
-            row[1] for row in connection.execute("PRAGMA index_list('workflow_runs')")
-        }
+        run_indexes = {row[1] for row in connection.execute("PRAGMA index_list('workflow_runs')")}
         share_columns = {
             row[1] for row in connection.execute("PRAGMA table_info('document_shares')")
         }

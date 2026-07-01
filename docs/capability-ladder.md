@@ -36,15 +36,18 @@ that ledger and answers a harder question: *how much may we say about a capabili
    is `provider_gated`, never `expert_verified`, until its offline deterministic core is
    proven and the LLM is provably grounded in cited evidence.
 
-## Where each capability sits today (2026-06-30)
+## Where each capability sits today (2026-06-24)
 
 | Capability | Rung | State in `/capabilities` |
 |---|:---:|---|
-| Packet audit — import/export vertical | 8 | verified → expert_verified after golden corpus |
-| Packet audit — AP vertical | 8 | verified |
-| Packet audit — contracts vertical | 8 | verified |
-| Packet audit — HR vertical | 8 | verified |
-| Packet audit — insurance vertical | 8 | verified |
+| Expert packet audit (spine + 5 verticals) | 9 | `expert_verified` (`eval:packet_audit+golden_packets`) |
+| Packet audit — import/export vertical | 9 | covered by `pack_audit` |
+| Packet audit — AP vertical | 9 | covered by `pack_audit` |
+| Packet audit — contracts vertical | 9 | covered by `pack_audit` |
+| Packet audit — HR vertical | 9 | covered by `pack_audit` |
+| Packet audit — insurance vertical | 9 | covered by `pack_audit` |
+| Reversible fix plans (metadata + cited redact) | 6 | wired via `/packets/{id}/fixes/*` |
+| Clean packet export (ZIP + validation headers) | 7 | wired via `/packets/{id}/export` |
 | True redaction (zero recoverable bytes) | 8 | verified (CI-gated) |
 | BM25 search | 8 | verified |
 | Owner isolation / rate limiting | 8 | verified |
@@ -57,8 +60,8 @@ that ledger and answers a harder question: *how much may we say about a capabili
 
 ## The path to rung 9–10
 
-- **Rung 9 (expert_verified):** commit a human-reviewed golden answer key per vertical
-  under `evals/golden_packets/<vertical>/` and a scorer that fails CI on regression. Target
-  field precision ≥ 95%, critical-finding recall ≥ 98%, evidence coverage = 100%.
+- **Rung 9 (expert_verified):** L2 golden fixtures live under `evals/golden_packets/<vertical>/case_*/`
+  with `expected/REVIEWED_BY` sign-off; CI scorer fails on verdict/regression. Current corpus:
+  import/export (2), AP (1), contracts (1), HR (1), insurance (1) — expand toward ≥3 cases/vertical.
 - **Rung 10 (market_superior):** run the `docs/benchmarks/packet-audit.md` matrix against a
   real competitor on the same packets and record the measured result.

@@ -179,8 +179,7 @@ def audit(packet_id: str, docs: list[tuple[str, str | None, CanonicalDocument]])
                 explanation="No clause specifies the jurisdiction whose laws govern the contract.",
                 evidence=[],
                 business_impact=(
-                    "Disputes have no agreed forum; "
-                    "litigation venue becomes contested."
+                    "Disputes have no agreed forum; litigation venue becomes contested."
                 ),
                 recommended_action="Add a governing-law clause naming the intended jurisdiction.",
                 human_review_required=True,
@@ -217,13 +216,11 @@ def audit(packet_id: str, docs: list[tuple[str, str | None, CanonicalDocument]])
                 explanation="An auto-renewal clause was detected.",
                 evidence=[f.field_ref.evidence for f in facts],
                 business_impact=(
-                    "The contract may lock in unless "
-                    "cancelled within its notice window."
+                    "The contract may lock in unless cancelled within its notice window."
                 ),
                 recommended_action=(
-                    "Calendar the cancellation deadline and "
-                    "confirm the notice period."
-                )
+                    "Calendar the cancellation deadline and confirm the notice period."
+                ),
             )
         ]
 
@@ -258,4 +255,5 @@ def audit(packet_id: str, docs: list[tuple[str, str | None, CanonicalDocument]])
         registry=reg,
         missing_documents=_REQUIRED,
         model_versions={"expert_spine": "1.0", "pack": PACK},
+        raw_docs=docs,
     )

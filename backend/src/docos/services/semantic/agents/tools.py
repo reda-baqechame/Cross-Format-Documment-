@@ -119,53 +119,78 @@ def _run_pack_review(doc: CanonicalDocument) -> ToolResult:
 
 _TOOLS: dict[str, AgentTool] = {
     "classify": AgentTool(
-        "classify", "read", "Classify document",
-        "Detect the document type/workflow.", run=_run_classify,
+        "classify",
+        "read",
+        "Classify document",
+        "Detect the document type/workflow.",
+        run=_run_classify,
     ),
     "extract": AgentTool(
-        "extract", "read", "Extract key fields",
+        "extract",
+        "read",
+        "Extract key fields",
         "Pull entities (dates, money, contacts) and label/value fields with provenance.",
         run=_run_extract,
     ),
     "intelligence": AgentTool(
-        "intelligence", "read", "Typed analysis",
+        "intelligence",
+        "read",
+        "Typed analysis",
         "Run the typed analyzer for the detected document kind (fields + validation checks).",
         run=_run_intelligence,
     ),
     "sensitive_scan": AgentTool(
-        "sensitive_scan", "read", "Scan for sensitive data",
-        "Detect PII/secrets without modifying the document.", run=_run_sensitive,
+        "sensitive_scan",
+        "read",
+        "Scan for sensitive data",
+        "Detect PII/secrets without modifying the document.",
+        run=_run_sensitive,
     ),
     "pack_review": AgentTool(
-        "pack_review", "read", "Business-pack review",
+        "pack_review",
+        "read",
+        "Business-pack review",
         "Run the matching vertical pack (contracts / HR onboarding) for deterministic field "
-        "extraction + risk findings on this document.", run=_run_pack_review,
+        "extraction + risk findings on this document.",
+        run=_run_pack_review,
     ),
     # Mutate tools — executed via the reversible-patch route (preview→approve→commit); the agent
     # only proposes them. Described here so the brain/UI know they exist and are approval-gated.
     "modify": AgentTool(
-        "modify", "mutate", "Edit document",
+        "modify",
+        "mutate",
+        "Edit document",
         "Propose reversible edits (set_text/update_node/retag/set_table_cell). Preview required.",
         requires_approval=True,
     ),
     "redact_pii": AgentTool(
-        "redact_pii", "mutate", "Redact sensitive data",
+        "redact_pii",
+        "mutate",
+        "Redact sensitive data",
         "Truly remove detected PII on export. Destructive — preview + approval required.",
-        requires_approval=True, destructive=True,
+        requires_approval=True,
+        destructive=True,
     ),
     "sanitize_metadata": AgentTool(
-        "sanitize_metadata", "mutate", "Strip risky metadata",
+        "sanitize_metadata",
+        "mutate",
+        "Strip risky metadata",
         "Remove hidden/embedded metadata before sharing. Preview required.",
         requires_approval=True,
     ),
     # Action tools — side effects via existing routes; always approval-gated.
     "export": AgentTool(
-        "export", "action", "Export / convert",
+        "export",
+        "action",
+        "Export / convert",
         "Produce a validated output file in the requested format.",
     ),
     "route_approval": AgentTool(
-        "route_approval", "action", "Route for approval/signature",
-        "Send the document into an approval/signature workflow.", requires_approval=True,
+        "route_approval",
+        "action",
+        "Route for approval/signature",
+        "Send the document into an approval/signature workflow.",
+        requires_approval=True,
     ),
 }
 

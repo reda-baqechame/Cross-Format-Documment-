@@ -2,33 +2,39 @@
 
 A packet is a named group of documents audited together by one expert vertical. This is
 the surface the Command Center UI calls: create a packet, add documents, run the audit,
-read the cited report, and (later) apply reversible fixes.
-
-Owner isolation reuses the same ``owner_clause``/``get_owned_document`` machinery as the
-document routes, so a packet and its documents can never leak across users/sessions.
+read the cited report, apply reversible fixes, and export a clean packet.
 """
 
 from __future__ import annotations
 
+import io
 import uuid
+import zipfile
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docos.api._apply import apply_and_commit
 from docos.api.access import get_owned_document, owner_clause
+from docos.api.routes_documents import _load_latest
 from docos.api.session import Actor, get_actor
 from docos.db.models import DocumentVersion, Packet, PacketAuditRun, PacketDocument
-from docos.deps import db_session
+from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.model.serialize import from_dict
+from docos.services.expert.fixes import FixPlan, fix_for
+from docos.services.expert.report_html import render_expert_report_html
 from docos.services.expert.schemas import ExpertReport
 from docos.services.expert.verticals import ap as ap_vertical
 from docos.services.expert.verticals import contracts as contracts_vertical
 from docos.services.expert.verticals import hr as hr_vertical
 from docos.services.expert.verticals import import_export as ie_vertical
 from docos.services.expert.verticals import insurance as insurance_vertical
+from docos.services.provenance import validation
+from docos.storage.blob import BlobStore
 
 router = APIRouter(tags=["packets"])
 
@@ -57,6 +63,48 @@ class PacketOut(BaseModel):
 
 class AddDocuments(BaseModel):
     document_ids: list[str]
+
+
+class ApplyFixesRequest(BaseModel):
+    finding_ids: list[str]
+
+
+class FixPlanOut(BaseModel):
+    finding_id: str
+    document_id: str
+    title: str
+    auto_fixable: bool
+    patch_count: int
+
+
+def _document_id_for_finding(finding) -> str | None:
+    if finding.evidence:
+        return finding.evidence[0].document_id
+    return None
+
+
+def _plans_for_report(report: ExpertReport) -> list[FixPlan]:
+    plans: list[FixPlan] = []
+    for finding in report.findings:
+        if not finding.fix_available:
+            continue
+        doc_id = _document_id_for_finding(finding)
+        if not doc_id:
+            continue
+        plan = fix_for(finding, doc_id)
+        if plan is not None:
+            plans.append(plan)
+    return plans
+
+
+def _load_doc(session: Session, doc_id: str, actor: Actor):
+    record = get_owned_document(session, doc_id, actor)
+    if record.current_version_id is None:
+        raise HTTPException(status_code=409, detail=f"document {doc_id} has no version")
+    version = session.get(DocumentVersion, record.current_version_id)
+    if version is None:
+        raise HTTPException(status_code=404, detail="version not found")
+    return record, from_dict(version.model)
 
 
 def _score_bps(score: float) -> int:
@@ -272,3 +320,154 @@ def get_score(
         "info": sum(1 for f in report.findings if f.severity == "info"),
         "human_review_required": sum(1 for f in report.findings if f.human_review_required),
     }
+
+
+@router.post("/packets/{packet_id}/fixes/plan")
+def plan_fixes(
+    packet_id: str,
+    actor: Actor = Depends(get_actor),
+    session: Session = Depends(db_session),
+) -> dict:
+    p = _owns_packet(session, packet_id, actor)
+    report = _report_from_run(_latest_run(session, packet_id))
+    plans = _plans_for_report(report)
+    return {
+        "packet_id": packet_id,
+        "pack": p.pack,
+        "plans": [
+            FixPlanOut(
+                finding_id=pl.finding_id,
+                document_id=pl.document_id,
+                title=pl.title,
+                auto_fixable=pl.auto_fixable,
+                patch_count=len(pl.patches),
+            ).model_dump()
+            for pl in plans
+        ],
+    }
+
+
+@router.post("/packets/{packet_id}/fixes/apply")
+def apply_fixes(
+    packet_id: str,
+    body: ApplyFixesRequest,
+    actor: Actor = Depends(get_actor),
+    session: Session = Depends(db_session),
+) -> dict:
+    _owns_packet(session, packet_id, actor)
+    report = _report_from_run(_latest_run(session, packet_id))
+    by_id = {f.id: f for f in report.findings}
+    applied: list[str] = []
+    for fid in body.finding_ids:
+        finding = by_id.get(fid)
+        if finding is None or not finding.fix_available:
+            continue
+        doc_id = _document_id_for_finding(finding)
+        if not doc_id:
+            continue
+        plan = fix_for(finding, doc_id)
+        if plan is None:
+            continue
+        _record, doc = _load_doc(session, doc_id, actor)
+        for patch in plan.patches:
+            apply_and_commit(
+                session,
+                doc_id,
+                doc,
+                patch,
+                actor=actor,
+                event="packet.fix_applied",
+                detail={"packet_id": packet_id, "finding_id": fid, "plan_title": plan.title},
+            )
+            _record, doc = _load_doc(session, doc_id, actor)
+        applied.append(fid)
+    return {"packet_id": packet_id, "applied_finding_ids": applied}
+
+
+@router.get("/packets/{packet_id}/report/download")
+def download_report(
+    packet_id: str,
+    format: str = Query("html"),
+    actor: Actor = Depends(get_actor),
+    session: Session = Depends(db_session),
+):
+    p = _owns_packet(session, packet_id, actor)
+    report = _report_from_run(_latest_run(session, packet_id))
+    if format != "html":
+        raise HTTPException(status_code=400, detail="only format=html is supported")
+    html = render_expert_report_html(title=p.name, packet_id=packet_id, report=report)
+    return HTMLResponse(
+        content=html,
+        headers={"Content-Disposition": f'attachment; filename="packet-{packet_id}-report.html"'},
+    )
+
+
+@router.get("/packets/{packet_id}/export")
+async def export_packet(
+    packet_id: str,
+    format: str = Query("zip"),
+    actor: Actor = Depends(get_actor),
+    session: Session = Depends(db_session),
+    blob_store: BlobStore = Depends(blob_store_dep),
+) -> Response:
+    """Export all packet documents. ``zip`` (default) or a single ``pdf`` when one PDF doc."""
+    from docos.api.routes_export import _render_export, _safe_filename, _signature_valid
+
+    p = _owns_packet(session, packet_id, actor)
+    doc_ids = _packet_doc_ids(session, packet_id)
+    if not doc_ids:
+        raise HTTPException(status_code=409, detail="packet has no documents")
+
+    if format == "pdf":
+        if len(doc_ids) != 1:
+            raise HTTPException(status_code=400, detail="pdf export requires exactly one document")
+        record, doc = _load_latest(session, doc_ids[0], actor)
+        if record.source_format != "pdf":
+            raise HTTPException(status_code=400, detail="pdf export requires a PDF source document")
+        registry = get_registry()
+        data, mime, ext = await _render_export(doc, record, "pdf", registry, blob_store)
+        report = validation.validate_export(doc, "pdf", data, signature_valid=_signature_valid(doc))
+        filename = f"{_safe_filename(p.name, packet_id)}.{ext}"
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-DocOS-Validation": validation.status(report),
+            "X-DocOS-Validation-Summary": report.summary,
+        }
+        return Response(content=data, media_type=mime, headers=headers)
+
+    if format != "zip":
+        raise HTTPException(status_code=400, detail="format must be zip or pdf")
+
+    registry = get_registry()
+    buf = io.BytesIO()
+    validations: list[str] = []
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for doc_id in doc_ids:
+            record, doc = _load_latest(session, doc_id, actor)
+            fmt = record.source_format if record.source_format in {"pdf", "docx", "txt"} else "txt"
+            if fmt not in {"pdf", "docx", "txt"}:
+                fmt = "txt"
+            try:
+                data, _mime, ext = await _render_export(doc, record, fmt, registry, blob_store)
+            except HTTPException:
+                data, _mime, ext = await _render_export(doc, record, "txt", registry, blob_store)
+            vreport = validation.validate_export(
+                doc, fmt, data, signature_valid=_signature_valid(doc)
+            )
+            validations.append(validation.status(vreport))
+            name = f"{_safe_filename(record.title, doc_id)}.{ext}"
+            zf.writestr(name, data)
+    summary = "pass" if all(v == "pass" for v in validations) else "warn"
+    headers = {
+        "Content-Disposition": f'attachment; filename="{_safe_filename(p.name, packet_id)}.zip"',
+        "X-DocOS-Validation": summary,
+        "X-DocOS-Validation-Summary": f"{len(validations)} document(s) exported",
+    }
+    get_provenance(session).record_event(
+        packet_id,
+        "packet.exported",
+        actor=actor.user_id or actor.session_id,
+        detail={"format": "zip", "document_count": len(doc_ids)},
+    )
+    session.commit()
+    return Response(content=buf.getvalue(), media_type="application/zip", headers=headers)

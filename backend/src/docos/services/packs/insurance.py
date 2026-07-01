@@ -20,9 +20,7 @@ from pydantic import BaseModel
 from docos.model.document import CanonicalDocument
 from docos.services.packs.import_export import PacketFinding, _visible_text
 
-_POLICY_NO = re.compile(
-    r"\bpolicy\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Za-z0-9\-]{4,})", re.I
-)
+_POLICY_NO = re.compile(r"\bpolicy\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Za-z0-9\-]{4,})", re.I)
 _CLAIM_NO = re.compile(r"\bclaim\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Za-z0-9\-]{4,})", re.I)
 _MONEY = r"([$€£]?\s?\d[\d,]*(?:\.\d{2})?)"
 _COVERAGE = re.compile(

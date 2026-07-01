@@ -128,9 +128,7 @@ def run_documentops(
             status="done",
             summary=f"Classified {len(corpus)} document(s).",
         ),
-        RunStep(
-            tool=f"pack:{chosen}", kind="read", status="done", summary=report.summary
-        ),
+        RunStep(tool=f"pack:{chosen}", kind="read", status="done", summary=report.summary),
         RunStep(
             tool="synthesize",
             kind="generate",

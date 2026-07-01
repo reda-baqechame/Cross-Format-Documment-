@@ -1,0 +1,5 @@
+Commercial Invoice
+Invoice No: INV-G1
+Country of Origin: Morocco
+HS Code: 6109100010
+Total: CAD 10,000.00

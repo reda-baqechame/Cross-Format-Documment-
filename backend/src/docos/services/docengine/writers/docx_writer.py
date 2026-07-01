@@ -337,8 +337,7 @@ def _ensure_footnotes_content_type(content_types_xml: bytes) -> bytes:
         {
             "PartName": part_name,
             "ContentType": (
-                "application/vnd.openxmlformats-officedocument."
-                "wordprocessingml.footnotes+xml"
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"
             ),
         },
     )

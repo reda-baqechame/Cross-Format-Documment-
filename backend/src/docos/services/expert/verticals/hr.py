@@ -188,4 +188,5 @@ def audit(packet_id: str, docs: list[tuple[str, str | None, CanonicalDocument]])
         registry=reg,
         missing_documents=REQUIRED_DOCS,
         model_versions={"expert_spine": "1.0", "pack": PACK},
+        raw_docs=docs,
     )

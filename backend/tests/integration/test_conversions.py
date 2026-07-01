@@ -116,9 +116,7 @@ def test_redaction_honored_in_xlsx_and_pptx(client):
 
     pptx = client.get(f"/documents/{doc_id}/export", params={"format": "pptx"}).content
     prs = Presentation(io.BytesIO(pptx))
-    ptext = " ".join(
-        s.text_frame.text for sl in prs.slides for s in sl.shapes if s.has_text_frame
-    )
+    ptext = " ".join(s.text_frame.text for sl in prs.slides for s in sl.shapes if s.has_text_frame)
     assert "keep this" in ptext and "secret line" not in ptext
 
 

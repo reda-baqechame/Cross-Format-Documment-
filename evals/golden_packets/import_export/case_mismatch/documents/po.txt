@@ -1,0 +1,3 @@
+Purchase Order
+PO No: PO-G2
+Total: CAD 13,780.00

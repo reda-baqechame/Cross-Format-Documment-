@@ -369,4 +369,5 @@ def audit(
         registry=_build_registry(),
         missing_documents=REQUIRED_DOCS,
         model_versions={"expert_spine": "1.0", "pack": PACK},
+        raw_docs=docs,
     )

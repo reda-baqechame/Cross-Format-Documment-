@@ -4,15 +4,16 @@ from __future__ import annotations
 
 
 def _upload(client, name, text):
-    return client.post(
-        "/documents", files={"file": (name, text.encode(), "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": (name, text.encode(), "text/plain")}).json()[
+        "doc_id"
+    ]
 
 
 def test_run_executes_pipeline_and_is_replayable(client):
     inv = _upload(
-        client, "inv.txt", "Commercial Invoice\nInvoice number: INV-7\nPO Number: PO-2\n"
-                           "Total due: 200.00 USD"
+        client,
+        "inv.txt",
+        "Commercial Invoice\nInvoice number: INV-7\nPO Number: PO-2\nTotal due: 200.00 USD",
     )
     po = _upload(client, "po.txt", "Purchase Order\nPO Number: PO-2\nTotal due: 150.00 USD")
 

@@ -72,6 +72,7 @@ def active_engine() -> str:
 # Each function delegates to the configured engine module. The signatures are identical to the
 # legacy ``pageops`` module so callers switch by changing an import.
 
+
 def page_count(pdf: bytes) -> int:
     return _engine().page_count(pdf)
 
@@ -99,9 +100,7 @@ def merge(pdfs: list[bytes]) -> bytes:
 def encrypt_pdf(
     pdf: bytes, user_password: str, owner_password: str | None = None, *, allow_print: bool = True
 ) -> bytes:
-    return _engine().encrypt_pdf(
-        pdf, user_password, owner_password, allow_print=allow_print
-    )
+    return _engine().encrypt_pdf(pdf, user_password, owner_password, allow_print=allow_print)
 
 
 def compress_pdf(pdf: bytes) -> bytes:

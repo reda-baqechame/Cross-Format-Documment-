@@ -30,6 +30,7 @@ from docos.deps import blob_store_dep, db_session, get_registry
 from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.registry import AdapterRegistry
+from docos.services.expert.readiness_bridge import readiness_to_expert_findings
 from docos.services.provenance import readiness, redaction_audit, sensitive, validation
 from docos.services.provenance.readiness_html import render_readiness_html
 from docos.services.provenance.redaction_audit import RedactionAuditReport
@@ -60,7 +61,8 @@ def document_readiness(
 ) -> ReadinessResponse:
     _record, doc = _load_latest(session, doc_id, actor)
     report = readiness.build_report(doc)
-    return ReadinessResponse(doc_id=doc_id, report=report)
+    findings = readiness_to_expert_findings(doc_id, doc, report)
+    return ReadinessResponse(doc_id=doc_id, report=report, expert_findings=findings)
 
 
 @router.get("/{doc_id}/readiness/report")

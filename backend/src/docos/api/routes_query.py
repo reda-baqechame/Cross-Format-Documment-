@@ -70,9 +70,7 @@ async def chat_document(
     """Multi-turn Q&A: answer a follow-up with conversation history, citing the nodes used."""
     _record, doc = _load_latest(session, doc_id, actor)
     use_llm = get_settings().effective_llm_provider != "noop"
-    result = await reader.chat(
-        doc, body.history, body.question, get_llm_client(), use_llm=use_llm
-    )
+    result = await reader.chat(doc, body.history, body.question, get_llm_client(), use_llm=use_llm)
     return ChatResponse(
         doc_id=doc_id,
         answer=result.answer,

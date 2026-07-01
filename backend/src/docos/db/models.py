@@ -425,9 +425,7 @@ class Packet(Base):
     pack: Mapped[str] = mapped_column(String, nullable=False)  # vertical, e.g. import_export
     owner_session_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     owner_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
-    created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class PacketDocument(Base):
@@ -438,9 +436,7 @@ class PacketDocument(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     packet_id: Mapped[str] = mapped_column(ForeignKey("packets.id"), index=True)
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
-    added_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    added_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class PacketAuditRun(Base):
@@ -454,6 +450,4 @@ class PacketAuditRun(Base):
     verdict: Mapped[str] = mapped_column(String, nullable=False)  # ready|needs_review|blocked
     readiness_score: Mapped[float] = mapped_column(Integer, nullable=False)  # 0..10000 (bps)
     report: Mapped[dict] = mapped_column(JSON, nullable=False)  # full ExpertReport
-    created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=_utcnow)

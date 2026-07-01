@@ -66,9 +66,7 @@ def _intro(corpus: list[CorpusDoc], goal: str) -> str:
     )
 
 
-def _do_search(
-    corpus: list[CorpusDoc], query: str, citations: list[dict]
-) -> tuple[AgentStep, str]:
+def _do_search(corpus: list[CorpusDoc], query: str, citations: list[dict]) -> tuple[AgentStep, str]:
     hits = corpus_service._retrieve_across(corpus, query, _MAX_CITATIONS)
     for c, node_id, text, _score in hits:
         if not any(x["node_id"] == node_id and x["doc_id"] == c.doc_id for x in citations):
@@ -129,9 +127,7 @@ async def run_corpus_agent_loop(
             answer = resp.text.strip()
             break
 
-        messages.append(
-            {"role": "assistant", "content": resp.text, "tool_calls": resp.tool_calls}
-        )
+        messages.append({"role": "assistant", "content": resp.text, "tool_calls": resp.tool_calls})
         results: list[dict] = []
         for call in resp.tool_calls:
             name = call.get("name", "")

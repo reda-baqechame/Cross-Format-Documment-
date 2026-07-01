@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from docos.model.document import CanonicalDocument
 from docos.services.expert.fact_graph import FactGraph
 from docos.services.expert.rules import PacketContext, RuleRegistry
 from docos.services.expert.schemas import (
@@ -23,6 +24,7 @@ from docos.services.expert.schemas import (
     RedactionSummary,
 )
 from docos.services.expert.scoring import readiness_score, verdict_from
+from docos.services.expert.trust import trust_findings
 
 
 def _executive_summary(
@@ -89,6 +91,7 @@ def build_report(
     redaction_summary: RedactionSummary | None = None,
     export_summary=None,
     model_versions: dict[str, str] | None = None,
+    raw_docs: list[tuple[str, str | None, CanonicalDocument]] | None = None,
 ) -> ExpertReport:
     """Run the registry over the packet and assemble the ExpertReport."""
     ctx = PacketContext(
@@ -99,10 +102,21 @@ def build_report(
         required_documents=missing_documents or [],
     )
     findings = registry.run(ctx)
+    if raw_docs:
+        trust = trust_findings(raw_docs)
+        for i, f in enumerate(trust):
+            if not f.id:
+                f = f.model_copy(update={"id": f"trust-{i}"})
+            if f.rule_code is None:
+                code = "metadata_leak" if f.type == "metadata_risk" else "sensitive_exposed"
+                f = f.model_copy(update={"rule_code": code})
+            findings.append(f)
     verdict = verdict_from(findings)
     score = readiness_score(findings)
     extracted = [f.field_ref for f in facts.facts]
-    missing = missing_documents or []
+    required = missing_documents or []
+    present_types = {d.document_type for d in documents if d.document_type}
+    missing = [m for m in required if m.document_type not in present_types]
 
     return ExpertReport(
         packet_id=packet_id,

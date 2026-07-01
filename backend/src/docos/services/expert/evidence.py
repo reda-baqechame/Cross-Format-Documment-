@@ -99,9 +99,7 @@ def find(pattern: re.Pattern[str], doc: CanonicalDocument, *, group: int = 1) ->
     return matches
 
 
-def first(
-    pattern: re.Pattern[str], doc: CanonicalDocument, *, group: int = 1
-) -> Match | None:
+def first(pattern: re.Pattern[str], doc: CanonicalDocument, *, group: int = 1) -> Match | None:
     """The first match of ``pattern`` in reading order, or None."""
     return next(iter(find(pattern, doc, group=group)), None)
 

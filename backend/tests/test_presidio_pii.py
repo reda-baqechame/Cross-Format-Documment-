@@ -29,8 +29,9 @@ def _doc(text: str) -> CanonicalDocument:
         doc_id="d",
         root_id="root",
         nodes={"root": root, "p": para, "r": run},
-        meta=DocumentMeta(source_format="txt", source_mime="text/plain", created_at=now,
-                          modified_at=now),
+        meta=DocumentMeta(
+            source_format="txt", source_mime="text/plain", created_at=now, modified_at=now
+        ),
     )
 
 

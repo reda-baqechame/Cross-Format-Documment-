@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -148,6 +149,20 @@ export function ReadinessPanel({ docId }: { docId: string }) {
           >
             Download clean copy (.{cleaned.validation.output_format})
           </a>
+        </div>
+      )}
+
+      {readiness.data.expert_findings && readiness.data.expert_findings.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
+          <p className="font-semibold text-slate-800">
+            {readiness.data.expert_findings.length} evidence-bound finding(s)
+          </p>
+          <p className="mt-1 text-slate-600">
+            Same expert spine as Command Center — issues cite source text where available.
+          </p>
+          <Link href="/packets" className="mt-2 inline-block text-brand-600 hover:underline">
+            Open Command Center for multi-document audits →
+          </Link>
         </div>
       )}
 

@@ -3,20 +3,27 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  applyPacketFixes,
+  downloadPacketExport,
+  downloadPacketReportHtml,
   getPacketReport,
+  planPacketFixes,
   runPacketAudit,
   type EvidenceRef,
   type ExpertFinding,
   type ExpertReport,
+  type FixPlanView,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { severityFor, toneFor } from "./tone";
 
-type Tab = "verdict" | "findings" | "facts" | "evidence";
+type Tab = "verdict" | "findings" | "facts" | "evidence" | "fixes" | "export";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "verdict", label: "Verdict" },
   { id: "findings", label: "Issues" },
+  { id: "fixes", label: "Fixes" },
+  { id: "export", label: "Clean export" },
   { id: "facts", label: "Extracted facts" },
   { id: "evidence", label: "Evidence" },
 ];
@@ -125,6 +132,10 @@ export function PacketWorkspace({ packetId }: { packetId: string }) {
       {tab === "findings" && (
         <FindingsTab findings={r.findings} onShowEvidence={setActiveEvidence} />
       )}
+      {tab === "fixes" && (
+        <FixesTab packetId={packetId} report={r} onApplied={runAudit} />
+      )}
+      {tab === "export" && <ExportTab packetId={packetId} report={r} />}
       {tab === "facts" && <FactsTab report={r} />}
       {tab === "evidence" && <EvidenceTab findings={r.findings} onShowEvidence={setActiveEvidence} />}
 
@@ -277,6 +288,114 @@ function FactsTab({ report }: { report: ExpertReport }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function FixesTab({
+  packetId,
+  report,
+  onApplied,
+}: {
+  packetId: string;
+  report: ExpertReport;
+  onApplied: () => Promise<void>;
+}) {
+  const toast = useToast();
+  const [plans, setPlans] = useState<FixPlanView[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fixable = report.findings.filter((f) => f.fix_available);
+
+  async function loadPlans() {
+    setBusy(true);
+    try {
+      const res = await planPacketFixes(packetId);
+      setPlans(res.plans);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not load fix plans");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyAll() {
+    if (!plans?.length) return;
+    setBusy(true);
+    try {
+      await applyPacketFixes(
+        packetId,
+        plans.map((p) => p.finding_id),
+      );
+      toast.success("Fixes applied — re-running audit");
+      setPlans(null);
+      await onApplied();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Apply failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (fixable.length === 0) {
+    return (
+      <p className="text-sm text-slate-500">
+        No one-click fixes for this audit. Resolve blocking issues manually, then re-run the audit.
+      </p>
+    );
+  }
+
+  return (
+    <div className="card space-y-4 p-5">
+      <p className="text-sm text-slate-600">
+        {fixable.length} finding(s) can be fixed with reversible patches (metadata scrub or
+        cited redaction).
+      </p>
+      <ul className="space-y-2 text-xs">
+        {fixable.map((f) => (
+          <li key={f.id} className="rounded-lg border border-line px-3 py-2">
+            <span className="font-medium text-slate-800">{f.title}</span>
+            <span className="ml-2 text-slate-500">{f.recommended_action}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-secondary" onClick={loadPlans} disabled={busy}>
+          {busy ? "Loading…" : "Preview fix plan"}
+        </button>
+        {plans && plans.length > 0 && (
+          <button className="btn-primary" onClick={applyAll} disabled={busy}>
+            Apply {plans.length} fix(es) & re-audit
+          </button>
+        )}
+      </div>
+      {plans && (
+        <ul className="space-y-1 text-xs text-slate-600">
+          {plans.map((p) => (
+            <li key={p.finding_id}>
+              {p.title} · {p.patch_count} patch(es) on {p.document_id}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ExportTab({ packetId, report }: { packetId: string; report: ExpertReport }) {
+  return (
+    <div className="card space-y-4 p-5">
+      <p className="text-sm text-slate-600">
+        Download a validated export of all {report.documents_detected.length} document(s) in this
+        packet. Each file is checked before download (see validation headers).
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-primary" onClick={() => downloadPacketExport(packetId, "zip")}>
+          Download clean packet (ZIP)
+        </button>
+        <button className="btn-secondary" onClick={() => downloadPacketReportHtml(packetId)}>
+          Download expert report (HTML)
+        </button>
+      </div>
     </div>
   );
 }

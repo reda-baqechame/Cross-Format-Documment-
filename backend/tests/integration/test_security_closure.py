@@ -11,9 +11,7 @@ from docos.settings import get_settings
 
 
 def _upload(client, name: str = "d.txt", data: bytes = b"foo foo") -> str:
-    return client.post(
-        "/documents", files={"file": (name, data, "text/plain")}
-    ).json()["doc_id"]
+    return client.post("/documents", files={"file": (name, data, "text/plain")}).json()["doc_id"]
 
 
 def test_cross_document_image_blob_refs_are_rejected(client, sample_image_bytes):

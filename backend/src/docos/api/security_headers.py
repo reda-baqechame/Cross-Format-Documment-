@@ -17,9 +17,7 @@ from starlette.requests import Request
 _CSP_EXEMPT_PREFIXES = ("/docs", "/redoc", "/openapi.json")
 
 # API and downloaded files are never a trusted HTML origin: lock everything down.
-_STRICT_CSP = (
-    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
-)
+_STRICT_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 
 _BASE_HEADERS = {
     "X-Content-Type-Options": "nosniff",

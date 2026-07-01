@@ -74,7 +74,9 @@ def run_steps(doc: CanonicalDocument, steps: list[RecipeStep]) -> RecipeRunResul
         if tool is None:
             results.append(
                 StepResult(
-                    tool=step.tool, kind="unknown", status="unknown_tool",
+                    tool=step.tool,
+                    kind="unknown",
+                    status="unknown_tool",
                     summary=f"No such tool '{step.tool}'.",
                 )
             )
@@ -83,14 +85,19 @@ def run_steps(doc: CanonicalDocument, steps: list[RecipeStep]) -> RecipeRunResul
             r = tool.run(doc)
             results.append(
                 StepResult(
-                    tool=tool.name, kind="read", status="done",
-                    summary=r.summary, data=r.data,
+                    tool=tool.name,
+                    kind="read",
+                    status="done",
+                    summary=r.summary,
+                    data=r.data,
                 )
             )
         else:
             results.append(
                 StepResult(
-                    tool=tool.name, kind=tool.kind, status="requires_approval",
+                    tool=tool.name,
+                    kind=tool.kind,
+                    status="requires_approval",
                     summary=(
                         f"{tool.label}: prepared, requires explicit approval before it runs "
                         "(not auto-executed by the recipe)."

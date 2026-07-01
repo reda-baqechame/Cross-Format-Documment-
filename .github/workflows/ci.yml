@@ -44,6 +44,8 @@ jobs:
         run: python evals/pack_extraction/run_local.py
       - name: Expert packet-audit eval (verdict + recall + evidence + precision gates)
         run: python evals/packet_audit/run_local.py
+      - name: Golden packet fixture eval (rung 9)
+        run: python evals/golden_packets/run_local.py
       - name: PDF edit-fidelity (round-trip + style preserved)
         run: python evals/pdf_fidelity/run_local.py
       - name: Verify migrations apply cleanly with no drift

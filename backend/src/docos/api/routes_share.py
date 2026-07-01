@@ -289,9 +289,7 @@ def portal_approve(
         raise HTTPException(status_code=409, detail=f"{approver} cannot sign off yet")
 
     step = next(s for s in steps if s.approver == approver and s.status == approvals.PENDING)
-    step.status = (
-        approvals.APPROVED if body.decision == "approve" else approvals.REJECTED
-    )
+    step.status = approvals.APPROVED if body.decision == "approve" else approvals.REJECTED
     step.note = body.note
     step.decided_at = datetime.now(UTC)
     provenance = get_provenance(session)

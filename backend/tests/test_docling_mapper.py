@@ -27,10 +27,18 @@ _SAMPLE = {
                 "num_rows": 2,
                 "num_cols": 2,
                 "table_cells": [
-                    {"text": "Item", "start_row_offset_idx": 0, "start_col_offset_idx": 0,
-                     "column_header": True},
-                    {"text": "Qty", "start_row_offset_idx": 0, "start_col_offset_idx": 1,
-                     "column_header": True},
+                    {
+                        "text": "Item",
+                        "start_row_offset_idx": 0,
+                        "start_col_offset_idx": 0,
+                        "column_header": True,
+                    },
+                    {
+                        "text": "Qty",
+                        "start_row_offset_idx": 0,
+                        "start_col_offset_idx": 1,
+                        "column_header": True,
+                    },
                     {"text": "Widget", "start_row_offset_idx": 1, "start_col_offset_idx": 0},
                     {"text": "10", "start_row_offset_idx": 1, "start_col_offset_idx": 1},
                 ],

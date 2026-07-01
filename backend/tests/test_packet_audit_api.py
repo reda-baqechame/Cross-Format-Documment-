@@ -116,3 +116,52 @@ def test_packet_owner_isolation(make_client):
     assert other.get(f"/packets/{pid}/report").status_code == 404
     assert other.post(f"/packets/{pid}/audit").status_code == 404
     assert pid not in [p["id"] for p in other.get("/packets").json()]
+
+
+def test_metadata_fix_plan_and_apply(make_client, sample_docx_bytes):
+    client = make_client()
+    docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    files = {"file": ("meta.docx", io.BytesIO(sample_docx_bytes), docx_mime)}
+    doc_id = client.post("/documents", files=files).json()["doc_id"]
+    assert client.get(f"/documents/{doc_id}/health").json()["health"]["metadata_risk"] is True
+
+    r = client.post("/packets", json={"name": "meta-packet", "pack": "import_export"})
+    pid = r.json()["id"]
+    client.post(f"/packets/{pid}/documents", json={"document_ids": [doc_id]})
+    report = client.post(f"/packets/{pid}/audit").json()
+    meta = [f for f in report["findings"] if f["type"] == "metadata_risk"]
+    assert meta, "expected metadata_risk finding"
+    assert meta[0].get("fix_available") is True
+
+    plans = client.post(f"/packets/{pid}/fixes/plan").json()["plans"]
+    assert any(p["finding_id"] == meta[0]["id"] for p in plans)
+
+    applied = client.post(
+        f"/packets/{pid}/fixes/apply",
+        json={"finding_ids": [meta[0]["id"]]},
+    ).json()
+    assert meta[0]["id"] in applied["applied_finding_ids"]
+    assert client.get(f"/documents/{doc_id}/health").json()["health"]["metadata_risk"] is False
+
+    report2 = client.post(f"/packets/{pid}/audit").json()
+    assert not any(f["type"] == "metadata_risk" for f in report2["findings"])
+
+
+def test_packet_zip_export(make_client):
+    client = make_client()
+    pid = _two_doc_packet(client)
+    client.post(f"/packets/{pid}/audit")
+    r = client.get(f"/packets/{pid}/export", params={"format": "zip"})
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("application/zip")
+    assert "X-DocOS-Validation" in r.headers
+    assert len(r.content) > 100
+
+
+def test_report_html_download(make_client):
+    client = make_client()
+    pid = _two_doc_packet(client)
+    client.post(f"/packets/{pid}/audit")
+    r = client.get(f"/packets/{pid}/report/download", params={"format": "html"})
+    assert r.status_code == 200
+    assert "Expert Packet Audit Report" in r.text
