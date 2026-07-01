@@ -13,15 +13,25 @@ _READINESS_VERDICT = {
 }
 
 
+def _counts(findings: list[ExpertFinding]) -> tuple[int, int]:
+    return (
+        sum(1 for f in findings if f.severity == "blocking"),
+        sum(1 for f in findings if f.severity == "warning"),
+    )
+
+
 def from_readiness(
     doc_id: str,
     report: ReadinessReport,
     findings: list[ExpertFinding],
+    *,
+    audit_event_ids: list[str] | None = None,
 ) -> ResultContract:
     """Compose a ResultContract from a single-document readiness report."""
     expert_verdict = verdict_from(findings)
     if report.verdict == "blocked":
         expert_verdict = "blocked"
+    blocking, warning = _counts(findings)
     score = int(readiness_score(findings) * 100)
     fix_plans = sum(1 for f in findings if f.fix_available)
     human = any(f.human_review_required for f in findings) or any(
@@ -32,23 +42,35 @@ def from_readiness(
         verdict=_READINESS_VERDICT.get(report.verdict, expert_verdict),
         score=score,
         findings=findings,
+        blocking_count=blocking,
+        warning_count=warning,
         fix_plans_available=fix_plans,
         clean_export_available=report.verdict != "blocked",
-        proof_report_url=f"/documents/{doc_id}/readiness/report?format=html",
+        proof_report_url=f"/documents/{doc_id}/proof-report?format=html",
         human_review_required=human,
+        audit_event_ids=audit_event_ids or [],
     )
 
 
-def from_expert_report(packet_id: str, report: ExpertReport) -> ResultContract:
+def from_expert_report(
+    packet_id: str,
+    report: ExpertReport,
+    *,
+    audit_event_ids: list[str] | None = None,
+) -> ResultContract:
     """Compose a ResultContract from a packet ExpertReport."""
+    blocking, warning = _counts(report.findings)
     fix_plans = sum(1 for f in report.findings if f.fix_available)
     return ResultContract(
         job_type="packet_audit",
         verdict=report.verdict,
         score=int(report.readiness_score * 100),
         findings=report.findings,
+        blocking_count=blocking,
+        warning_count=warning,
         fix_plans_available=fix_plans,
         clean_export_available=report.verdict != "blocked",
         proof_report_url=f"/packets/{packet_id}/report/download?format=html",
         human_review_required=any(f.human_review_required for f in report.findings),
+        audit_event_ids=audit_event_ids or [],
     )

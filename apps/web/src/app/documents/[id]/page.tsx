@@ -22,6 +22,8 @@ import { ApprovalsPanel } from "@/components/canvas/ApprovalsPanel";
 import { BulkSendPanel } from "@/components/workflows/BulkSendPanel";
 import { AskPanel } from "@/components/canvas/AskPanel";
 import { AutopilotPanel } from "@/components/canvas/AutopilotPanel";
+import { DocumentCommandCenter } from "@/components/expert/DocumentCommandCenter";
+import { DocumentOpsPanel } from "@/components/expert/DocumentOpsPanel";
 import { ClausesPanel } from "@/components/canvas/ClausesPanel";
 import { CommentsPanel } from "@/components/canvas/CommentsPanel";
 import { ComparePanel } from "@/components/canvas/ComparePanel";
@@ -117,6 +119,7 @@ export default function DocumentPage() {
         zoom={zoom}
         onZoomChange={setZoom}
       />
+      <DocumentCommandCenter activeTab={tab} onTabChange={setTab} />
 
       <div className="flex min-h-0 flex-1">
         {doc && <PageRail doc={doc} />}
@@ -310,6 +313,17 @@ function RightPanel({
         <AskPanel docId={docId} />
         <ExtractPanel docId={docId} />
         <ComparePanel docId={docId} />
+      </div>
+    );
+  }
+  if (tab === "autopilot") {
+    return (
+      <div className="grid h-full lg:grid-cols-[1fr_auto]">
+        <WorkflowRunnerPanel docId={docId} initialPreset={initialWorkflow} />
+        <div className="flex flex-col border-l border-slate-200">
+          <DocumentOpsPanel docId={docId} />
+          <AutopilotPanel docId={docId} />
+        </div>
       </div>
     );
   }

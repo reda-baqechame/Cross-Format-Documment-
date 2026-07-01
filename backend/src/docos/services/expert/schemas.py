@@ -171,10 +171,13 @@ class ResultContract(BaseModel):
     verdict: Verdict
     score: int = Field(ge=0, le=100)
     findings: list[ExpertFinding] = Field(default_factory=list)
+    blocking_count: int = 0
+    warning_count: int = 0
     fix_plans_available: int = 0
     clean_export_available: bool = False
     proof_report_url: str | None = None
     human_review_required: bool = False
+    audit_event_ids: list[str] = Field(default_factory=list)
 
 
 # ── The decision artifact ──────────────────────────────────────────────────────

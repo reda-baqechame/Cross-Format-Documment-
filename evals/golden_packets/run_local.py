@@ -39,11 +39,13 @@ VERTICALS = {
 }
 
 
-def _pdf_bytes(lines: list[str]) -> bytes:
+def _pdf_bytes(lines: list[str], *, rotation: int = 0) -> bytes:
     import fitz
 
     pdf = fitz.open()
     page = pdf.new_page(width=595, height=842)
+    if rotation:
+        page.set_rotation(rotation)
     for i, line in enumerate(lines):
         page.insert_text((72, 72 + i * 18), line, fontsize=11)
     data = pdf.tobytes()
@@ -134,7 +136,8 @@ def _ensure_pdf_fixtures() -> None:
         if pdf_path.exists() and pdf_path.stat().st_size > 0:
             continue
         lines = [ln for ln in src.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        pdf_path.write_bytes(_pdf_bytes(lines))
+        rotation = 90 if "rotated" in src.parent.parent.name else 0
+        pdf_path.write_bytes(_pdf_bytes(lines, rotation=rotation))
 
 
 def main() -> int:
@@ -143,6 +146,9 @@ def main() -> int:
     errors: list[str] = []
     reviewed = 0
     ran = 0
+    verdict_hits = 0
+    finding_total = 0
+    finding_founded = 0
     per_pack: dict[str, int] = {}
     pdf_per_pack: dict[str, int] = {}
     for case_dir in sorted(base.glob("*/*")):
@@ -151,7 +157,15 @@ def main() -> int:
         pack, docs, expected = _load_case(case_dir)
         vertical = VERTICALS[pack]
         report = vertical.audit(case_dir.name, docs)
-        errors.extend(_score_case(str(case_dir.relative_to(base)), report, expected))
+        case_errors = _score_case(str(case_dir.relative_to(base)), report, expected)
+        if not case_errors:
+            verdict_hits += 1
+        errors.extend(case_errors)
+        for f in report.findings:
+            if f.severity in ("blocking", "warning"):
+                finding_total += 1
+                if f.evidence or f.human_review_required:
+                    finding_founded += 1
         ran += 1
         per_pack[pack] = per_pack.get(pack, 0) + 1
         if any(d[2].meta.source_format == "pdf" for d in docs):
@@ -166,12 +180,24 @@ def main() -> int:
     if ran == 0:
         print("No golden packet cases found.")
         return 1
+    recall = verdict_hits / ran
+    precision = (finding_founded / finding_total) if finding_total else 1.0
+    evidence_rate = precision
+    if recall < 0.98:
+        errors.append(f"verdict recall {recall:.2%} < 98% floor")
+    if precision < 0.95:
+        errors.append(f"finding precision {precision:.2%} < 95% floor")
+    if evidence_rate < 1.0:
+        errors.append(f"evidence rate {evidence_rate:.2%} < 100% floor")
     if errors:
         print("GOLDEN PACKET FIXTURE EVAL FAILED")
         for e in errors:
             print(" ", e)
         return 1
-    print(f"golden_packets: {ran} case(s) passed ({reviewed} human-reviewed)")
+    print(
+        f"golden_packets: {ran} case(s) passed ({reviewed} human-reviewed); "
+        f"recall={recall:.1%} precision={precision:.1%} evidence={evidence_rate:.1%}"
+    )
     return 0
 
 

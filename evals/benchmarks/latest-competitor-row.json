@@ -1,0 +1,29 @@
+{
+  "case": "case_clean_memo",
+  "date": "2026-07-01",
+  "documentos": {
+    "verdict_correct": null,
+    "evidence_bound": null,
+    "export_opens": null,
+    "time_minutes": null
+  },
+  "acrobat": {
+    "verdict_correct": null,
+    "evidence_bound": null,
+    "export_opens": null,
+    "time_minutes": null
+  },
+  "copilot": {
+    "verdict_correct": null,
+    "evidence_bound": null,
+    "export_opens": null,
+    "time_minutes": null
+  },
+  "chatgpt": {
+    "verdict_correct": null,
+    "evidence_bound": null,
+    "export_opens": null,
+    "time_minutes": null
+  },
+  "notes": ""
+}

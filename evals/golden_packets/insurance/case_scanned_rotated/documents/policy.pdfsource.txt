@@ -1,0 +1,4 @@
+Policy No: POL-OK
+C0verage limit $2,OOO,OOO.OO
+Effective date: 2026-01-01
+Expirati0n date: 2027-12-31

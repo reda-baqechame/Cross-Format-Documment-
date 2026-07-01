@@ -205,10 +205,65 @@ export interface ResultContract {
   verdict: "ready" | "needs_review" | "blocked";
   score: number;
   findings: ExpertFinding[];
+  blocking_count: number;
+  warning_count: number;
   fix_plans_available: number;
   clean_export_available: boolean;
   proof_report_url: string | null;
   human_review_required: boolean;
+  audit_event_ids: string[];
+}
+
+export type AutopilotGoal = "clean_before_send" | "review" | "export" | "compare";
+
+export interface DocumentAutopilotRun {
+  doc_id: string;
+  goal: AutopilotGoal;
+  result: ResultContract;
+  fix_plans: { finding_id: string; document_id: string; title: string; auto_fixable: boolean }[];
+  steps: string[];
+  classification: string | null;
+  compare_summary: string | null;
+}
+
+export async function runDocumentAutopilot(
+  docId: string,
+  body: { goal?: AutopilotGoal; against_doc_id?: string },
+): Promise<DocumentAutopilotRun> {
+  return json<DocumentAutopilotRun>(
+    await fetch(`${BASE}/documents/${docId}/autopilot/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function applyDocumentAutopilot(
+  docId: string,
+  findingIds: string[],
+): Promise<CleanResponse> {
+  return json<CleanResponse>(
+    await fetch(`${BASE}/documents/${docId}/autopilot/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finding_ids: findingIds }),
+    }),
+  );
+}
+
+export async function reviewFinding(
+  docId: string,
+  findingId: string,
+  body: { accepted: boolean; note?: string },
+): Promise<{ stored: string }> {
+  return json(
+    await fetch(`${BASE}/documents/${docId}/findings/${findingId}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
 }
 
 export interface ReadinessResponse {

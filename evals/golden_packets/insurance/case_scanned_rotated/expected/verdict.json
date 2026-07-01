@@ -1,0 +1,5 @@
+{
+  "pack": "insurance",
+  "expected_verdict": "needs_review",
+  "expected_blocking": []
+}
