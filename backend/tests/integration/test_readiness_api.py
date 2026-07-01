@@ -54,6 +54,6 @@ def test_readiness_html_report_download(client):
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
     body = res.text
-    assert "Client Packet Readiness Report" in body
+    assert "Clean Before Send Report" in body
     assert "Recommended next steps" in body
     assert "jane@example.com" not in body

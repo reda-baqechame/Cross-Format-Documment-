@@ -11,6 +11,7 @@
     "lint:web": "pnpm --filter @docos/web lint",
     "smoke:production": "node scripts/production-smoke.mjs",
     "smoke:production:client-packet": "node scripts/production-client-packet-smoke.mjs",
+    "smoke:production:packet": "node scripts/production-packet-smoke.mjs",
     "smoke:production:client-packet:ui": "pnpm --filter @docos/web exec node ../../scripts/production-client-packet-ui-smoke.mjs",
     "smoke:production:editor": "pnpm --filter @docos/web exec node ../../scripts/production-editor-smoke.mjs",
     "smoke:production:auth": "node scripts/production-auth-portal-smoke.mjs",

@@ -158,6 +158,25 @@ class AuditSummary(BaseModel):
     notes: str | None = None
 
 
+# ── Unified job result (Phase 1 Command Center) ───────────────────────────────
+
+
+JobType = Literal["clean_before_send", "packet_audit", "patch_apply", "export"]
+
+
+class ResultContract(BaseModel):
+    """One artifact shape for every serious document job — readiness or packet audit."""
+
+    job_type: JobType
+    verdict: Verdict
+    score: int = Field(ge=0, le=100)
+    findings: list[ExpertFinding] = Field(default_factory=list)
+    fix_plans_available: int = 0
+    clean_export_available: bool = False
+    proof_report_url: str | None = None
+    human_review_required: bool = False
+
+
 # ── The decision artifact ──────────────────────────────────────────────────────
 
 

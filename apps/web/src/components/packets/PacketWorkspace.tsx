@@ -3,19 +3,19 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  applyPacketFixes,
   downloadPacketExport,
   downloadPacketReportHtml,
   getPacketReport,
-  planPacketFixes,
   runPacketAudit,
   type EvidenceRef,
-  type ExpertFinding,
   type ExpertReport,
-  type FixPlanView,
 } from "@/lib/api";
+import { EvidenceDrawer } from "@/components/expert/EvidenceDrawer";
+import { PacketExportProofPanel } from "@/components/expert/ExportProofPanel";
+import { FindingsList } from "@/components/expert/FindingsList";
+import { PacketFixesPanel } from "@/components/expert/PacketFixesPanel";
+import { VerdictCard } from "@/components/expert/VerdictCard";
 import { useToast } from "@/components/ui/Toast";
-import { severityFor, toneFor } from "./tone";
 
 type Tab = "verdict" | "findings" | "facts" | "evidence" | "fixes" | "export";
 
@@ -43,7 +43,7 @@ export function PacketWorkspace({ packetId }: { packetId: string }) {
   const audit = useQuery({
     queryKey: ["packet-audit", packetId],
     queryFn: () => runPacketAudit(packetId),
-    enabled: false, // manual trigger only
+    enabled: false,
   });
 
   async function runAudit() {
@@ -64,14 +64,13 @@ export function PacketWorkspace({ packetId }: { packetId: string }) {
     return <p className="text-slate-500">Loading packet…</p>;
   }
   if (report.isError) {
-    // No audit run yet — show the run-audit prompt instead of an error.
     return (
       <div className="card p-6">
         <p className="text-sm text-slate-600">
           No audit run yet for this packet. Add documents and run the audit to get an
           evidence-bound verdict.
         </p>
-        <button className="btn-primary mt-4" onClick={runAudit}>
+        <button type="button" className="btn-primary mt-4" onClick={runAudit}>
           Run audit now
         </button>
       </div>
@@ -83,38 +82,36 @@ export function PacketWorkspace({ packetId }: { packetId: string }) {
     return (
       <div className="card p-6">
         <p className="text-sm text-slate-600">No audit report available.</p>
-        <button className="btn-primary mt-4" onClick={runAudit}>
+        <button type="button" className="btn-primary mt-4" onClick={runAudit}>
           Run audit
         </button>
       </div>
     );
   }
-  const tone = toneFor(r.verdict);
 
   return (
     <div className="space-y-4">
-      {/* Verdict banner (always visible) */}
-      <div className={`card border ${tone.box} p-5`}>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${tone.badge}`}>
-            <span className={`inline-block h-2 w-2 rounded-full ${tone.dot}`} />
-            {tone.label.toUpperCase()}
-          </span>
-          <span className="text-sm text-slate-500">
-            Readiness {Math.round(r.readiness_score * 100)}%
-          </span>
-          <button className="btn-secondary ml-auto" onClick={runAudit} disabled={audit.isFetching}>
+      <VerdictCard
+        verdict={r.verdict}
+        score={r.readiness_score}
+        summary={r.executive_summary}
+        action={
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={runAudit}
+            disabled={audit.isFetching}
+          >
             {audit.isFetching ? "Auditing…" : "Re-run audit"}
           </button>
-        </div>
-        <p className="mt-3 text-sm text-slate-700">{r.executive_summary}</p>
-      </div>
+        }
+      />
 
-      {/* Tabs */}
       <div className="flex gap-1 border-b border-line">
         {TABS.map((t) => (
           <button
             key={t.id}
+            type="button"
             className={`mode-tab ${tab === t.id ? "mode-tab-active" : ""}`}
             onClick={() => setTab(t.id)}
           >
@@ -130,12 +127,19 @@ export function PacketWorkspace({ packetId }: { packetId: string }) {
 
       {tab === "verdict" && <VerdictTab report={r} />}
       {tab === "findings" && (
-        <FindingsTab findings={r.findings} onShowEvidence={setActiveEvidence} />
+        <FindingsList findings={r.findings} onShowEvidence={setActiveEvidence} />
       )}
       {tab === "fixes" && (
-        <FixesTab packetId={packetId} report={r} onApplied={runAudit} />
+        <PacketFixesPanel packetId={packetId} findings={r.findings} onApplied={runAudit} />
       )}
-      {tab === "export" && <ExportTab packetId={packetId} report={r} />}
+      {tab === "export" && (
+        <PacketExportProofPanel
+          packetId={packetId}
+          documentCount={r.documents_detected.length}
+          onDownloadZip={() => downloadPacketExport(packetId, "zip")}
+          onDownloadReport={() => downloadPacketReportHtml(packetId)}
+        />
+      )}
       {tab === "facts" && <FactsTab report={r} />}
       {tab === "evidence" && <EvidenceTab findings={r.findings} onShowEvidence={setActiveEvidence} />}
 
@@ -154,9 +158,7 @@ function VerdictTab({ report }: { report: ExpertReport }) {
         <ul className="mt-3 space-y-2">
           {report.documents_detected.map((d) => (
             <li key={d.document_id} className="rounded-lg border border-line px-3 py-2 text-xs">
-              <span className="font-medium text-slate-800">
-                {d.document_type ?? "other"}
-              </span>
+              <span className="font-medium text-slate-800">{d.document_type ?? "other"}</span>
               <span className="ml-2 text-slate-500">{d.title ?? d.document_id}</span>
               <span className="ml-2 text-slate-400">{Math.round(d.confidence * 100)}%</span>
             </li>
@@ -197,67 +199,6 @@ function VerdictTab({ report }: { report: ExpertReport }) {
   );
 }
 
-function FindingsTab({
-  findings,
-  onShowEvidence,
-}: {
-  findings: ExpertFinding[];
-  onShowEvidence: (e: EvidenceRef[]) => void;
-}) {
-  const order = ["blocking", "warning", "info"];
-  const sorted = [...findings].sort(
-    (a, b) => order.indexOf(a.severity) - order.indexOf(b.severity),
-  );
-  if (sorted.length === 0) {
-    return <p className="text-sm text-slate-500">No issues — the packet is clean.</p>;
-  }
-  return (
-    <ul className="space-y-2">
-      {sorted.map((f) => {
-        const tone = severityFor(f.severity);
-        return (
-          <li key={f.id} className={`card border ${tone.badge.includes("red") ? "border-red-200" : "border-line"} p-4`}>
-            <div className="flex items-center gap-2">
-              <span className={`inline-block h-2 w-2 rounded-full ${tone.dot}`} />
-              <span className="text-sm font-semibold text-ink">{f.title}</span>
-              <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${tone.badge}`}>
-                {f.severity}
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-slate-600">{f.explanation}</p>
-            {f.business_impact && (
-              <p className="mt-1 text-xs text-slate-500">Impact: {f.business_impact}</p>
-            )}
-            {f.recommended_action && (
-              <p className="mt-1 text-xs text-slate-700">
-                <span className="font-medium">Action:</span> {f.recommended_action}
-              </p>
-            )}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {f.evidence.length > 0 && (
-                <button
-                  className="btn-ghost px-2 py-1 text-[11px]"
-                  onClick={() => onShowEvidence(f.evidence)}
-                >
-                  View {f.evidence.length} source citation(s)
-                </button>
-              )}
-              {f.human_review_required && (
-                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
-                  needs human review
-                </span>
-              )}
-              <span className="text-[10px] text-slate-400">
-                {f.detection_method.replace("_", " ")} · {Math.round(f.confidence * 100)}%
-              </span>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 function FactsTab({ report }: { report: ExpertReport }) {
   if (report.extracted_fields.length === 0) {
     return <p className="text-sm text-slate-500">No fields extracted yet.</p>;
@@ -278,12 +219,8 @@ function FactsTab({ report }: { report: ExpertReport }) {
             <tr key={i} className="border-t border-line">
               <td className="px-3 py-2 font-medium text-slate-700">{f.name}</td>
               <td className="px-3 py-2 text-slate-800">{f.value}</td>
-              <td className="px-3 py-2 text-slate-500">
-                {f.document_type ?? f.document_id}
-              </td>
-              <td className="px-3 py-2 text-slate-500">
-                {Math.round(f.confidence * 100)}%
-              </td>
+              <td className="px-3 py-2 text-slate-500">{f.document_type ?? f.document_id}</td>
+              <td className="px-3 py-2 text-slate-500">{Math.round(f.confidence * 100)}%</td>
             </tr>
           ))}
         </tbody>
@@ -292,123 +229,14 @@ function FactsTab({ report }: { report: ExpertReport }) {
   );
 }
 
-function FixesTab({
-  packetId,
-  report,
-  onApplied,
-}: {
-  packetId: string;
-  report: ExpertReport;
-  onApplied: () => Promise<void>;
-}) {
-  const toast = useToast();
-  const [plans, setPlans] = useState<FixPlanView[] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const fixable = report.findings.filter((f) => f.fix_available);
-
-  async function loadPlans() {
-    setBusy(true);
-    try {
-      const res = await planPacketFixes(packetId);
-      setPlans(res.plans);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load fix plans");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function applyAll() {
-    if (!plans?.length) return;
-    setBusy(true);
-    try {
-      await applyPacketFixes(
-        packetId,
-        plans.map((p) => p.finding_id),
-      );
-      toast.success("Fixes applied — re-running audit");
-      setPlans(null);
-      await onApplied();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Apply failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (fixable.length === 0) {
-    return (
-      <p className="text-sm text-slate-500">
-        No one-click fixes for this audit. Resolve blocking issues manually, then re-run the audit.
-      </p>
-    );
-  }
-
-  return (
-    <div className="card space-y-4 p-5">
-      <p className="text-sm text-slate-600">
-        {fixable.length} finding(s) can be fixed with reversible patches (metadata scrub or
-        cited redaction).
-      </p>
-      <ul className="space-y-2 text-xs">
-        {fixable.map((f) => (
-          <li key={f.id} className="rounded-lg border border-line px-3 py-2">
-            <span className="font-medium text-slate-800">{f.title}</span>
-            <span className="ml-2 text-slate-500">{f.recommended_action}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap gap-2">
-        <button className="btn-secondary" onClick={loadPlans} disabled={busy}>
-          {busy ? "Loading…" : "Preview fix plan"}
-        </button>
-        {plans && plans.length > 0 && (
-          <button className="btn-primary" onClick={applyAll} disabled={busy}>
-            Apply {plans.length} fix(es) & re-audit
-          </button>
-        )}
-      </div>
-      {plans && (
-        <ul className="space-y-1 text-xs text-slate-600">
-          {plans.map((p) => (
-            <li key={p.finding_id}>
-              {p.title} · {p.patch_count} patch(es) on {p.document_id}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ExportTab({ packetId, report }: { packetId: string; report: ExpertReport }) {
-  return (
-    <div className="card space-y-4 p-5">
-      <p className="text-sm text-slate-600">
-        Download a validated export of all {report.documents_detected.length} document(s) in this
-        packet. Each file is checked before download (see validation headers).
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <button className="btn-primary" onClick={() => downloadPacketExport(packetId, "zip")}>
-          Download clean packet (ZIP)
-        </button>
-        <button className="btn-secondary" onClick={() => downloadPacketReportHtml(packetId)}>
-          Download expert report (HTML)
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function EvidenceTab({
   findings,
   onShowEvidence,
 }: {
-  findings: ExpertFinding[];
+  findings: ExpertReport["findings"];
   onShowEvidence: (e: EvidenceRef[]) => void;
 }) {
   const all: EvidenceRef[] = findings.flatMap((f) => f.evidence);
-  // de-dup by document+node+raw
   const seen = new Map<string, EvidenceRef>();
   for (const e of all) {
     seen.set(`${e.document_id}|${e.node_id ?? ""}|${e.raw_text}`, e);
@@ -416,8 +244,7 @@ function EvidenceTab({
   if (seen.size === 0) {
     return (
       <p className="text-sm text-slate-500">
-        No cited evidence yet. Absence-based findings escalate to human review rather than
-        fabricating a citation.
+        No cited evidence yet. Absence-based findings escalate to human review.
       </p>
     );
   }
@@ -426,71 +253,19 @@ function EvidenceTab({
       {Array.from(seen.values()).map((e, i) => (
         <li key={i} className="card border border-line p-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-700">
-              {e.document_type ?? e.document_id}
-            </span>
-            {e.page_number != null && (
-              <span className="text-slate-400">page {e.page_number}</span>
-            )}
-            {e.field_name && (
-              <span className="rounded bg-chrome px-1.5 py-0.5 text-[10px] text-slate-600">
-                {e.field_name}
-              </span>
-            )}
+            <span className="font-medium text-slate-700">{e.document_type ?? e.document_id}</span>
+            {e.page_number != null && <span className="text-slate-400">page {e.page_number}</span>}
           </div>
           <p className="mt-1 font-mono text-[11px] text-slate-700">“{e.raw_text}”</p>
-          {e.normalized_value && (
-            <p className="mt-1 text-slate-500">→ {e.normalized_value}</p>
-          )}
+          <button
+            type="button"
+            className="btn-ghost mt-2 px-2 py-1 text-[11px]"
+            onClick={() => onShowEvidence([e])}
+          >
+            Open citation
+          </button>
         </li>
       ))}
     </ul>
-  );
-}
-
-function EvidenceDrawer({
-  evidence,
-  onClose,
-}: {
-  evidence: EvidenceRef[];
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-40 flex justify-end bg-black/30"
-      onClick={onClose}
-      role="dialog"
-      aria-label="Source citations"
-    >
-      <div
-        className="h-full w-full max-w-md overflow-auto bg-white p-5 shadow-pop"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink">Source citations</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-        <ul className="mt-3 space-y-2">
-          {evidence.map((e, i) => (
-            <li key={i} className="rounded-lg border border-line p-3 text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-slate-700">
-                  {e.document_type ?? e.document_id}
-                </span>
-                {e.page_number != null && (
-                  <span className="text-slate-400">page {e.page_number}</span>
-                )}
-              </div>
-              <p className="mt-1 font-mono text-[11px] text-slate-700">“{e.raw_text}”</p>
-              {e.normalized_value && (
-                <p className="mt-1 text-slate-500">→ {e.normalized_value}</p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }

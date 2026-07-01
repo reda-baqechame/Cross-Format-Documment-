@@ -1,0 +1,4 @@
+Commercial Invoice
+Invoice number: INV-100
+Total due: $250.00
+Payment terms: Net 30

@@ -21,12 +21,14 @@ from sqlalchemy.orm import Session
 from docos.api._apply import apply_and_commit
 from docos.api.access import get_owned_document, owner_clause
 from docos.api.routes_documents import _load_latest
+from docos.api.schemas import ExpertReportResponse
 from docos.api.session import Actor, get_actor
 from docos.db.models import DocumentVersion, Packet, PacketAuditRun, PacketDocument
 from docos.deps import blob_store_dep, db_session, get_provenance, get_registry
 from docos.model.serialize import from_dict
 from docos.services.expert.fixes import FixPlan, fix_for
 from docos.services.expert.report_html import render_expert_report_html
+from docos.services.expert.result_contract import from_expert_report
 from docos.services.expert.schemas import ExpertReport
 from docos.services.expert.verticals import ap as ap_vertical
 from docos.services.expert.verticals import contracts as contracts_vertical
@@ -260,14 +262,16 @@ def _report_from_run(run: PacketAuditRun) -> ExpertReport:
     return ExpertReport.model_validate(run.report)
 
 
-@router.get("/packets/{packet_id}/report", response_model=ExpertReport)
+@router.get("/packets/{packet_id}/report", response_model=ExpertReportResponse)
 def get_report(
     packet_id: str,
     actor: Actor = Depends(get_actor),
     session: Session = Depends(db_session),
-) -> ExpertReport:
+) -> ExpertReportResponse:
     _owns_packet(session, packet_id, actor)
-    return _report_from_run(_latest_run(session, packet_id))
+    report = _report_from_run(_latest_run(session, packet_id))
+    result = from_expert_report(packet_id, report)
+    return ExpertReportResponse(**report.model_dump(), result=result)
 
 
 @router.get("/packets/{packet_id}/findings")

@@ -1,0 +1,4 @@
+{
+  "expected_verdict": "blocked",
+  "expected_checks": ["pending_redactions"]
+}

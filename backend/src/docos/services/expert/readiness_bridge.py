@@ -60,6 +60,19 @@ def readiness_to_expert_findings(
                             normalized_value=str(val),
                         )
                     )
+        elif check.id == "pending_redactions":
+            for node_id in doc.redaction.pending[:5]:
+                span = next((s for s in ev.sourced_spans(doc) if s.node_id == node_id), None)
+                evidence.append(
+                    EvidenceRef(
+                        document_id=doc_id,
+                        document_type=None,
+                        page_number=span.page_number if span else None,
+                        node_id=node_id,
+                        field_name="pending_redaction",
+                        raw_text=span.raw_text if span else f"node:{node_id}",
+                    )
+                )
         fix_available = check.fixable and check.fix_action in {
             FIX_SANITIZE_METADATA,
             FIX_REDACT_PII,

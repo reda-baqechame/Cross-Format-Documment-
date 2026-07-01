@@ -23,6 +23,8 @@ from docos.services.auth.passwords import hash_password
 from docos.services.auth.share_tokens import protect_share_token, recover_share_token
 from docos.services.billing.plans import require_portal_access
 from docos.services.collab import approvals
+from docos.services.expert.readiness_bridge import readiness_to_expert_findings
+from docos.services.expert.result_contract import from_readiness
 from docos.services.provenance import readiness
 from docos.settings import get_settings
 
@@ -243,7 +245,12 @@ def portal_readiness(
         raise HTTPException(status_code=404, detail="document not found")
     doc = from_dict(version.model)
     report = readiness.build_report(doc)
-    return ReadinessResponse(doc_id=access.document.id, report=report)
+    doc_id = access.document.id
+    findings = readiness_to_expert_findings(doc_id, doc, report)
+    result = from_readiness(doc_id, report, findings)
+    return ReadinessResponse(
+        doc_id=doc_id, report=report, expert_findings=findings, result=result
+    )
 
 
 @router.get(

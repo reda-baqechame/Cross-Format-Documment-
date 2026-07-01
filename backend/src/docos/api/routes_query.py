@@ -56,6 +56,7 @@ async def ask_document(
         answer=result.answer,
         citations=result.citations,
         used_llm=result.used_llm,
+        human_review_required=result.human_review_required,
     )
 
 
@@ -76,6 +77,7 @@ async def chat_document(
         answer=result.answer,
         citations=result.citations,
         used_llm=result.used_llm,
+        human_review_required=result.human_review_required,
     )
 
 
@@ -95,6 +97,7 @@ async def summarize_document(
         summary=result.summary,
         citations=result.citations,
         used_llm=result.used_llm,
+        human_review_required=result.human_review_required,
     )
 
 

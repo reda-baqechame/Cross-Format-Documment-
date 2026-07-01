@@ -1,0 +1,4 @@
+{
+  "expected_verdict": "needs_fixes",
+  "expected_checks": ["payment_terms", "scope_clarity"]
+}

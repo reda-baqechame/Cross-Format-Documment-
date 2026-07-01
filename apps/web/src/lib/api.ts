@@ -200,10 +200,22 @@ export interface ReadinessReport {
   checks: ReadinessCheck[];
 }
 
+export interface ResultContract {
+  job_type: "clean_before_send" | "packet_audit" | "patch_apply" | "export";
+  verdict: "ready" | "needs_review" | "blocked";
+  score: number;
+  findings: ExpertFinding[];
+  fix_plans_available: number;
+  clean_export_available: boolean;
+  proof_report_url: string | null;
+  human_review_required: boolean;
+}
+
 export interface ReadinessResponse {
   doc_id: string;
   report: ReadinessReport;
   expert_findings?: ExpertFinding[];
+  result: ResultContract;
 }
 
 /** One verdict on whether a document is safe + complete to send (read-only). */
@@ -2015,6 +2027,7 @@ export interface ExpertReport {
   findings: ExpertFinding[];
   recommended_actions: { title: string; detail: string; severity: string; related_findings: string[]; auto_fixable: boolean }[];
   generated_at: string;
+  result?: ResultContract;
 }
 
 export const PACKET_PACKS = [

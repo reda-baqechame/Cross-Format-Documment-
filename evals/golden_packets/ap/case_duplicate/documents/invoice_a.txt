@@ -1,0 +1,3 @@
+Commercial Invoice
+Invoice No: AP-DUP
+Total: CAD 200.00

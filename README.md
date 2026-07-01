@@ -14,7 +14,8 @@ clearly marked, pluggable extension point.
 > [`CLAUDE.md`](CLAUDE.md) — the handoff guide (verified dev/test commands, core invariants, and
 > the recipe for adding a capability) — then
 > [`docs/implementation-status.md`](docs/implementation-status.md) for where we left off and
-> what's next.
+> what's next. The [500× master plan](docs/roadmap-500x-master-plan.md) tracks the
+> Command Center unification and eval-gated rollout.
 
 ## Why this exists
 

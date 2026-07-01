@@ -18,6 +18,7 @@ import {
   Search,
   Send,
   Share2,
+  ShieldCheck,
   Sparkles,
   Undo2,
   ZoomIn,
@@ -48,6 +49,7 @@ type WorkspaceTab =
   | "insights"
   | "forms"
   | "clauses"
+  | "verify"
   | "trust"
   | "comments"
   | "approvals";
@@ -59,6 +61,7 @@ const PRIMARY_TABS: {
 }[] = [
   { id: "document", label: "Edit", icon: FilePenLine },
   { id: "ai-helper", label: "AI Helper", icon: Sparkles },
+  { id: "verify", label: "Verify", icon: ShieldCheck },
   { id: "forms", label: "Forms", icon: FormInput },
   { id: "clauses", label: "Clauses", icon: Library },
   { id: "comments", label: "Review", icon: MessageSquare },

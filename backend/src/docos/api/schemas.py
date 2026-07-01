@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from docos.model.document import CanonicalDocument
 from docos.model.patch import PatchOp
-from docos.services.expert.schemas import ExpertFinding
+from docos.services.expert.schemas import ExpertFinding, ExpertReport, ResultContract
 from docos.services.provenance.diff import DiffResult
 from docos.services.provenance.duplicates import DuplicateGroup
 from docos.services.provenance.health import DocumentHealth
@@ -172,6 +172,13 @@ class ReadinessResponse(BaseModel):
     doc_id: str
     report: ReadinessReport
     expert_findings: list[ExpertFinding] = Field(default_factory=list)
+    result: ResultContract
+
+
+class ExpertReportResponse(ExpertReport):
+    """Packet audit report plus unified ResultContract for the Command Center."""
+
+    result: ResultContract
 
 
 class CleanResponse(BaseModel):
@@ -484,6 +491,7 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[Citation]
     used_llm: bool  # False = deterministic offline answer
+    human_review_required: bool = False
 
 
 class ChatRequest(BaseModel):
@@ -496,6 +504,7 @@ class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation]
     used_llm: bool
+    human_review_required: bool = False
 
 
 class SummaryResponse(BaseModel):
@@ -503,6 +512,7 @@ class SummaryResponse(BaseModel):
     summary: str
     citations: list[Citation]
     used_llm: bool
+    human_review_required: bool = False
 
 
 class PagesRequest(BaseModel):

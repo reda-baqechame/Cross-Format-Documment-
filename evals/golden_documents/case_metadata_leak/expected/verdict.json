@@ -1,0 +1,4 @@
+{
+  "expected_verdict": "needs_fixes",
+  "expected_checks": ["hidden_metadata"]
+}

@@ -38,7 +38,7 @@ import { IntelligencePanel } from "@/components/canvas/IntelligencePanel";
 import { ModifyStudio } from "@/components/canvas/ModifyStudio";
 import { SheetEditor } from "@/components/canvas/SheetEditor";
 import { HealthPanel } from "@/components/health-panel/HealthPanel";
-import { ReadinessPanel } from "@/components/health-panel/ReadinessPanel";
+import { VerifyPanel } from "@/components/expert/VerifyPanel";
 import { TagsPanel } from "@/components/documents/TagsPanel";
 import { WorkflowRunnerPanel } from "@/components/workflows/WorkflowRunnerPanel";
 import { fetchHealth, fetchModel, type WorkflowPreset } from "@/lib/api";
@@ -60,6 +60,7 @@ const TABS: WorkspaceTab[] = [
   "insights",
   "forms",
   "clauses",
+  "verify",
   "trust",
   "comments",
   "approvals",
@@ -275,6 +276,13 @@ function RightPanel({
       </div>
     );
   }
+  if (tab === "verify") {
+    return (
+      <div className="flex h-full w-full flex-col overflow-auto lg:w-96">
+        <VerifyPanel docId={docId} />
+      </div>
+    );
+  }
   if (tab === "trust") {
     if (health.isError) {
       return (
@@ -288,7 +296,6 @@ function RightPanel({
     }
     return (
       <div className="flex h-full w-full flex-col overflow-auto lg:w-96">
-        <ReadinessPanel docId={docId} />
         <HealthPanel health={health.data.health} docId={docId} />
       </div>
     );

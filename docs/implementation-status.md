@@ -192,7 +192,11 @@ This file is the source of truth for "don't forget anything." Update it as featu
   cross-format pass, with one-click fixes — `services/provenance/readiness.py`,
   `GET /documents/{id}/readiness`, `components/health-panel/ReadinessPanel.tsx` (downloadable report).
   Readiness items now also emit `expert_findings` (same shape as packet audit) via
-  `services/expert/readiness_bridge.py`; health panel links to Command Center for multi-doc packs.
+  `services/expert/readiness_bridge.py`; **Verify** tab + shared expert components
+  (`components/expert/VerifyPanel`, `VerdictCard`, `FindingsList`, …) unify single-doc UX with
+  Command Center. `GET /readiness` returns a unified `ResultContract`.
+- ✅ Clean Before Send proof report — HTML download includes expert findings table;
+  `services/provenance/readiness_html.py`, `GET /documents/{id}/readiness/report`.
 - ✅ Clean Before You Send — `POST /documents/{id}/clean` applies the auto-fixes (strip hidden
   metadata + true-redact PII) as one reversible patch, re-checks, and returns the post-clean
   verdict + a validation **proof** that the redacted text is unrecoverable; clean copy downloads
@@ -233,8 +237,9 @@ This file is the source of truth for "don't forget anything." Update it as featu
   contracts, HR, insurance), view cited findings + fact graph, plan/apply reversible fixes
   (metadata scrub + cited redaction), download clean ZIP export with validation headers, and
   export HTML expert reports — `services/expert/`, `api/routes_packet_audit.py`,
-  `components/packets/PacketWorkspace.tsx`. CI gates: `evals/packet_audit` (L1 synthetic) +
-  `evals/golden_packets` (L2 file-backed, human-reviewed fixtures).
+  `components/packets/PacketWorkspace.tsx`. `GET /packets/{id}/report` includes `ResultContract`.
+  CI gates: `evals/packet_audit` (L1 synthetic) + `evals/golden_packets` (L2, ≥3 cases/vertical,
+  PDF fixtures) + `evals/golden_documents` (Clean Before Send, 10+ cases).
 - ✅ Version DAG + audit log
 - ✅ Document compare / diff (two documents, cross-format) — `services/provenance/diff.py`
 - ✅ Comment threads (add / reply / resolve / delete, versioned) — `routes_comments.py`
@@ -248,6 +253,8 @@ This file is the source of truth for "don't forget anything." Update it as featu
 
 ## H. Ask AI about it
 - ✅ AI editing over the model · ✅ Chat / Q&A with citations · ✅ Summarize — `services/semantic/reader.py`
+- ✅ **Offline grounding gate** — noop ask/chat/summarize set `human_review_required` when answers
+  lack citations or state untraceable numbers; enforced in `evals/agent_quality` CI.
 - ✅ Conversational multi-turn Q&A (history-biased retrieval, cited per turn) — `reader.chat`,
   `POST /documents/{id}/chat`
 - ✅ Global restyle — bulk inline formatting (bold/italic/underline/font/size/color) over a scope
@@ -331,10 +338,12 @@ infrastructure is provisioned — rather than shipping a fake that claims compli
 - ✅ Stress test lane: `pytest -m stress` covers primary uploads, malformed/oversized files,
   patch/undo loops, editor sessions, destructive-action planning, and template variables.
 - ✅ Browser E2E lane: Playwright smoke covers the task grid, template workflow entry, signup/login/pricing
-  pages, wired marketing sections, and packet-audit Command Center happy path — `e2e/task-grid.spec.ts`,
-  `e2e/auth-portal.spec.ts`, `e2e/packet-audit.spec.ts`.
+  pages, wired marketing sections, packet-audit Command Center, and clean-before-send Verify tab —
+  `e2e/task-grid.spec.ts`, `e2e/auth-portal.spec.ts`, `e2e/packet-audit.spec.ts`,
+  `e2e/clean-before-send.spec.ts`.
 - ✅ Production smokes: read-only home/health/OpenAPI (`smoke:production`), client-packet API/UI,
-  editor smoke, auth/billing/portal OpenAPI seam (`smoke:production:auth`).
+  expert packet audit (`smoke:production:packet`), editor smoke, auth/billing/portal OpenAPI seam
+  (`smoke:production:auth`).
 - ✅ Embedded editor session APIs: `/documents/{id}/editor/session`,
   `/documents/{id}/editor/session/{session_id}`, `/save`, and `/sync` create auditable
   native-editor sessions. DOCX/XLSX/PPTX use an ONLYOFFICE-compatible provider only when

@@ -86,8 +86,17 @@ def fix_for(finding: ExpertFinding, document_id: str) -> FixPlan | None:
     """Dispatch on finding type to the right deterministic fix, or None if not auto-fixable."""
     if not finding.fix_available:
         return None
-    if finding.type in {"metadata_risk"}:
+    if finding.type in {"metadata_risk"} or finding.rule_code in {
+        "hidden_metadata",
+        "metadata_leak",
+    }:
         return metadata_scrub_fix(finding, document_id)
-    if finding.type in {"redaction_risk"}:
-        return redact_span_fix(finding, document_id)
+    if finding.type in {"redaction_risk", "compliance_risk"} or finding.rule_code in {
+        "exposed_pii",
+        "sensitive_exposed",
+        "pending_redactions",
+    }:
+        plan = redact_span_fix(finding, document_id)
+        if plan:
+            return plan
     return None

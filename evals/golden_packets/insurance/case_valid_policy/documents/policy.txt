@@ -1,0 +1,4 @@
+Policy No: POL-OK
+Coverage limit $2,000,000.00
+Effective date: 2026-01-01
+Expiration date: 2027-12-31

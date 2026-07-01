@@ -204,11 +204,13 @@ async def score_grounding(case: GroundingCase) -> ScoreCard:
         checks["abstained"] = any(m in answer.lower() for m in markers)
         # Abstention must be honest: no fabricated figures when nothing was cited.
         checks["no_fabricated_number"] = bool(res.citations) or not _NUM.search(answer)
+        checks["human_review_flagged"] = res.human_review_required
     else:
         checks["has_citations"] = bool(res.citations)
         for tok in case.must_contain:
             checks[f"contains:{tok}"] = tok.lower() in answer.lower()
         checks["numbers_traceable"] = all(n in cited for n in set(_NUM.findall(answer)))
+        checks["human_review_clear"] = not res.human_review_required
 
     return ScoreCard(name=case.name, mode="grounding", checks=checks)
 

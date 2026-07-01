@@ -1,0 +1,5 @@
+{
+  "pack": "ap",
+  "expected_verdict": "ready",
+  "expected_blocking": []
+}

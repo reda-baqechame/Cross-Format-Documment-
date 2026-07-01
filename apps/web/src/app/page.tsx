@@ -87,6 +87,9 @@ export default function HomePage() {
               <Link href="/tasks/client-packet-readiness" className="btn-primary">
                 Check a client packet
               </Link>
+              <Link href="/tasks/send-ready-check" className="btn-secondary">
+                Verify one document
+              </Link>
               <Link href="/packets" className="btn-secondary">
                 Command Center
               </Link>

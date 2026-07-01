@@ -34,7 +34,9 @@ every feature per file type.
    stages bytes into the blob store. Upload is the first security boundary (OWASP).
 2. **Document engine** (`services/docengine`) — a registry of `FormatAdapter`s. Each
    adapter is the only code that understands a format's binary details and maps it both
-   ways against the canonical model. TXT, DOCX and PDF are functional; others are stubs.
+   ways against the canonical model. The registry ships functional adapters for TXT, MD,
+   HTML, RTF, DOCX, PDF, XLSX, PPTX, CSV, JSON, XML, PNG, JPEG, TIFF, and more — see
+   ``docs/implementation-status.md`` for fidelity notes and AGPL considerations on PDF.
 3. **OCR & structure** (`services/ocr`) — recovers text, tables, and reading order from
    scans/images. Low-confidence output is meant to be reviewed, never silently trusted.
 4. **Semantic orchestration** (`services/semantic`) — turns a natural-language

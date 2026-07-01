@@ -31,6 +31,7 @@ from docos.model.ids import new_patch_id
 from docos.model.patch import Patch, ReversiblePatch
 from docos.services.docengine.registry import AdapterRegistry
 from docos.services.expert.readiness_bridge import readiness_to_expert_findings
+from docos.services.expert.result_contract import from_readiness
 from docos.services.provenance import readiness, redaction_audit, sensitive, validation
 from docos.services.provenance.readiness_html import render_readiness_html
 from docos.services.provenance.redaction_audit import RedactionAuditReport
@@ -62,7 +63,10 @@ def document_readiness(
     _record, doc = _load_latest(session, doc_id, actor)
     report = readiness.build_report(doc)
     findings = readiness_to_expert_findings(doc_id, doc, report)
-    return ReadinessResponse(doc_id=doc_id, report=report, expert_findings=findings)
+    result = from_readiness(doc_id, report, findings)
+    return ReadinessResponse(
+        doc_id=doc_id, report=report, expert_findings=findings, result=result
+    )
 
 
 @router.get("/{doc_id}/readiness/report")
@@ -75,13 +79,21 @@ def readiness_report_download(
     """Download a client-facing readiness report (HTML for print/PDF, or JSON)."""
     record, doc = _load_latest(session, doc_id, actor)
     report = readiness.build_report(doc)
+    findings = readiness_to_expert_findings(doc_id, doc, report)
     title = record.title or doc_id
     filename = _safe_filename(title, doc_id)
 
     if format == "json":
         import json
 
-        payload = json.dumps({"doc_id": doc_id, "title": title, "report": report.model_dump()})
+        payload = json.dumps(
+            {
+                "doc_id": doc_id,
+                "title": title,
+                "report": report.model_dump(),
+                "expert_findings": [f.model_dump(mode="json") for f in findings],
+            }
+        )
         return Response(
             content=payload,
             media_type="application/json",
@@ -90,7 +102,9 @@ def readiness_report_download(
             },
         )
 
-    html = render_readiness_html(title=title, doc_id=doc_id, report=report)
+    html = render_readiness_html(
+        title=title, doc_id=doc_id, report=report, expert_findings=findings
+    )
     return Response(
         content=html,
         media_type="text/html; charset=utf-8",

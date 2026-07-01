@@ -26,6 +26,7 @@ def trust_findings(
     for doc_id, _title, doc in docs:
         out.extend(_metadata_findings(doc_id, doc))
         out.extend(_sensitive_findings(doc_id, doc))
+        out.extend(_pending_redaction_findings(doc_id, doc))
     return out
 
 
@@ -103,5 +104,40 @@ def _sensitive_findings(doc_id: str, doc: CanonicalDocument) -> list[ExpertFindi
             business_impact="Sending without redaction may violate privacy or compliance policy.",
             recommended_action="Apply true redaction to cited spans before export.",
             fix_available=True,
+        )
+    ]
+
+
+def _pending_redaction_findings(doc_id: str, doc: CanonicalDocument) -> list[ExpertFinding]:
+    pending = [nid for nid in doc.redaction.pending if not is_redacted(doc, nid)]
+    if not pending:
+        return []
+    evidence: list[EvidenceRef] = []
+    for node_id in pending[:5]:
+        span = next((s for s in ev.sourced_spans(doc) if s.node_id == node_id), None)
+        evidence.append(
+            EvidenceRef(
+                document_id=doc_id,
+                document_type=None,
+                page_number=span.page_number if span else None,
+                node_id=node_id,
+                field_name="pending_redaction",
+                raw_text=span.raw_text if span else f"node:{node_id}",
+            )
+        )
+    return [
+        new_finding(
+            type_="redaction_risk",
+            severity="blocking",
+            title="Unapplied redactions may still leak content",
+            explanation=(
+                f"{len(pending)} redaction mark(s) are not yet burned in — hidden text "
+                "can still be recovered on export."
+            ),
+            evidence=evidence,
+            business_impact="Recipients may recover text that was visually blacked out.",
+            recommended_action="Export or clean the document to apply redactions permanently.",
+            fix_available=bool(evidence),
+            rule_code="pending_redactions",
         )
     ]

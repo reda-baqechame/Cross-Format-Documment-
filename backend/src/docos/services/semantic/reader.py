@@ -28,6 +28,7 @@ _STOPWORDS = frozenset(
 )
 _WORD = re.compile(r"[A-Za-z0-9']+")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
+_NUM = re.compile(r"\d[\d,.]*")
 
 ANSWER_SYSTEM = (
     "You answer questions about a document using ONLY the provided excerpts. Each excerpt "
@@ -49,6 +50,7 @@ class AnswerResult(BaseModel):
     answer: str
     citations: list[Citation]
     used_llm: bool
+    human_review_required: bool = False
 
 
 class ChatTurn(BaseModel):
@@ -60,6 +62,7 @@ class SummaryResult(BaseModel):
     summary: str
     citations: list[Citation]
     used_llm: bool
+    human_review_required: bool = False
 
 
 @lru_cache(maxsize=1)
@@ -130,6 +133,17 @@ def _context(hits: list[tuple[str, str]]) -> str:
     return "\n".join(f"[{node_id}] {text}" for node_id, text in hits)
 
 
+def _human_review_required(text: str, citations: list[Citation], *, offline: bool) -> bool:
+    """Offline/noop gate: flag answers that lack citation support."""
+    if not offline:
+        return False
+    if not citations:
+        return True
+    cited = " ".join(c.excerpt for c in citations).lower()
+    nums = set(_NUM.findall(text))
+    return bool(nums) and not all(n in cited for n in nums)
+
+
 async def answer(
     doc: CanonicalDocument, question: str, llm: LLMClient, *, use_llm: bool
 ) -> AnswerResult:
@@ -144,7 +158,13 @@ async def answer(
         if resp.text.strip():
             return AnswerResult(answer=resp.text.strip(), citations=citations, used_llm=True)
 
-    return AnswerResult(answer=_extractive_answer(hits), citations=citations, used_llm=False)
+    answer = _extractive_answer(hits)
+    return AnswerResult(
+        answer=answer,
+        citations=citations,
+        used_llm=False,
+        human_review_required=_human_review_required(answer, citations, offline=not use_llm),
+    )
 
 
 CHAT_SYSTEM = (
@@ -189,7 +209,13 @@ async def chat(
         if resp.text.strip():
             return AnswerResult(answer=resp.text.strip(), citations=citations, used_llm=True)
 
-    return AnswerResult(answer=_extractive_answer(hits), citations=citations, used_llm=False)
+    answer = _extractive_answer(hits)
+    return AnswerResult(
+        answer=answer,
+        citations=citations,
+        used_llm=False,
+        human_review_required=_human_review_required(answer, citations, offline=not use_llm),
+    )
 
 
 TRANSLATE_SYSTEM = (
@@ -217,4 +243,9 @@ async def summarize(doc: CanonicalDocument, llm: LLMClient, *, use_llm: bool) ->
         if resp.text.strip():
             return SummaryResult(summary=resp.text.strip(), citations=citations, used_llm=True)
 
-    return SummaryResult(summary=extractive, citations=citations, used_llm=False)
+    return SummaryResult(
+        summary=extractive,
+        citations=citations,
+        used_llm=False,
+        human_review_required=_human_review_required(extractive, citations, offline=not use_llm),
+    )
