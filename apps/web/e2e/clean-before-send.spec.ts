@@ -4,6 +4,8 @@ test("clean before send surfaces verify findings and proof report", async ({ pag
   const health = await page.request.get("/api/health");
   test.skip(!health.ok(), "Backend API is required.");
 
+  await page.goto("/");
+
   const piiDoc = "Contact jane@example.com for billing questions.\n";
 
   await page.locator('input[type="file"]').first().setInputFiles({
